@@ -1,0 +1,36 @@
+name: fortl
+version: '0.1'
+synopsis: A modern language for science
+author: Dominic Orchard
+copyright: 2024 authors
+license: BSD3
+dependencies:
+- base >=4.10 && <5
+
+ghc-options:
+- -O0
+- -Wall
+- -Werror
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
+- -Wno-unused-matches
+- -Wno-name-shadowing
+- -Wno-type-defaults
+
+executables:
+  fortl:
+    main: Main.hs
+    source-dirs: .
+    ghc-options: -main-is Lam
+    build-tools:
+     - alex
+     - happy
+    dependencies:
+     - directory
+     - containers
+     - transformers
+     - filepath
+     - array
+     - text

@@ -1,0 +1,45 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           fortl
+version:        0.1
+synopsis:       A modern language for science
+author:         Dominic Orchard
+maintainer:     Dominic Orchard
+copyright:      2024 authors
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+
+executable fortl
+  main-is: Main.hs
+  other-modules:
+      Lang.FirstParameter
+      Lang.Helpers
+      Lang.HindleyMilner
+      Lang.Lexer
+      Lang.Options
+      Lang.Parser
+      Lang.PrettyPrint
+      Lang.Semantics
+      Lang.Syntax
+      Lang.Types
+      Paths_fortl
+  hs-source-dirs:
+      ./
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lam
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      array
+    , base >=4.10 && <5
+    , containers
+    , directory
+    , filepath
+    , text
+    , transformers
+  default-language: Haskell2010
