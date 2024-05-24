@@ -38,6 +38,7 @@ import Lang.Options
     VAR     { TokenSym _ _ }
     LANG    { TokenLang _ _ }
     CONSTR  { TokenConstr _ _ }
+    FLOAT   { TokenFloat _ _ }
     forall  { TokenForall _ }
     '\\'    { TokenLambda _ }
     Lam     { TokenTyLambda _ }
@@ -48,6 +49,8 @@ import Lang.Options
     ':'     { TokenSig _ }
     '?'     { TokenHole _ }
     '*'     { TokenProd _ }
+    '-'     { TokenMinus _ }
+    '/'     { TokenDivide _ }
     '+'     { TokenSum _ }
     '<'     { TokenLPair _ }
     '>'     { TokenRPair _ }
@@ -107,7 +110,7 @@ Expr :: { [Option] -> Expr PCF }
 
   | Expr ':' Type  { \opts -> Sig ($1 opts) ($3 opts) }
 
-  | Juxt
+  | Form
     { $1 }
 
   | fix '(' Expr ')'
@@ -152,11 +155,11 @@ Expr :: { [Option] -> Expr PCF }
             then Ext (Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)))
             else error "`case` doesn't exist in the lambda calculus" }
 
-Form :: { Expr () () }
-  : Form '+' Form  {% (mkSpan $ getPosToSpan $2) >>= \sp -> return $ BinOp OpPlus $1 $3 }
-  | Form '-' Form  {% (mkSpan $ getPosToSpan $2) >>= \sp -> return $ BinOp OpMinus $1 $3 }
-  | Form '*' Form  {% (mkSpan $ getPosToSpan $2) >>= \sp -> return $ BinOp OpTimes $1 $3 }
-  | Form '/' Form  {% (mkSpan $ getPosToSpan $2) >>= \sp -> return $ BinOp OpDivide $1 $3 }
+Form :: { [Option] -> Expr PCF }
+  : Form '+' Form  { \opts -> Ext $ BinOp OpPlus ($1 opts) ($3 opts) }
+  | Form '-' Form  { \opts -> Ext $ BinOp OpMinus ($1 opts) ($3 opts) }
+  | Form '*' Form  { \opts -> Ext $ BinOp OpTimes ($1 opts) ($3 opts) }
+  | Form '/' Form  { \opts -> Ext $ BinOp OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 
 Type :: { [Option] -> Type }
@@ -209,13 +212,13 @@ Atom :: { [Option] -> Expr PCF }
             then Ext (Pair ($2 opts) ($4 opts))
             else error "pairs don't exists in the lambda calculus"}
 
-  | FLOAT                     {% let (TokenFloat _ x) = $1
-                                 in (mkSpan $ getPosToSpan $1)
-                                     >>= \sp -> return $ Val sp () False $ NumFloat $ read x }
+  | FLOAT
+     { \opts ->
+          let (TokenFloat _ x) = $1
+          in Ext (NumFloat $ read x) }
 
   -- For later
   -- | '?' { Hole }
-
 {
 
 readOption :: Token -> ReaderT String (Either String) Option
@@ -240,4 +243,3 @@ parseProgram :: FilePath -> String -> Either String (Expr PCF, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file
 
 }
-g

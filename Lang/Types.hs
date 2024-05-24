@@ -32,7 +32,7 @@ abs ------------------------
 -}
 
 -- Represent contexts as lists
-type Context = [(Identifier, (Type, Grade))]
+type Context = [(Identifier, Type)]
 
 {-
 

@@ -193,6 +193,11 @@ substituteExpr (Ext (Case e (x,e1) (y,e2))) s =
 substituteExpr (Ext (Inl e)) s = Ext $ Inl $ substituteExpr e s
 substituteExpr (Ext (Inr e)) s = Ext $ Inr $ substituteExpr e s
 
+substituteExpr (Ext (NumFloat n)) s = Ext $ NumFloat n
+
+substituteExpr (Ext (BinOp op e1 e2)) s =
+  Ext $ BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
+
 -- Poly
 
 -- Substitute inside types

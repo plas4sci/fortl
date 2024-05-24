@@ -49,7 +49,7 @@ data PCF =
   | Inr (Expr PCF)             -- inr(e)
   | Case (Expr PCF) (Identifier, Expr PCF) (Identifier, Expr PCF)
                                -- case e of inl x -> e1 | inr y -> e2
-  | MkFloat Float
+  | NumFloat Float
   | BinOp Op (Expr PCF) (Expr PCF)
   deriving Show
 

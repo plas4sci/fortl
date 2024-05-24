@@ -24,6 +24,7 @@ $alphanum  = [$alpha $digit \_]
 @sym    = $lower ($alphanum | \')*
 @constr = ($upper ($alphanum | \')* | \(\))
 @int    = \-? $digit+
+@float   = \-? $digit+ \. $digit+
 @charLiteral = \' ([\\.]|[^\']| . ) \'
 @stringLiteral = \"(\\.|[^\"]|\n)*\"
 
@@ -52,6 +53,7 @@ tokens :-
   inr                           { \p s -> TokenInr p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
+  @float                        { \p s -> TokenFloat p s }
   "->"                          { \p s -> TokenArrow p }
   \\                            { \p s -> TokenLambda p }
   \/\\                          { \p s -> TokenTyLambda p }
@@ -62,6 +64,8 @@ tokens :-
   "?"                           { \p _ -> TokenHole p }
   "*"                           { \p s -> TokenProd p }
   "+"                           { \p s -> TokenSum p }
+  "-"                           { \p s -> TokenMinus p }
+  "/"                           { \p s -> TokenDivide p }
   "<"                           { \p s -> TokenLPair p }
   ">"                           { \p s -> TokenRPair p }
   ", "                          { \p s -> TokenMPair p }
@@ -95,6 +99,8 @@ data Token
   | TokenHole     AlexPosn
   | TokenProd     AlexPosn
   | TokenSum      AlexPosn
+  | TokenMinus    AlexPosn
+  | TokenDivide   AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
   | TokenMPair    AlexPosn
@@ -105,6 +111,7 @@ data Token
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
   | TokenAt       AlexPosn
+  | TokenFloat    AlexPosn String
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String
