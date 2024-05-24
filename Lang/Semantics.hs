@@ -4,14 +4,13 @@ module Lang.Semantics where
 
 import Lang.Syntax
 import Lang.Options
+-- import Debug.Trace
 
 import qualified Data.Set as Set
 
 -- Keep doing small step reductions until normal form reached
 multiStep :: [Option] -> Expr PCF -> (Expr PCF, Int)
-multiStep opts e | isCBV opts = multiStep' callByValue e 0
-multiStep opts e | isCBN opts = multiStep' callByName e 0
-multiStep _    e              = multiStep' fullBeta e 0
+multiStep opts e = multiStep' callByValue e 0
 
 type Reducer a = a -> Maybe a
 
@@ -22,41 +21,6 @@ multiStep' step t n =
     Nothing -> (t, n)
     -- Can do more reduction
     Just t' -> multiStep' step t' (n+1)
-
-fullBeta :: Reducer (Expr PCF)
-fullBeta (Var _) = Nothing
-fullBeta (App (Abs x _ e) e') = beta e x e'
--- Poly beta
-fullBeta (App (TyAbs alpha e) (TyEmbed t)) = beta e alpha (TyEmbed t)
-fullBeta (App e1 e2) =
-  -- Prefer fully zeta1 reducing before zeta2 reducing
-  case zeta1 fullBeta e1 e2 of
-    Just e -> Just e
-    Nothing -> zeta2 fullBeta e1 e2
-fullBeta (Abs x _ e) = zeta3 fullBeta x e
-fullBeta (Sig e _) = Just e
-fullBeta (Ext e) = reducePCF fullBeta (Ext e)
--- Poly
-fullBeta (TyAbs x e) = zeta3Ty fullBeta x e
-fullBeta (TyEmbed t) = Nothing
--- ML
-fullBeta (GenLet x e' e) = beta e x e'
-
-
-callByName :: Reducer (Expr PCF)
-callByName (Var _) = Nothing
-callByName (App (Abs x _ e) e') = beta e x e'
--- Poly beta
-callByName (App (TyAbs var e) (TyEmbed t)) = beta e var (TyEmbed t)
-callByName (App e1 e2) = zeta1 callByName e1 e2
-callByName (Abs x _ e) = Nothing
-callByName (Sig e _)   = Just e
-callByName (Ext e)    = reducePCF callByName (Ext e)
--- Poly
-callByName (TyAbs x e) = Nothing
-callByName (TyEmbed t) = Nothing
--- ML
-callByName (GenLet x e' e) = beta e x e'
 
 callByValue :: Reducer (Expr PCF)
 callByValue (Var _) = Nothing
@@ -134,6 +98,19 @@ reducePCF step (Ext (Case e (x,e1) (y,e2))) =
 -- Congruence for sum constructor
 reducePCF step (Ext (Inl e)) = (\e' -> Ext $ Inl e') <$> step e
 reducePCF step (Ext (Inr e)) = (\e' -> Ext $ Inr e') <$> step e
+
+-- Binary oeprators
+reducePCF step (Ext (BinOp op (Ext (NumFloat v1)) (Ext (NumFloat v2)))) =
+  case op of
+    OpPlus   -> return $ Ext (NumFloat $ v1 + v2)
+    OpTimes  -> return $ Ext (NumFloat $ v1 * v2)
+    OpMinus  -> return $ Ext (NumFloat $ v1 - v2)
+    OpDivide -> return $ Ext (NumFloat $ v1 / v2)
+
+reducePCF step (Ext (BinOp op e1 e2)) =
+  case step e1 of
+    Just e1' -> Just $ Ext $ BinOp op e1' e2
+    Nothing -> (\e2' -> Ext $ BinOp op e1 e2') <$> step e2
 
 -- other Ext terms
 reducePCF step (Ext _) = Nothing

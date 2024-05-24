@@ -116,6 +116,7 @@ instance Term (Expr PCF) where
   boundVars (Ext (Inr e))                = boundVars e
   boundVars (Ext (Case e (x,e1) (y,e2))) =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
+  boundVars (Ext (BinOp _ e1 e2))        = boundVars e1 `Set.union` boundVars e2
   boundVars (Ext _)                      = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
@@ -135,6 +136,7 @@ instance Term (Expr PCF) where
   freeVars (Ext (Inr e))                 = freeVars e
   freeVars (Ext (Case e (x,e1) (y,e2)))  =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
+  freeVars (Ext (BinOp _ e1 e2))         = freeVars e1 `Set.union` freeVars e2
   freeVars (Ext _)                       = Set.empty
 
   mkVar = Var
