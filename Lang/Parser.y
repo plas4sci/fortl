@@ -83,6 +83,7 @@ NL :: { () }
 
 Def :: { [Option] -> Expr PCF -> Expr PCF }
   : VAR '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) ($3 opts) }
+  | VAR ':' Type '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) (Sig ($5 opts) ($3 opts)) }
   | zero '=' Expr { \opts ->
         if isPCF opts || isML opts
           then error "Cannot use 'zero' as a variable name"
@@ -175,7 +176,10 @@ Type
 
 TypeAtom :: { [Option] -> Type }
 TypeAtom
-  : CONSTR           { \opts -> if constrString $1 == "Nat" then NatTy else error $ "Unknown type constructor " ++ constrString $1 }
+  : CONSTR           { \opts -> case constrString $1 of
+                                 "Nat" -> NatTy
+                                 "Float" -> FloatTy
+                                 _ -> error $ "Unknown type constructor " ++ constrString $1 }
   | VAR              { \opts ->
                           if isPoly opts
                             then TyVar (symString $1)

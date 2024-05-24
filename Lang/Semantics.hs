@@ -232,6 +232,8 @@ substituteType (FunTy t1 t2) s =
 
 substituteType NatTy s = NatTy
 
+substituteType FloatTy s = FloatTy
+
 substituteType (ProdTy t1 t2) s =
   ProdTy (substituteType t1 s) (substituteType t2 s)
 
@@ -246,4 +248,6 @@ substituteType (TyVar var) (varS, t)
 substituteType (Forall var t) s =
   let (var', t') = substitute_binding var t s in Forall var' t'
 
+substituteType (IntersectTy t1 t2) s =
+  IntersectTy (substituteType t1 s) (substituteType t2 s)
 

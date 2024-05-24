@@ -71,6 +71,10 @@ check gamma (Ext (Pair e1 e2)) (ProdTy t1 t2) =
   check gamma e1 t1 &&
   check gamma e2 t2
 
+check gamma e (IntersectTy t1 t2) =
+  check gamma e t1 &&
+  check gamma e t2
+
 check gamma (Ext (Pair _ _)) _ = False
 
 check gamma (Ext (Fst e)) t =
@@ -273,6 +277,14 @@ synth gamma (Ext (Case e (x,e1) (y,e2))) =
         )
     Just t -> error $ "Expecting (" ++ pprint e ++ ") to have sum type but got " ++ pprint t
     Nothing -> error $ "Could not synth type for " ++ pprint e
+
+synth gamma (Ext (NumFloat n)) =
+  Just FloatTy
+
+synth gamma (Ext (BinOp op e1 e2)) =
+  if check gamma e1 FloatTy && check gamma e2 FloatTy
+    then Just FloatTy
+    else error $ "Expected float"
 
 
 {-

@@ -61,6 +61,7 @@ isValue :: Expr PCF -> Bool
 isValue Abs{}   = True
 isValue TyAbs{} = True
 isValue Var{}   = True
+isValue (Ext (NumFloat _)) = True
 isValue e       = isNatVal e
 
 isNatVal :: Expr PCF -> Bool
@@ -78,12 +79,16 @@ data Type =
 
   -- PCF types
   | NatTy            -- Nat
+  | FloatTy          -- Float
   | ProdTy Type Type -- A * B
   | SumTy Type Type  -- A + B
 
   -- Polymorphic lambda calculus
   | TyVar Identifier       -- a
   | Forall Identifier Type -- forall a . A
+
+  -- Intersection types
+  | IntersectTy Type Type
   deriving (Show, Eq)
 
 ----------------------------
@@ -139,15 +144,19 @@ instance Term Type where
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars NatTy          = Set.empty
+  boundVars FloatTy        = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
+  boundVars (IntersectTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars NatTy          = Set.empty
+  freeVars FloatTy        = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
+  freeVars (IntersectTy t1 t2) = freeVars t1 `Set.union` freeVars t2
 
   mkVar = TyVar
 

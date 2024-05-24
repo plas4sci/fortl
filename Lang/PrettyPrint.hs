@@ -80,7 +80,8 @@ instance PrettyPrint Type where
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic _     = False
 
-    pprint NatTy = "Nat"
+    pprint NatTy   = "Nat"
+    pprint FloatTy = "Float"
     pprint (FunTy tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
     pprint (ProdTy tyA tyB) =
@@ -89,3 +90,5 @@ instance PrettyPrint Type where
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
+    pprint (IntersectTy t1 t2) =
+      bracket_pprint t1 ++ " & " ++ bracket_pprint t2

@@ -122,7 +122,9 @@ class Substitutable t where
 
 instance Substitutable Type where
   substitute subst NatTy = NatTy
+  substitute subst FloatTy = FloatTy
   substitute subst (FunTy t1 t2)  = FunTy (substitute subst t1) (substitute subst t2)
+  substitute subst (IntersectTy t1 t2) = IntersectTy (substitute subst t1) (substitute subst t2)
   substitute subst (ProdTy t1 t2) = ProdTy (substitute subst t1) (substitute subst t2)
   substitute subst (SumTy t1 t2)  = SumTy (substitute subst t1) (substitute subst t2)
   substitute subst (TyVar var)    = subst var
