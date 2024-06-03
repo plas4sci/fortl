@@ -52,6 +52,7 @@ import Lang.Options
     '-'     { TokenMinus _ }
     '/'     { TokenDivide _ }
     '+'     { TokenSum _ }
+    '&'     { TokenAmpersand _ }
     '<'     { TokenLPair _ }
     '>'     { TokenRPair _ }
     ', '    { TokenMPair _ }
@@ -169,6 +170,7 @@ Type
   | Type '->' Type   { \opts -> FunTy ($1 opts) ($3 opts) }
   | Type '*' Type    { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type    { \opts -> SumTy ($1 opts) ($3 opts) }
+  | Type '&' Type    { \opts -> IntersectTy ($1 opts) ($3 opts) }
   | forall VAR '.' Type { \opts ->
                             if isPoly opts
                               then Forall (symString $2) ($4 opts)

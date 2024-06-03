@@ -66,6 +66,7 @@ tokens :-
   "+"                           { \p s -> TokenSum p }
   "-"                           { \p s -> TokenMinus p }
   "/"                           { \p s -> TokenDivide p }
+  "&"                           { \p s -> TokenAmpersand p }
   "<"                           { \p s -> TokenLPair p }
   ">"                           { \p s -> TokenRPair p }
   ", "                          { \p s -> TokenMPair p }
@@ -112,6 +113,7 @@ data Token
   | TokenDot      AlexPosn
   | TokenAt       AlexPosn
   | TokenFloat    AlexPosn String
+  | TokenAmpersand AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String
