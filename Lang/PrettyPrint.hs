@@ -61,16 +61,19 @@ instance PrettyPrint PCF where
     pprint (BinOp op e1 e2) =
       let arg1 = bracket_pprint e1
           arg2 = bracket_pprint e2
-          operator =
-            case op of
-              OpPlus -> "+"
-              OpMinus -> "-"
-              OpTimes -> "*"
-              OpDivide -> "/"
+          operator = pprint op
       in
         arg1 <> operator <> arg2
 
     pprint (NumFloat f) = show f
+
+instance PrettyPrint Op where
+  pprint op =
+    case op of
+      OpPlus -> "+"
+      OpMinus -> "-"
+      OpTimes -> "*"
+      OpDivide -> "/"
 
 instance PrettyPrint () where
     pprint () = "()"

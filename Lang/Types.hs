@@ -299,8 +299,8 @@ synth gamma (Ext (BinOp op e1 e2)) =
     Right () ->
       case check gamma e2 FloatTy of
         Right () -> Right FloatTy
-        Left err -> Left err
-    Left err -> Left err
+        Left err -> Left $ err <> "\nInferring the type of operator use " <> pprint op <> " on the left."
+    Left err -> Left $ err <> "\nInferring the type of operator use " <> pprint op <> " on the right."
 
 
 {-
