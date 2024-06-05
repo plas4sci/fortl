@@ -44,6 +44,13 @@ G |- e <= A    check
 
 check :: Context -> Expr PCF -> Type -> Either String ()
 
+check gamma (Var x) ty =
+  case lookup x gamma of
+    Nothing -> Left $ "Variable " <> x <> " not found in context."
+    -- contravariant subtyping
+    Just t -> if isSubtype ty (IsSpec t) then Right ()
+               else Left $ "Expecting " <> pprint t <> " but got " <> pprint ty
+
 {--
 
 G, x : A |- e <= B
@@ -56,7 +63,7 @@ check gamma (Abs x Nothing expr) (FunTy tyA tyB) =
   check ([(x, tyA)] ++ gamma) expr tyB
 
 -- Church style
-check gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) | tyA == tyA' =
+check gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) | isSubtype tyA' (IsSpec tyA) =
   check ([(x, tyA)] ++ gamma) expr tyB
 
 --- PCF rules
@@ -80,14 +87,14 @@ check gamma (Ext (Pair _ _)) t = Left $ "Trying to assign non-product type " <> 
 check gamma (Ext (Fst e)) t =
   case synth gamma e of
     Right (ProdTy t1 t2) ->
-      if t == t1 then Right ()
+      if isSubtype t1 (IsSpec t) then Right ()
       else Left $ "Expecting " <> pprint t1 <> " but got " <> pprint t
     _ -> Left $ "Expecting product type but got " <> pprint t
 
 check gamma (Ext (Snd e)) t =
   case synth gamma e of
     Right (ProdTy t1 t2) ->
-      if t == t2 then Right ()
+      if isSubtype t2 (IsSpec t) then Right ()
       else Left $ "Expecting " <> pprint t2 <> " but got " <> pprint t
     _ -> Left $ "Expecting product type but got " <> pprint t
 
