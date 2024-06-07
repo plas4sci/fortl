@@ -89,6 +89,9 @@ data Type =
 
   -- Intersection types
   | IntersectTy Type Type
+
+  -- For units
+  | ExponentTy Type Float
   deriving (Show, Eq)
 
 ----------------------------
@@ -150,6 +153,7 @@ instance Term Type where
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (IntersectTy t1 t2) = boundVars t1 `Set.union` boundVars t2
+  boundVars (ExponentTy t1 _) = boundVars t1
 
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
@@ -159,6 +163,7 @@ instance Term Type where
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (IntersectTy t1 t2) = freeVars t1 `Set.union` freeVars t2
+  freeVars (ExponentTy t1 _) = freeVars t1
 
   mkVar = TyVar
 

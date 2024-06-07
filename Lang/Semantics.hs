@@ -228,3 +228,5 @@ substituteType (Forall var t) s =
 substituteType (IntersectTy t1 t2) s =
   IntersectTy (substituteType t1 s) (substituteType t2 s)
 
+substituteType (ExponentTy t1 f) s =
+  ExponentTy (substituteType t1 s) f

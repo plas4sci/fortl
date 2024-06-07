@@ -1,0 +1,6 @@
+lang.pcf
+lang.typed
+x : Float & [M] = 1.0 + 2.0
+t : Float & [S] = 4.0
+v : Float & [M * S^-1.0] = x / t
+v

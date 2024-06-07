@@ -95,3 +95,5 @@ instance PrettyPrint Type where
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (IntersectTy t1 t2) =
       bracket_pprint t1 ++ " & " ++ bracket_pprint t2
+    pprint (ExponentTy t1 q) =
+      bracket_pprint t1 ++ "^" ++ show q

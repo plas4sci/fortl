@@ -69,7 +69,10 @@ tokens :-
   "&"                           { \p s -> TokenAmpersand p }
   "<"                           { \p s -> TokenLPair p }
   ">"                           { \p s -> TokenRPair p }
+  "["                           { \p s -> TokenLBrack p }
+  "]"                           { \p s -> TokenRBrack p }
   ", "                          { \p s -> TokenMPair p }
+  "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }
 
@@ -104,6 +107,8 @@ data Token
   | TokenDivide   AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
+  | TokenLBrack    AlexPosn
+  | TokenRBrack    AlexPosn
   | TokenMPair    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
@@ -114,6 +119,7 @@ data Token
   | TokenAt       AlexPosn
   | TokenFloat    AlexPosn String
   | TokenAmpersand AlexPosn
+  | TokenExponent  AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String
