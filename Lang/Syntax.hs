@@ -155,6 +155,7 @@ instance Term Type where
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyCon _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
@@ -164,6 +165,7 @@ instance Term Type where
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyCon _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t

@@ -215,6 +215,9 @@ substituteType (ProdTy t1 t2) s =
 substituteType (SumTy t1 t2) s =
   SumTy (substituteType t1 s) (substituteType t2 s)
 
+substituteType (TyApp t1 t2) s =
+  TyApp (substituteType t1 s) (substituteType t2 s)
+
 -- Actual substitution happening here
 substituteType (TyVar var) (varS, t)
   | var == varS  = t

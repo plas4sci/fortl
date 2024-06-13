@@ -175,7 +175,7 @@ Type
   | Type '+' Type    { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type    { \opts -> IntersectTy ($1 opts) ($3 opts) }
   | Type '^' FLOAT   { \opts -> ExponentTy ($1 opts) (let (TokenFloat _ x) = $3 in read x) }
-  | '[' Type ']'     { \opts -> $2 opts }
+  | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
   | forall VAR '.' Type { \opts ->
                             if isPoly opts
                               then Forall (symString $2) ($4 opts)

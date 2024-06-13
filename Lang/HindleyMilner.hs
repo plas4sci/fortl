@@ -110,6 +110,10 @@ mgu (SumTy t1 t2) (SumTy t1' t2') =
   let s = mgu t1 t1'
       s' = mgu (substitute s t2) (substitute s t2')
   in s' <.> s
+mgu (TyApp t1 t2) (TyApp t1' t2') =
+  let s = mgu t1 t1'
+      s' = mgu (substitute s t2) (substitute s t2')
+  in s' <.> s
 mgu (TyCon c) (TyCon c') | c == c' = idSubst
 mgu (TyVar a) ty = singletonSubst a ty
 mgu ty (TyVar a) = singletonSubst a ty
@@ -127,6 +131,7 @@ instance Substitutable Type where
   substitute subst (ExponentTy t1 f) = ExponentTy (substitute subst t1) f
   substitute subst (ProdTy t1 t2) = ProdTy (substitute subst t1) (substitute subst t2)
   substitute subst (SumTy t1 t2)  = SumTy (substitute subst t1) (substitute subst t2)
+  substitute subst (TyApp t1 t2)  = TyApp (substitute subst t1) (substitute subst t2)
   substitute subst (TyVar var)    = subst var
   substitute subst (Forall{}) =
     error "Polymorphic lambda calculus type showing up in ML types"
