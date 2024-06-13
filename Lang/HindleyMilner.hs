@@ -60,8 +60,8 @@ infer ctxt (GenLet x e1 e2) fv =
       (s2, t2, fv'') = infer ((x, ForallTy (toList alphas) t1) : substitute s1 ctxt) e2 fv'
   in (s2 <.> s1, t2, fv'')
 
-infer ctxt (Ext Zero) fv = (idSubst, NatTy, fv)
-infer ctxt (Ext Succ) fv = (idSubst, FunTy NatTy NatTy, fv)
+infer ctxt (Ext Zero) fv = (idSubst, natTy, fv)
+infer ctxt (Ext Succ) fv = (idSubst, FunTy natTy natTy, fv)
 
 infer ctxt t fv =
   error $ "I don't know how to infer the type of " ++ pprint t
@@ -110,7 +110,7 @@ mgu (SumTy t1 t2) (SumTy t1' t2') =
   let s = mgu t1 t1'
       s' = mgu (substitute s t2) (substitute s t2')
   in s' <.> s
-mgu NatTy NatTy  = idSubst
+mgu (TyCon c) (TyCon c') | c == c' = idSubst
 mgu (TyVar a) ty = singletonSubst a ty
 mgu ty (TyVar a) = singletonSubst a ty
 mgu t1 t2 = error $ "Cannot unify " ++ pprint t1 ++ " and " ++ pprint t2
@@ -121,9 +121,8 @@ class Substitutable t where
   substitute :: Substitution -> t -> t
 
 instance Substitutable Type where
-  substitute subst NatTy = NatTy
-  substitute subst FloatTy = FloatTy
-  substitute subst (FunTy t1 t2)  = FunTy (substitute subst t1) (substitute subst t2)
+  substitute subst (TyCon c)           = TyCon c
+  substitute subst (FunTy t1 t2)       = FunTy (substitute subst t1) (substitute subst t2)
   substitute subst (IntersectTy t1 t2) = IntersectTy (substitute subst t1) (substitute subst t2)
   substitute subst (ExponentTy t1 f) = ExponentTy (substitute subst t1) f
   substitute subst (ProdTy t1 t2) = ProdTy (substitute subst t1) (substitute subst t2)

@@ -70,9 +70,9 @@ check gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) | isSubtype tyA' (IsSpec ty
 check gamma (Ext (Fix e)) t = check gamma e (FunTy t t)
 
 check gamma (Ext (NatCase e e1 (x,e2))) t = do
-  check gamma e NatTy
+  check gamma e natTy
   check gamma e1 t
-  check ([(x,NatTy)] ++ gamma) e2 t
+  check ([(x, natTy)] ++ gamma) e2 t
 
 check gamma (Ext (Pair e1 e2)) (ProdTy t1 t2) = do
   check gamma e1 t1
@@ -228,21 +228,21 @@ synth gamma (App e1 e2) =
 
 -- PCF rules
 synth gamma (Ext Zero) =
-  Right NatTy
+  Right natTy
 
 synth gamma (Ext Succ) =
-  Right (FunTy NatTy NatTy)
+  Right (FunTy natTy natTy)
 
 synth gamma (Ext (NatCase e e1 (x,e2))) =
-  case check gamma e NatTy of
+  case check gamma e natTy of
     Right () ->
       case synth gamma e1 of
         Right t ->
-          case check ([(x,NatTy)] ++ gamma) e2 t of
+          case check ([(x, natTy)] ++ gamma) e2 t of
             Right () -> Right t
             Left err -> Left err
         Left err ->
-          case synth ([(x,NatTy)] ++ gamma) e2 of
+          case synth ([(x, natTy)] ++ gamma) e2 of
             Right t ->
               case check gamma e1 t of
                 Right () -> Right t
@@ -299,7 +299,7 @@ synth gamma (Ext (Case e (x,e1) (y,e2))) =
     Left err -> Left $ "Could not synth type for " ++ pprint e
 
 synth gamma (Ext (NumFloat n)) =
-  Right FloatTy
+  Right floatTy
 
 synth gamma (Ext (BinOp op e1 e2)) =
   case check gamma e1 FloatTy of

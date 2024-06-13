@@ -77,9 +77,10 @@ data Type =
   -- Simply-typed lambda calculus
     FunTy Type Type  -- A -> B
 
+  | TyCon Identifier -- K
+  | TyApp Type Type  -- A B
+
   -- PCF types
-  | NatTy            -- Nat
-  | FloatTy          -- Float
   | ProdTy Type Type -- A * B
   | SumTy Type Type  -- A + B
 
@@ -93,6 +94,12 @@ data Type =
   -- For units
   | ExponentTy Type Float
   deriving (Show, Eq)
+
+natTy :: Type
+natTy = TyCon "Nat"
+
+floatTy :: Type
+floatTy = TyCon "Float"
 
 ----------------------------
 
@@ -148,8 +155,7 @@ instance Term Type where
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
-  boundVars NatTy          = Set.empty
-  boundVars FloatTy        = Set.empty
+  boundVars (TyCon _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (IntersectTy t1 t2) = boundVars t1 `Set.union` boundVars t2
@@ -158,8 +164,7 @@ instance Term Type where
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
-  freeVars NatTy          = Set.empty
-  freeVars FloatTy        = Set.empty
+  freeVars (TyCon _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (IntersectTy t1 t2) = freeVars t1 `Set.union` freeVars t2

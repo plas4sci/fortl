@@ -183,10 +183,7 @@ Type
 
 TypeAtom :: { [Option] -> Type }
 TypeAtom
-  : CONSTR           { \opts -> case constrString $1 of
-                                 "Nat" -> NatTy
-                                 "Float" -> FloatTy
-                                 _ -> error $ "Unknown type constructor " ++ constrString $1 }
+  : CONSTR           { \opts -> TyCon $ constrString $1 }
   | VAR              { \opts ->
                           if isPoly opts
                             then TyVar (symString $1)

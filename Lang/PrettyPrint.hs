@@ -79,12 +79,11 @@ instance PrettyPrint () where
     pprint () = "()"
 
 instance PrettyPrint Type where
-    isLexicallyAtomic NatTy = True
+    isLexicallyAtomic (TyCon _) = True
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic _     = False
 
-    pprint NatTy   = "Nat"
-    pprint FloatTy = "Float"
+    pprint (TyCon c) = c
     pprint (FunTy tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
     pprint (ProdTy tyA tyB) =

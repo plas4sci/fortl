@@ -207,9 +207,7 @@ substituteType :: Type -> (Identifier, Type) -> Type
 substituteType (FunTy t1 t2) s =
   FunTy (substituteType t1 s) (substituteType t2 s)
 
-substituteType NatTy s = NatTy
-
-substituteType FloatTy s = FloatTy
+substituteType (TyCon c) s = TyCon c
 
 substituteType (ProdTy t1 t2) s =
   ProdTy (substituteType t1 s) (substituteType t2 s)
