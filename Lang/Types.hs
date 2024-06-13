@@ -1,8 +1,11 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module Lang.Types where
 
 import Lang.Syntax
 import Lang.PrettyPrint
 import Lang.Semantics (substituteType)
+import Lang.Specifications.Units
 
 import Data.Maybe (mapMaybe)
 import Data.List (intercalate)
@@ -78,9 +81,42 @@ check gamma (Ext (Pair e1 e2)) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check gamma e (IntersectTy t1 t2) = do
-  check gamma e t1
-  check gamma e t2
+check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | t == floatTy = do
+  case op of
+    OpPlus ->
+      case check gamma e1 ty of
+        Right () -> check gamma e2 ty
+        Left err -> Left err
+    OpMinus ->
+      case check gamma e1 ty of
+        Right () -> check gamma e2 ty
+        Left err -> Left err
+    _ ->
+      case synth gamma e1 of
+        Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
+        Right t1 ->
+          case floatWithUnit t1 of
+            Nothing -> Left $ "Expecting float type but got " ++ pprint t1
+            Just u1 ->
+              case synth gamma e2 of
+                Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
+                Right t2 ->
+                  case floatWithUnit t2 of
+                    Nothing -> Left $ "Expecting float type but got " ++ pprint t2
+                    Just u2 ->
+                      case op of
+                        OpTimes -> error "TODO"
+                          -- Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)
+                        OpDivide ->
+                          if unit == (ProdTy u1 (reciprocalUnit u2))
+                            then Right ()
+                            else Left $ "Expecting " <> pprint unit <> " but got "
+                                                     <> pprint (ProdTy u1 (reciprocalUnit u2))
+                        -- _        -> error "impossible"
+
+-- check gamma e (IntersectTy t1 t2) = do
+--   check gamma e t1
+--   check gamma e t2
 
 check gamma (Ext (Pair _ _)) t = Left $ "Trying to assign non-product type " <> pprint t <> " to pair."
 
@@ -302,12 +338,25 @@ synth gamma (Ext (NumFloat n)) =
   Right floatTy
 
 synth gamma (Ext (BinOp op e1 e2)) =
-  case check gamma e1 FloatTy of
-    Right () ->
-      case check gamma e2 FloatTy of
-        Right () -> Right FloatTy
-        Left err -> Left $ err <> "\nInferring the type of operator use " <> pprint op <> " on the left."
-    Left err -> Left $ err <> "\nInferring the type of operator use " <> pprint op <> " on the right."
+  case synth gamma e1 of
+    Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
+    Right t1 ->
+      case floatWithUnit t1 of
+        Nothing -> Left $ "Expecting float type but got " ++ pprint t1
+        Just u1 ->
+          case synth gamma e2 of
+            Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
+            Right t2 ->
+              case floatWithUnit t2 of
+                Nothing -> Left $ "Expecting float type but got " ++ pprint t2
+                Just u2 ->
+                  case op of
+                    OpTimes -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)
+                    OpDivide -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 (reciprocalUnit u2))
+                    _        ->
+                      case u1 == u2 of
+                        True -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") u1
+                        False -> Left $ "Expecting units to be the same but got " ++ pprint u1 ++ " and " ++ pprint u2
 
 
 {-

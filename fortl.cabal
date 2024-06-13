@@ -25,6 +25,7 @@ executable fortl
       Lang.Parser
       Lang.PrettyPrint
       Lang.Semantics
+      Lang.Specifications.Units
       Lang.Syntax
       Lang.Types
       Paths_fortl
