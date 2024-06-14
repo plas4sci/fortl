@@ -91,7 +91,7 @@ instance PrettyPrint Type where
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyApp tyA tyB) =
-      bracket_pprint tyA ++ " " ++ pprint tyB
+      bracket_pprint tyA ++ " " ++ bracket_pprint tyB
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (IntersectTy t1 t2) =
