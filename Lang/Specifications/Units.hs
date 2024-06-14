@@ -3,6 +3,8 @@
 module Lang.Specifications.Units where
 
 import Lang.Syntax
+import Lang.PrettyPrint
+import Data.Map.Lazy
 
 ------------------------------------
 -- # Unit-specific typing
@@ -36,3 +38,24 @@ floatWithUnit t = Nothing
 -- | Given a unit, construct its inverse
 reciprocalUnit :: Type -> Type
 reciprocalUnit t = ExponentTy t (-1.0)
+
+--------------------------------------------
+
+unitEquality :: Type -> Type -> Bool
+unitEquality u1 u2 =
+  evalUnit u1 == evalUnit u2
+
+type UnitRepr = Map Identifier Float
+
+evalUnit :: Type -> UnitRepr
+evalUnit (TyCon "1") = empty
+evalUnit (ExponentTy t n) = scale n (evalUnit t)
+evalUnit (ProdTy t1 t2) =
+  unionWith (+) (evalUnit t1) (evalUnit t2)
+evalUnit (TyCon c) = singleton c 1.0
+evalUnit t = error $ "Not well kinded unit " <> pprint t
+
+scale :: Float -> UnitRepr -> UnitRepr
+scale n = fmap (n *)
+
+-- reifyUnit :: UnitRepr -> Type

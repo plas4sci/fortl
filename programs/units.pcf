@@ -1,6 +1,6 @@
-lang.pcf
 lang.typed
-x : Float & [M] = 1.0 + 2.0
+y : Float & [M] = 2.0
+x : Float & [M] = 1.0 + y
 t : Float & [S] = 4.0
-v : Float & [M * S^-1.0] = x / t
+v : Float & [S^-1.0 * M] = x / t
 v

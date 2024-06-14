@@ -52,7 +52,7 @@ check gamma (Var x) ty =
     Nothing -> Left $ "Variable " <> x <> " not found in context."
     -- contravariant subtyping
     Just t -> if isSubtype ty (IsSpec t) then Right ()
-               else Left $ "Expecting " <> pprint t <> " but got " <> pprint ty
+               else Left $ "Trying to check at " <> pprint t <> " but inferred " <> pprint ty
 
 {--
 
@@ -108,9 +108,9 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
                         OpTimes -> error "TODO"
                           -- Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)
                         OpDivide ->
-                          if unit == (ProdTy u1 (reciprocalUnit u2))
+                          if unitEquality (ProdTy u1 (reciprocalUnit u2)) unit
                             then Right ()
-                            else Left $ "Expecting " <> pprint unit <> " but got "
+                            else Left $ "Expecting unit " <> pprint unit <> " but got "
                                                      <> pprint (ProdTy u1 (reciprocalUnit u2))
                         -- _        -> error "impossible"
 
@@ -354,7 +354,7 @@ synth gamma (Ext (BinOp op e1 e2)) =
                     OpTimes -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)
                     OpDivide -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 (reciprocalUnit u2))
                     _        ->
-                      case u1 == u2 of
+                      case unitEquality u1 u2 of
                         True -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") u1
                         False -> Left $ "Expecting units to be the same but got " ++ pprint u1 ++ " and " ++ pprint u2
 
@@ -384,7 +384,15 @@ synth gamma e =
 data Specificational a = IsSpec { unwrapSpec :: a }
 
 isSubtype :: Type -> Specificational Type -> Bool
+--
+isSubtype t1 (IsSpec t2) | t1 == t2 = True
+isSubtype (IntersectTy t1 (TyApp (TyCon "Unit") (TyCon "1"))) (IsSpec t) =
+  isSubtype t1 (IsSpec t)
+--
 isSubtype t1 (IsSpec (IntersectTy t1' t2')) =
   isSubtype t1 (IsSpec t1') || isSubtype t1 (IsSpec t2')
 -- Fall through case
-isSubtype t1 (IsSpec t2) = t1 == t2
+isSubtype t1 (IsSpec t2) =
+  case (isUnitTy t1, isUnitTy t2) of
+    (Just u1, Just u2) -> unitEquality u1 u2
+    _ -> t1 == t2
