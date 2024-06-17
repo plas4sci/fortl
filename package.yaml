@@ -23,7 +23,7 @@ executables:
   fortl:
     main: Main.hs
     source-dirs: .
-    ghc-options: -main-is Lam
+    ghc-options: -main-is Lang.Main
     build-tools:
      - alex
      - happy
@@ -34,3 +34,25 @@ executables:
      - filepath
      - array
      - text
+     - strict
+     - tasty
+     - tasty-golden
+     - Diff
+
+library:
+  source-dirs: Lang
+  exposed-modules:
+  - Lang.Semantics
+  - Lang.Syntax
+  - Lang.Parser
+
+tests:
+  fortl-golden:
+    main: Lang/tests/Spec.hs
+    source-dirs: Lang/tests
+    dependencies:
+    - strict
+    - Diff
+    - fortl
+    - tasty
+    - tasty-golden

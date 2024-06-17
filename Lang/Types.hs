@@ -9,6 +9,7 @@ import Lang.Specifications.Units
 
 import Data.Maybe (mapMaybe)
 import Data.List (intercalate)
+--import Debug.Trace
 
 {-
 
