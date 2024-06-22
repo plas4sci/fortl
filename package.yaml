@@ -1,4 +1,4 @@
-name: fortl
+name: fortl-implementation
 version: '0.1'
 synopsis: A modern language for science
 author: Dominic Orchard
@@ -6,6 +6,12 @@ copyright: 2024 authors
 license: BSD3
 dependencies:
 - base >=4.10 && <5
+- text
+- array
+- transformers
+- containers
+- directory
+- filepath
 
 ghc-options:
 - -O0
@@ -21,38 +27,31 @@ ghc-options:
 
 executables:
   fortl:
-    main: Main.hs
-    source-dirs: .
-    ghc-options: -main-is Lang.Main
+    main: Lang/Frontend.hs
+    source-dirs: src
+    ghc-options: -main-is Lang.Frontend
     build-tools:
      - alex
      - happy
     dependencies:
-     - directory
-     - containers
-     - transformers
-     - filepath
-     - array
-     - text
-     - strict
-     - tasty
-     - tasty-golden
-     - Diff
+     - fortl-implementation
 
 library:
-  source-dirs: Lang
+  source-dirs: src
   exposed-modules:
   - Lang.Semantics
   - Lang.Syntax
   - Lang.Parser
+  - Lang.PrettyPrint
+  - Lang.Frontend
 
 tests:
   fortl-golden:
-    main: Lang/tests/Spec.hs
-    source-dirs: Lang/tests
+    main: Spec.hs
+    source-dirs: tests
     dependencies:
+    - fortl-implementation
     - strict
     - Diff
-    - fortl
     - tasty
     - tasty-golden
