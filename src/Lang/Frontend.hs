@@ -12,6 +12,8 @@ import System.Directory   (doesPathExist)
 import System.Environment (getArgs)
 import System.Exit
 
+import Control.Monad (when)
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -20,13 +22,13 @@ main = do
     [] -> putStrLn "Please supply a filename as a command line argument"
     -- If we have at least one
     (fname:_) -> do
-      result <- run fname
+      result <- run True fname
       case result of
         Left _   -> exitFailure
         Right _  -> exitSuccess
 
-run :: String -> IO (Either String (Expr PCF))
-run fname = do
+run :: Bool -> String -> IO (Either String (Expr PCF))
+run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname
   if not exists
@@ -34,6 +36,7 @@ run fname = do
       putStrLn $ "File `" <> fname <> "` cannot be found."
       return $ Left "File not found."
     else do
+      when report $ putStrLn $ "Checking " <> fname <> "..."
       -- Read the file, parse, and do something...
       input <- readFile fname
       case parseProgram fname input of
@@ -45,13 +48,13 @@ run fname = do
             then
               (case typeInference options ast of
                   Left err -> do
-                    putStrLn $ "\n" <> ansi_bold <> ansi_red
-                                              <> "Not well-typed.\n" <> err <> ansi_reset
+                    putStrLn $ ansi_bold <> ansi_red
+                            <> "Not well-typed.\n" <> err <> ansi_reset
                     return $ Left err
                   Right ty -> do
-                    putStrLn $ "\n" <> ansi_bold <> ansi_green
-                                              <> "Well-typed " <> ansi_reset
-                                              <> ansi_bold <> "as " <> ansi_reset <> pprint ty
+                    putStrLn $ ansi_bold <> ansi_green
+                            <> "Well-typed " <> ansi_reset
+                            <> ansi_bold <> "as " <> ansi_reset <> pprint ty
                     return $ Right normalForm)
           else return $ Right normalForm
         Left msg -> do

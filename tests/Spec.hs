@@ -107,7 +107,7 @@ grGolden formatResult file = show file `trace` goldenTest
 
     runInterp :: FilePath -> IO (Either InterpreterError InterpreterResult)
     runInterp fp =
-      Lang.run fp
+      Lang.run False fp
 
 failOnOrphanOutfiles :: [FilePath] -> [FilePath] -> IO ()
 failOnOrphanOutfiles files outfiles
