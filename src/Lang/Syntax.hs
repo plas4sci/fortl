@@ -93,7 +93,7 @@ data Type =
 
   -- For units
   | ExponentTy Type Float
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 natTy :: Type
 natTy = TyCon "Nat"
