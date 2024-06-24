@@ -58,4 +58,7 @@ evalUnit t = error $ "Not well kinded unit " <> pprint t
 scale :: Float -> UnitRepr -> UnitRepr
 scale n = fmap (n *)
 
--- reifyUnit :: UnitRepr -> Type
+reifyUnit :: UnitRepr -> Type
+reifyUnit =
+  foldrWithKey (\k v t -> ExponentTy (TyCon k) v `ProdTy` t) (TyCon "1")
+
