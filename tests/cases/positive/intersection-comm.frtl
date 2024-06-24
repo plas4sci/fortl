@@ -1,5 +1,5 @@
 lang.typed
 x : Float = 1.0
-y : Float & Units(1) = 2.0   -- commutativity
-z : Units(1) & Float = x + y -- commutativity
+y : Float & Unit(1) = 2.0   -- commutativity
+z : Unit(1) & Float = x + y -- commutativity
 x + y + z

@@ -43,7 +43,7 @@ reciprocalUnit t = ExponentTy t (-1.0)
 
 unitEquality :: Type -> Type -> Bool
 unitEquality u1 u2 =
-  evalUnit u1 == evalUnit u2
+    evalUnit u1 == evalUnit u2
 
 type UnitRepr = Map Identifier Float
 

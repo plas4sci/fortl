@@ -346,13 +346,13 @@ synth gamma (Ext (BinOp op e1 e2)) =
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
       case floatWithUnit t1 of
-        Nothing -> Left $ "Expecting float type but got " ++ pprint t1
+        Nothing -> Left $ "Expecting Float type but got " ++ pprint t1
         Just u1 ->
           case synth gamma e2 of
             Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
             Right t2 ->
               case floatWithUnit t2 of
-                Nothing -> Left $ "Expecting float type but got " ++ pprint t2
+                Nothing -> Left $ "Expecting Float type but got " ++ pprint t2
                 Just u2 ->
                   case op of
                     OpTimes -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)

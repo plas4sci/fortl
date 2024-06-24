@@ -190,7 +190,7 @@ TyJuxt
 NumFloat :: { Float }
 NumFloat
   : FLOAT { let (TokenFloat _ x) = $1 in read x }
-  | INT   { let (TokenInt _ x) = $1 in fromIntegral $ read x }
+  | INT   { let (TokenInt _ x) = $1   in let r = (read x) :: Integer in fromIntegral r }
 
 TypeAtom :: { [Option] -> Type }
 TypeAtom
@@ -200,7 +200,7 @@ TypeAtom
                             then TyVar (symString $1)
                             else error "Type variables not supported in simple types; try lang.poly." }
   | '(' Type ')'     { \opts -> $2 opts }
-  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in show x }
+  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
 
 Juxt :: { [Option] -> Expr PCF }
   : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
