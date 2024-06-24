@@ -39,6 +39,7 @@ import Lang.Options
     LANG    { TokenLang _ _ }
     CONSTR  { TokenConstr _ _ }
     FLOAT   { TokenFloat _ _ }
+    INT     { TokenInt _ _ }
     forall  { TokenForall _ }
     '\\'    { TokenLambda _ }
     Lam     { TokenTyLambda _ }
@@ -174,12 +175,17 @@ Type
   | Type '*' Type    { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type    { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type    { \opts -> IntersectTy ($1 opts) ($3 opts) }
-  | Type '^' FLOAT   { \opts -> ExponentTy ($1 opts) (let (TokenFloat _ x) = $3 in read x) }
+  | Type '^' NumFloat   { \opts -> ExponentTy ($1 opts) $3 }
   | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
   | forall VAR '.' Type { \opts ->
                             if isPoly opts
                               then Forall (symString $2) ($4 opts)
                               else error "Type quantification not supported in simple types; try lang.poly. " }
+
+NumFloat :: { Float }
+NumFloat
+  : FLOAT { let (TokenFloat _ x) = $1 in read x }
+  | INT   { let (TokenInt _ x) = $1 in fromIntegral $ read x }
 
 TypeAtom :: { [Option] -> Type }
 TypeAtom
@@ -189,6 +195,7 @@ TypeAtom
                             then TyVar (symString $1)
                             else error "Type variables not supported in simple types; try lang.poly." }
   | '(' Type ')'     { \opts -> $2 opts }
+  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in show x }
 
 Juxt :: { [Option] -> Expr PCF }
   : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
@@ -224,6 +231,11 @@ Atom :: { [Option] -> Expr PCF }
      { \opts ->
           let (TokenFloat _ x) = $1
           in Ext (NumFloat $ read x) }
+
+  | INT
+     { \opts ->
+          let (TokenInt _ x) = $1
+          in Ext (NumFloat $ fromIntegral $ read x) }
 
   -- For later
   -- | '?' { Hole }

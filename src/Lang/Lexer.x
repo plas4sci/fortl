@@ -23,8 +23,8 @@ $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
 @sym    = $lower ($alphanum | \')*
 @constr = ($upper ($alphanum | \')* | \(\))
-@int    = \-? $digit+
 @float   = \-? $digit+ \. $digit+
+@int    = \-? $digit+
 @charLiteral = \' ([\\.]|[^\']| . ) \'
 @stringLiteral = \"(\\.|[^\"]|\n)*\"
 
@@ -54,6 +54,7 @@ tokens :-
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
+  @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
   \\                            { \p s -> TokenLambda p }
   \/\\                          { \p s -> TokenTyLambda p }
@@ -117,6 +118,7 @@ data Token
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
   | TokenAt       AlexPosn
+  | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
