@@ -38,20 +38,8 @@ run fname = do
       input <- readFile fname
       case parseProgram fname input of
         Right (ast, options) -> do
-          -- Show options
-          putStrLn $ "\n " <> ansi_bold <> "Reducer: " <> ansi_reset <> (showReducer options)
-
-          -- Show AST
-          putStrLn $ "\n " <> ansi_bold <> "AST: " <> ansi_reset <> show ast
-
-          -- Pretty print
-          putStrLn $ "\n " <> ansi_bold <> "Pretty: " <> ansi_reset <> pprint ast
-
           -- Evaluate
-          let (normalForm, count) = multiStep options ast
-          putStrLn $ "\n " <> ansi_bold <> "Number of steps: " <> ansi_reset <> show count
-          putStrLn $ "\n " <> ansi_bold <> "Normal form: " <> ansi_reset <> pprint normalForm
-
+          let (normalForm, _count) = multiStep options ast
           -- Typing
           if isTyped options
             then

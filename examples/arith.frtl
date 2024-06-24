@@ -1,6 +1,5 @@
-lang.pcf
 lang.typed
-x : Float & Float = 1.0 + 2.0
+x : Float = 1.0 + 2.0
 y : Float = x * 4.0
 z : Float = y - x
 z
