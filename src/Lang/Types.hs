@@ -8,6 +8,8 @@ import Lang.Syntax
 import Lang.PrettyPrint
 import Lang.Semantics (substituteType)
 import Lang.Specifications.Units
+import Lang.Kinding
+import Lang.Primitives
 
 import Data.Maybe (mapMaybe)
 import Data.List (intercalate)
@@ -227,22 +229,30 @@ i.e., we know we have a signature for the argument.
 
 -- app (special for form of top-level definitions)
 synth gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
-  case check gamma e2 tyA of
-    Right () -> synth ((x, tyA) : gamma) e1
-    Left err -> Left err
-    -- else error $ "Expecting (" ++ pprint e2 ++ ") to have type " ++ pprint tyA
+  case checkKind tyA type0 of
+    Left err -> error $ "Kinding error: " <> err
+    Right () ->
+      case check gamma e2 tyA of
+        Right () -> synth ((x, tyA) : gamma) e1
+        Left err -> Left err
+        -- else error $ "Expecting (" ++ pprint e2 ++ ") to have type " ++ pprint tyA
 
 
 -- abs-Church (actually rule)
 synth gamma (Abs x (Just tyA) e) =
-  synth ((x, tyA) : gamma) e
+  case checkKind tyA type0 of
+    Left err -> error $ "Kinding error: " <> err
+    Right () -> synth ((x, tyA) : gamma) e
 
 -- Type checking a type speciaisation
 synth gamma (App e (TyEmbed tau')) =
-  case synth gamma e of
-    Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
-    Right t -> Left $ "Expecting polymorphic type but got `" <> pprint t <> "`"
-    Left err -> Left $ err <> "\nExpecting polymorphic type but didn't get anything."
+  case checkKind tau' type0 of
+    Left err -> error $ "Kinding error: " <> err
+    Right () ->
+      case synth gamma e of
+        Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
+        Right t -> Left $ "Expecting polymorphic type but got `" <> pprint t <> "`"
+        Left err -> Left $ err <> "\nExpecting polymorphic type but didn't get anything."
 
 {-
 
@@ -375,9 +385,12 @@ synth gamma (Ext (BinOp op e1 e2)) =
 
 -- checkSynth
 synth gamma (Sig e ty) =
-  case check gamma e ty of
-    Right () -> Right ty
-    Left err -> Left $ "Trying to check explicit signature " ++ pprint ty
+  case checkKind ty type0 of
+    Left err -> error $ "Kinding error: " <> err
+    Right () ->
+      case check gamma e ty of
+        Right () -> Right ty
+        Left err -> Left $ "Trying to check explicit signature " ++ pprint ty
 
 -- catch all (cannot synth here)
 synth gamma e =
