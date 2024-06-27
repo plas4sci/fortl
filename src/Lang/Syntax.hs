@@ -1,9 +1,13 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Lang.Syntax where
 
 import qualified Data.Set as Set
+import GHC.TypeLits
 
 type Identifier = String
 
@@ -12,18 +16,18 @@ type Identifier = String
 -- used to represent the abstract syntax
 -- tree of additional commands
 data Expr ex where
-    Abs :: Identifier -> Maybe Type -> Expr ex -> Expr ex
+    Abs :: Identifier -> Maybe (Type 0) -> Expr ex -> Expr ex
                                             -- \x -> e  [λ x . e] (Curry style)
                                             -- or
                                             -- \(x : A) -> e (Church style)
     App :: Expr ex ->  Expr ex   -> Expr ex -- e1 e2
     Var :: Identifier            -> Expr ex -- x
 
-    Sig :: Expr ex -> Type       -> Expr ex -- e : A
+    Sig :: Expr ex -> Type 0     -> Expr ex -- e : A
 
     -- Poly
     TyAbs   :: Identifier -> Expr ex -> Expr ex -- /\ a -> e
-    TyEmbed :: Type                  -> Expr ex -- @A
+    TyEmbed :: Type 0                -> Expr ex -- @A
 
     -- ML
     GenLet :: Identifier -> Expr ex -> Expr ex -> Expr ex -- let x = e1 in e2 (ML-style polymorphism)
@@ -73,33 +77,32 @@ isNatVal _           = False
 ------------------------------
 -- Type syntax
 
-data Type =
-  -- Simply-typed lambda calculus
-    FunTy Type Type  -- A -> B
+data Type (n :: Nat) where
+    FunTy :: Type l -> Type l -> Type l  -- A -> B
 
-  | TyCon Identifier -- K
-  | TyApp Type Type  -- A B
+    TyCon :: Identifier -> Type l        -- K
+    TyApp :: Type l -> Type l -> Type l  -- A B
 
-  -- PCF types
-  | ProdTy Type Type -- A * B
-  | SumTy Type Type  -- A + B
+    ProdTy :: Type 0 -> Type 0 -> Type 0 -- A * B
+    SumTy  :: Type 0 -> Type 0 -> Type 0  -- A + B
 
-  -- Polymorphic lambda calculus
-  | TyVar Identifier       -- a
-  | Forall Identifier Type -- forall a . A
+    -- Polymorphic lambda calculus types
+    TyVar :: Identifier -> Type 0           -- a
+    Forall :: Identifier -> Type 0 -> Type 0 -- forall a . A
 
-  -- Intersection types
-  | IntersectTy Type Type
+    -- Intersection types
+    IntersectTy :: Type 0 -> Type 0 -> Type 0
 
-  -- For units
-  | ExponentTy Type Float
-  deriving (Show, Eq, Ord)
+    -- For units
+    -- TODO: make just a type constructor
+    ExponentTy :: Type 0 -> Float -> Type 0
 
-natTy :: Type
-natTy = TyCon "Nat"
-
-floatTy :: Type
-floatTy = TyCon "Float"
+deriving instance Ord (Type 0)
+deriving instance Ord (Type 1)
+deriving instance Eq (Type 0)
+deriving instance Eq (Type 1)
+deriving instance Show (Type 0)
+deriving instance Show (Type 1)
 
 ----------------------------
 
@@ -151,7 +154,7 @@ instance Term (Expr PCF) where
 
   mkVar = Var
 
-instance Term Type where
+instance Term (Type 0) where
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2

@@ -1,24 +1,28 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+
 
 module Lang.HindleyMilner where
 
 import Lang.Syntax
+import Lang.Primitives
 import Lang.PrettyPrint
 import Data.Set (toList, unions, (\\))
 
-data TypeScheme = ForallTy [Identifier] Type
-unpackType :: TypeScheme -> Type
+data TypeScheme = ForallTy [Identifier] (Type 0)
+unpackType :: TypeScheme -> Type 0
 unpackType (ForallTy _ ty) = ty
 
 type Context = [(Identifier, TypeScheme)]
 
 -- Top-level of Algorithm W (Hindley Milner algorithm)
-inferType :: Context -> Expr PCF -> Maybe Type
+inferType :: Context -> Expr PCF -> Maybe (Type 0)
 inferType ctxt ast = let (s, ty, _) = infer ctxt ast 0 in Just (substitute s ty)
 
 type TypeVariable = String
-type Substitution = TypeVariable -> Type
+type Substitution = TypeVariable -> Type 0
 
 -- Inner main function of Algorithm W
 -- Takes:
@@ -29,7 +33,7 @@ type Substitution = TypeVariable -> Type
 --   * a substitution on type variables
 --   * a type (if succesful)
 --   * an updated gensym seed
-infer :: Context -> Expr PCF -> Int -> (Substitution, Type, Int)
+infer :: Context -> Expr PCF -> Int -> (Substitution, Type 0, Int)
 infer ctxt (Abs var _ e) fv =
   let alpha     = "a" ++ show fv
       (s , tyB , fv') = infer ((var , ForallTy [] (TyVar alpha)) : ctxt) e (fv+1)
@@ -79,7 +83,7 @@ infer ctxt t fv =
 idSubst :: Substitution
 idSubst var = TyVar var
 
-singletonSubst :: TypeVariable -> Type -> Substitution
+singletonSubst :: TypeVariable -> Type 0 -> Substitution
 singletonSubst var ty =
   \var' -> if var == var' then ty else TyVar var'
 
@@ -97,7 +101,7 @@ s2 <.> s1 =
       else substitute s2 (s1 v)
 
 -- Calculate the most general unified of two types
-mgu :: Type -> Type -> Substitution
+mgu :: Type 0 -> Type 0 -> Substitution
 mgu (FunTy t1 t2) (FunTy t1' t2') =
   let s = mgu t1 t1'
       s' = mgu (substitute s t2) (substitute s t2')
@@ -124,7 +128,7 @@ mgu t1 t2 = error $ "Cannot unify " ++ pprint t1 ++ " and " ++ pprint t2
 class Substitutable t where
   substitute :: Substitution -> t -> t
 
-instance Substitutable Type where
+instance Substitutable (Type 0) where
   substitute subst (TyCon c)           = TyCon c
   substitute subst (FunTy t1 t2)       = FunTy (substitute subst t1) (substitute subst t2)
   substitute subst (IntersectTy t1 t2) = IntersectTy (substitute subst t1) (substitute subst t2)

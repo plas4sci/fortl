@@ -1,4 +1,6 @@
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 
 module Lang.Types where
 
@@ -36,7 +38,7 @@ abs ------------------------
 -}
 
 -- Represent contexts as lists
-type Context = [(Identifier, Type)]
+type Context = [(Identifier, Type 0)]
 
 {-
 
@@ -46,7 +48,7 @@ G |- e <= A    check
 **********************************
 -}
 
-check :: Context -> Expr PCF -> Type -> Either String ()
+check :: Context -> Expr PCF -> Type 0 -> Either String ()
 
 check gamma (Var x) ty =
   case lookup x gamma of
@@ -96,13 +98,13 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
       case synth gamma e1 of
         Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
         Right t1 ->
-          case floatWithUnit t1 of
+          case isFloatWithUnit t1 of
             Nothing -> Left $ "Expecting Float but got " ++ pprint t1
             Just u1 ->
               case synth gamma e2 of
                 Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
                 Right t2 ->
-                  case floatWithUnit t2 of
+                  case isFloatWithUnit t2 of
                     Nothing -> Left $ "Expecting Float but got " ++ pprint t2
                     Just u2 ->
                       case op of
@@ -190,7 +192,7 @@ Bidirectional synthesis
 **********************************
 -}
 
-synth :: Context -> Expr PCF -> Either String Type
+synth :: Context -> Expr PCF -> Either String (Type 0)
 
 {-
 
@@ -345,13 +347,13 @@ synth gamma (Ext (BinOp op e1 e2)) =
   case synth gamma e1 of
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
-      case floatWithUnit t1 of
+      case isFloatWithUnit t1 of
         Nothing -> Left $ "Expecting Float type but got " ++ pprint t1
         Just u1 ->
           case synth gamma e2 of
             Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
             Right t2 ->
-              case floatWithUnit t2 of
+              case isFloatWithUnit t2 of
                 Nothing -> Left $ "Expecting Float type but got " ++ pprint t2
                 Just u2 ->
                   case op of
@@ -387,13 +389,16 @@ synth gamma e =
 
 data Specificational a = IsSpec { unwrapSpec :: a }
 
-isSubType :: Type -> Specificational Type -> Bool
+isFloatWithUnit :: Type 0 -> Maybe (Type 0)
+isFloatWithUnit = floatWithUnit . normalise
+
+isSubType :: Type 0 -> Specificational (Type 0) -> Bool
 isSubType t (IsSpec t') =
     -- First normalise before checking equality/subtyping
     isSubType' (normalise t) (IsSpec $ normalise t')
   where
     -- | Applied to normalized types
-    isSubType' :: Type -> Specificational Type -> Bool
+    isSubType' :: Type 0 -> Specificational (Type 0) -> Bool
     isSubType' t1 (IsSpec t2) | t1 == t2 = True
     isSubType' (IntersectTy t1 (TyApp (TyCon "Unit") (TyCon "1"))) (IsSpec t) =
       isSubType' t1 (IsSpec t)
@@ -406,7 +411,7 @@ isSubType t (IsSpec t') =
         (Just u1, Just u2) -> unitEquality u1 u2
         _ -> t1 == t2
 
-normalise :: Type -> Type
+normalise :: Type 0 -> Type 0
 -- special cases for intersection types
 -- TODO: introduce omega and map Unit(1) to omega.
 normalise (IntersectTy t1 (TyApp (TyCon "Unit") (TyCon "1"))) = normalise t1

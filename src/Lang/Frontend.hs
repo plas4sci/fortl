@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 module Lang.Frontend where
 
 import Lang.Options
@@ -61,7 +62,7 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Expr PCF -> Either String Type
+typeInference :: [Option] -> Expr PCF -> Either String (Type 0)
 typeInference options e =
   if isML options
     then case HM.inferType [] e of

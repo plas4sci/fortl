@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 
 module Lang.Semantics where
 
@@ -200,10 +202,10 @@ substitute_binding x e (y,e')
     in (x', substitute (substitute e (x, mkVar x')) (y, e'))
   | otherwise = (x, substitute e (y,e'))
 
-instance Substitutable Type where
+instance Substitutable (Type 0) where
     substitute = substituteType
 
-substituteType :: Type -> (Identifier, Type) -> Type
+substituteType :: Type 0 -> (Identifier, Type 0) -> Type 0
 substituteType (FunTy t1 t2) s =
   FunTy (substituteType t1 s) (substituteType t2 s)
 

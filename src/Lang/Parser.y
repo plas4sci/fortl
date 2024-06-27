@@ -1,5 +1,6 @@
 {
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds #-}
 
 module Lang.Parser where
 
@@ -168,7 +169,7 @@ Form :: { [Option] -> Expr PCF }
   | Form '/' Form  { \opts -> Ext $ BinOp OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 
-Type :: { [Option] -> Type }
+Type :: { [Option] -> Type 0 }
 Type
   : Type '->' Type   { \opts -> FunTy ($1 opts) ($3 opts) }
   | Type '*' Type    { \opts -> ProdTy ($1 opts) ($3 opts) }
@@ -182,7 +183,7 @@ Type
                               then Forall (symString $2) ($4 opts)
                               else error "Type quantification not supported in simple types; try lang.poly. " }
 
-TyJuxt :: { [Option] -> Type }
+TyJuxt :: { [Option] -> Type 0 }
 TyJuxt
   : TyJuxt TypeAtom { \opts -> TyApp ($1 opts) ($2 opts) }
   | TypeAtom        { $1 }
@@ -192,7 +193,7 @@ NumFloat
   : FLOAT { let (TokenFloat _ x) = $1 in read x }
   | INT   { let (TokenInt _ x) = $1   in let r = (read x) :: Integer in fromIntegral r }
 
-TypeAtom :: { [Option] -> Type }
+TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
   : CONSTR           { \opts -> TyCon $ constrString $1 }
   | VAR              { \opts ->

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GADTs #-}
 
 module Lang.PrettyPrint where
 
@@ -78,7 +79,7 @@ instance PrettyPrint Op where
 instance PrettyPrint () where
     pprint () = "()"
 
-instance PrettyPrint Type where
+instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyCon _) = True
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic _     = False
