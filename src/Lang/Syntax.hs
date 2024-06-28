@@ -66,6 +66,7 @@ isValue Abs{}   = True
 isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (Ext (NumFloat _)) = True
+isValue (Ext p) = isValuePCF p
 isValue e       = isNatVal e
 
 isNatVal :: Expr PCF -> Bool
@@ -73,6 +74,16 @@ isNatVal (Ext Zero)  = True
 isNatVal (Ext Succ)  = True
 isNatVal (App e1 e2) = isNatVal e1 && isNatVal e2
 isNatVal _           = False
+
+isValuePCF :: PCF -> Bool
+isValuePCF (Pair e1 e2) = isValue e1 && isValue e2
+isValuePCF (Inl e) = isValue e
+isValuePCF (Inr e) = isValue e
+isValuePCF Zero = True
+isValuePCF Succ = True
+isValuePCF (NumFloat f) = True
+isValuePCF _ = False
+
 
 ------------------------------
 -- Type syntax
