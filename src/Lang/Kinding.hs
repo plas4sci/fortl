@@ -59,10 +59,17 @@ synthKind (ExponentTy t _) = do
   checkKind t agroup
   return agroup
 
-synthKind (IntersectTy t1 t2) = do
-  checkKind t1 type0
-  checkKind t2 type0
-  return type0
+synthKind (IntersectTy t1 t2) =
+  -- Symmetry of intersectTy despite its asymmetry
+  (do
+    checkKind t1 type0
+    checkKind t2 desc
+    return type0)
+  <|>
+  (do
+    checkKind t1 desc
+    checkKind t2 type0
+    return type0)
 
 synthKind t = Left $ "Cannot infer kind for " <> pprint t
 
@@ -78,3 +85,9 @@ synthCheckPair t1 t2 =
     Right k -> do
       checkKind t2 k
       return k
+
+(<|>) :: Either String (Type 1) -> Either String (Type 1) -> Either String (Type 1)
+(Left err) <|> (Left err') =
+  Left ("No resolution. Either: \n\t" <> err <> "\nor\n\t" <> err')
+(Right x) <|> _ = Right x
+_ <|> (Right x) = Right x
