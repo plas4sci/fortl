@@ -13,9 +13,13 @@ natTy = TyCon "Nat"
 floatTy :: Type 0
 floatTy = TyCon "Float"
 
+agroup :: Type 1
+agroup = TyCon "AbelianGroup"
+
 typeConstructors :: [(String, Type 1)]
 typeConstructors = [
     ("Float", type0)
   , ("Nat"  , type0)
-  , ("Unit" , FunTy (TyCon "AbelianGroup") type0)
+  , ("Unit" , FunTy agroup type0)
+  , ("1", agroup)
  ]

@@ -50,18 +50,14 @@ synthKind (FunTy t1 t2) = do
   return k
 
 synthKind (ProdTy t1 t2) = do
-  checkKind t1 type0
-  checkKind t2 type0
-  return type0
+  synthCheckPair t1 t2
 
 synthKind (SumTy t1 t2) = do
-  checkKind t1 type0
-  checkKind t2 type0
-  return type0
+  synthCheckPair t1 t2
 
 synthKind (ExponentTy t _) = do
-  checkKind t type0
-  return type0
+  checkKind t agroup
+  return agroup
 
 synthKind (IntersectTy t1 t2) = do
   checkKind t1 type0
@@ -69,3 +65,16 @@ synthKind (IntersectTy t1 t2) = do
   return type0
 
 synthKind t = Left $ "Cannot infer kind for " <> pprint t
+
+synthCheckPair :: Type 0 -> Type 0 -> Either String (Type 1)
+synthCheckPair t1 t2 =
+  -- Try to infer the kind of the first type
+  case synthKind t1 of
+    Left err -> do
+      k <- synthKind t2
+      checkKind t1 k
+      return k
+
+    Right k -> do
+      checkKind t2 k
+      return k
