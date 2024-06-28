@@ -230,7 +230,7 @@ i.e., we know we have a signature for the argument.
 -- app (special for form of top-level definitions)
 synth gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
   case checkKind tyA type0 of
-    Left err -> error $ "Kinding error: " <> err
+    Left err -> Left $ "Kinding error: " <> err
     Right () ->
       case check gamma e2 tyA of
         Right () -> synth ((x, tyA) : gamma) e1
@@ -241,13 +241,13 @@ synth gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 -- abs-Church (actually rule)
 synth gamma (Abs x (Just tyA) e) =
   case checkKind tyA type0 of
-    Left err -> error $ "Kinding error: " <> err
+    Left err -> Left $ "Kinding error: " <> err
     Right () -> synth ((x, tyA) : gamma) e
 
 -- Type checking a type speciaisation
 synth gamma (App e (TyEmbed tau')) =
   case checkKind tau' type0 of
-    Left err -> error $ "Kinding error: " <> err
+    Left err -> Left $ "Kinding error: " <> err
     Right () ->
       case synth gamma e of
         Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
@@ -386,7 +386,7 @@ synth gamma (Ext (BinOp op e1 e2)) =
 -- checkSynth
 synth gamma (Sig e ty) =
   case checkKind ty type0 of
-    Left err -> error $ "Kinding error: " <> err
+    Left err -> Left $ "Kinding error: " <> err
     Right () ->
       case check gamma e ty of
         Right () -> Right ty
