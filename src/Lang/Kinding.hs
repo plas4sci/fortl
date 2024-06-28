@@ -70,6 +70,20 @@ synthKind (IntersectTy t1 t2) =
     checkKind t1 desc
     checkKind t2 type0
     return type0)
+  <|>
+  -- Two descriptiors
+  (do
+    checkKind t1 desc
+    checkKind t2 desc
+    return desc)
+
+synthKind (TyVar t) =
+  -- TODO: allow generalisation of type variables
+  return type0
+
+synthKind (Forall v t) =
+  -- TODO: need type variable environment
+  synthKind t
 
 synthKind t = Left $ "Cannot infer kind for " <> pprint t
 
