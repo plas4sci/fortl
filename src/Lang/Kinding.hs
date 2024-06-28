@@ -85,7 +85,7 @@ synthKind (Forall v t) =
   -- TODO: need type variable environment
   synthKind t
 
-synthKind t = Left $ "Cannot infer kind for " <> pprint t
+-- synthKind t = Left $ "Cannot infer kind for " <> pprint t
 
 synthCheckPair :: Type 0 -> Type 0 -> Either String (Type 1)
 synthCheckPair t1 t2 =
