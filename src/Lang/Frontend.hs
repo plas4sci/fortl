@@ -26,7 +26,9 @@ main = do
       result <- run True fname
       case result of
         Left _   -> exitFailure
-        Right _  -> exitSuccess
+        Right result  -> do
+          putStrLn $ pprint result
+          exitSuccess
 
 run :: Bool -> String -> IO (Either String (Expr PCF))
 run report fname = do
