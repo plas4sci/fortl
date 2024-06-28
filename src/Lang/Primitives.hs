@@ -24,10 +24,13 @@ typeConstructors = [
     ("Float", type0)
   , ("Nat"  , type0)
   , ("Unit" , FunTy agroup desc)
+  , ("Quantity", FunTy agroup desc)
   , ("1", agroup)
   -- SI Units
   , ("M", agroup)
   , ("S", agroup)
   , ("Kg", agroup)
   , ("J", agroup)
+  -- Example quantities
+  , ("Length", agroup)
  ]
