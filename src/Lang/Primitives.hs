@@ -22,4 +22,9 @@ typeConstructors = [
   , ("Nat"  , type0)
   , ("Unit" , FunTy agroup type0)
   , ("1", agroup)
+  -- SI Units
+  , ("M", agroup)
+  , ("S", agroup)
+  , ("Kg", agroup)
+  , ("J", agroup)
  ]
