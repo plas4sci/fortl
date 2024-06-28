@@ -1,6 +1,4 @@
 -- Church encoding of pairs
-
-lang.pcf
 lang.poly
 lang.typed
 

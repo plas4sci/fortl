@@ -1,4 +1,3 @@
-lang.pcf
 lang.typed
 
 id = (\ x -> x) : Nat -> Nat

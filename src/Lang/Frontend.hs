@@ -64,7 +64,7 @@ run report fname = do
 
 typeInference :: [Option] -> Expr PCF -> Either String (Type 0)
 typeInference options e =
-  if isML options
+  if elem HindleyMilner options
     then case HM.inferType [] e of
             Just ty -> Right ty
             Nothing -> Left "Type inference failed."

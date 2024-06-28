@@ -90,21 +90,11 @@ NL :: { () }
 Def :: { [Option] -> Expr PCF -> Expr PCF }
   : VAR '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) ($3 opts) }
   | VAR ':' Type '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) (Sig ($5 opts) ($3 opts)) }
-  | zero '=' Expr { \opts ->
-        if isPCF opts || isML opts
-          then error "Cannot use 'zero' as a variable name"
-          else \program -> App (Abs "zero" Nothing program) ($3 opts) }
-  | succ '=' Expr { \opts ->
-        if isPCF opts || isML opts
-          then error "Cannot use 'succ' as a variable name"
-          else  \program -> App (Abs "succ" Nothing program) ($3 opts) }
 
 Expr :: { [Option] -> Expr PCF }
   : let VAR '=' Expr in Expr
     { \opts ->
-      if isML opts
-       then GenLet (symString $2) ($4 opts) ($6 opts)
-       else App (Abs (symString $2) Nothing ($6 opts)) ($4 opts) }
+      GenLet (symString $2) ($4 opts) ($6 opts) }
 
   | '\\' '(' VAR ':' Type ')' '->' Expr
     { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
@@ -121,46 +111,25 @@ Expr :: { [Option] -> Expr PCF }
     { $1 }
 
   | fix '(' Expr ')'
-     { \opts ->
-      if isPCF opts || isML opts
-        then Ext (Fix ($3 opts))
-        else error "`fix` doesn't exists in the lambda calculus" }
+     { \opts -> Ext (Fix ($3 opts)) }
 
   | natcase Expr of zero '->' Expr '|' succ VAR '->' Expr
-     { \opts ->
-          if isPCF opts || isML opts
-            then Ext (NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts)))
-            else error "`natcase` doesn't exist in the lambda calculus" }
+     { \opts -> Ext (NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts))) }
 
   | fst '(' Expr ')'
-     { \opts ->
-      if isPCF opts || isML opts
-        then Ext (Fst ($3 opts))
-        else error "`fst` doesn't exists in the lambda calculus" }
+     { \opts -> Ext (Fst ($3 opts)) }
 
   | snd '(' Expr ')'
-     { \opts ->
-      if isPCF opts || isML opts
-        then Ext (Snd ($3 opts))
-        else error "`snd` doesn't exists in the lambda calculus" }
+     { \opts -> Ext (Snd ($3 opts)) }
 
   | inl '(' Expr ')'
-     { \opts ->
-      if isPCF opts || isML opts
-        then Ext (Inl ($3 opts))
-        else error "`inl` doesn't exists in the lambda calculus" }
+     { \opts -> Ext (Inl ($3 opts)) }
 
   | inr '(' Expr ')'
-     { \opts ->
-      if isPCF opts || isML opts
-        then Ext (Inr ($3 opts))
-        else error "`inr` doesn't exists in the lambda calculus" }
+     { \opts -> Ext (Inr ($3 opts)) }
 
  | case Expr of inl VAR '->' Expr '|' inr VAR '->' Expr
-     { \opts ->
-          if isPCF opts || isML opts
-            then Ext (Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)))
-            else error "`case` doesn't exist in the lambda calculus" }
+     { \opts -> Ext (Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts))) }
 
 Form :: { [Option] -> Expr PCF }
   : Form '+' Form  { \opts -> Ext $ BinOp OpPlus ($1 opts) ($3 opts) }
@@ -211,15 +180,9 @@ Atom :: { [Option] -> Expr PCF }
   : '(' Expr ')'              { $2 }
   | VAR                       { \opts -> Var $ symString $1 }
   | zero
-    { \opts ->
-        if isPCF opts || isML opts
-          then Ext Zero
-          else Var "zero" }
+    { \opts -> Ext Zero }
   | succ
-    { \opts ->
-        if isPCF opts || isML opts
-          then Ext Succ
-          else Var "succ" }
+    { \opts -> Ext Succ }
 
   | '@' TypeAtom
     { \opts ->
@@ -228,10 +191,7 @@ Atom :: { [Option] -> Expr PCF }
           else error "Cannot embed a type as a term; try lang.poly" }
 
   | '<' Expr ', ' Expr '>'
-     { \opts ->
-          if isPCF opts || isML opts
-            then Ext (Pair ($2 opts) ($4 opts))
-            else error "pairs don't exists in the lambda calculus"}
+     { \opts -> Ext (Pair ($2 opts) ($4 opts)) }
 
   | FLOAT
      { \opts ->
@@ -248,12 +208,9 @@ Atom :: { [Option] -> Expr PCF }
 {
 
 readOption :: Token -> ReaderT String (Either String) Option
-readOption (TokenLang _ x) | x == "lang.pcf"   = return PCF
-readOption (TokenLang _ x) | x == "lang.ml"    = return ML
+readOption (TokenLang _ x) | x == "lang.inference" = return HindleyMilner
 readOption (TokenLang _ x) | x == "lang.typed" = return Typed
 readOption (TokenLang _ x) | x == "lang.poly"  = return Poly
-readOption (TokenLang _ x) | x == "lang.cbv"   = return CBV
-readOption (TokenLang _ x) | x == "lang.cbn"   = return CBN
 readOption (TokenLang _ x) = lift . Left $ "Unknown language option: " <> x
 readOption _ = lift . Left $ "Wrong token for language"
 

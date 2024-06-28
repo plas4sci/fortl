@@ -1,4 +1,4 @@
-lang.ml
+lang.inference
 lang.typed
 
 let id = \x -> x in (id zero) zero

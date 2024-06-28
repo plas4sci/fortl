@@ -37,7 +37,6 @@ callByValue (Ext e)     = reducePCF callByValue (Ext e)
 -- Poly
 callByValue (TyAbs x e) = Nothing
 callByValue (TyEmbed t) = Nothing
--- ML
 callByValue (GenLet x e' e)
   | isValue e' = beta e x e'
   | otherwise = (callByValue e') >>= (\e' -> return $ GenLet x e' e)
