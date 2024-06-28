@@ -14,13 +14,13 @@ checkKind (FunTy t1 t2) k = do
   checkKind t1 k
   checkKind t2 k
 
-checkKind (TyApp t1 t2) k = do
-  k <- synthKind t1
-  case k of
-    FunTy k1 k2 ->
+checkKind t@(TyApp t1 t2) k = do
+  k1 <- synthKind t1
+  case k1 of
+    FunTy k1' k2 ->
       if k == k2
-        then checkKind t2 k1
-        else Left $ "Expecting kind " <> pprint k <> " but got " <> pprint k2
+        then checkKind t2 k1'
+        else Left $ "For " <> pprint t <> ", expecting kind " <> pprint k <> " but got " <> pprint k2
     _ -> Left $ "Expecting a function kind but got " <> pprint k
 
 checkKind t k = do
