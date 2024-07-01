@@ -1,4 +1,1 @@
-Kinding error: No resolution. Either: 
-	For type Float, expecting kind Descriptor but got kind Type
-or
-	For type Float, expecting kind Descriptor but got kind Type
+Kinding error: For type Float, expecting kind Descriptor but got kind Type

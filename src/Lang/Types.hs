@@ -7,7 +7,7 @@ module Lang.Types where
 import Lang.Syntax
 import Lang.PrettyPrint
 import Lang.Semantics (substituteType)
-import Lang.Specifications.Units
+import Lang.Specifications.AbelianGroupDescriptions
 import Lang.Kinding
 import Lang.Primitives
 
@@ -87,7 +87,7 @@ check gamma (Ext (Pair e1 e2)) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | t == floatTy = do
+check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isDescription -> Just unit)) | t == floatTy = do
   case op of
     OpPlus ->
       case check gamma e1 ty of
@@ -101,13 +101,13 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
       case synth gamma e1 of
         Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
         Right t1 ->
-          case isFloatWithUnit t1 of
+          case isFloatWithDescription t1 of
             Nothing -> Left $ "Expecting Float but got " ++ pprint t1
             Just d1 ->
               case synth gamma e2 of
                 Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
                 Right t2 ->
-                  case isFloatWithUnit t2 of
+                  case isFloatWithDescription t2 of
                     Nothing -> Left $ "Expecting Float but got " ++ pprint t2
                     Just d2 ->
                       case op of
@@ -116,7 +116,7 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
                           in
                             if descriptionEquality d unit
                               then Right ()
-                              else Left $ "Expecting unit "
+                              else Left $ "Expecting description "
                                     <> pprint (reifyDescription unit) <> " but got "
                                     <> pprint (reifyDescription d)
                         OpDivide ->
@@ -124,7 +124,7 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
                           in
                             if descriptionEquality d unit
                               then Right ()
-                              else Left $ "Expecting unit "
+                              else Left $ "Expecting description "
                                   <> pprint (reifyDescription unit) <> " but got "
                                   <> pprint (reifyDescription d)
 
@@ -363,13 +363,13 @@ synth gamma (Ext (BinOp op e1 e2)) =
   case synth gamma e1 of
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
-      case isFloatWithUnit t1 of
+      case isFloatWithDescription t1 of
         Nothing -> Left $ "Expecting Float type but got " ++ pprint t1
         Just u1 ->
           case synth gamma e2 of
             Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
             Right t2 ->
-              case isFloatWithUnit t2 of
+              case isFloatWithDescription t2 of
                 Nothing -> Left $ "Expecting Float type but got " ++ pprint t2
                 Just u2 ->
                   case op of
@@ -378,7 +378,7 @@ synth gamma (Ext (BinOp op e1 e2)) =
                     _        ->
                       case descriptionEquality u1 u2 of
                         True  -> Right $ IntersectTy floatTy $ reifyDescription u1
-                        False -> Left $ "Expecting units to be the same but got "
+                        False -> Left $ "Expecting descriptions to be the same but got "
                               ++ (pprint $ reifyDescription u1)
                               ++ " and "
                               ++ (pprint $ reifyDescription u2)
@@ -411,8 +411,8 @@ synth gamma e =
 
 data Specificational a = IsSpec { unwrapSpec :: a }
 
-isFloatWithUnit :: Type 0 -> Maybe (Map Identifier (Type 0))
-isFloatWithUnit = floatWithUnit . normalise
+isFloatWithDescription :: Type 0 -> Maybe (Map Identifier (Type 0))
+isFloatWithDescription = floatWithDescription . normalise
 
 isSubType :: Type 0 -> Specificational (Type 0) -> Bool
 isSubType t (IsSpec t') =
@@ -429,15 +429,17 @@ isSubType t (IsSpec t') =
       isSubType' t1 (IsSpec t1') || isSubType' t1 (IsSpec t2')
     -- Fall through case
     isSubType' t1 (IsSpec t2) =
-      case (isUnitTy t1, isUnitTy t2) of
-        (Just u1, Just u2) -> and (elems $ intersectionWith unitEquality u1 u2)
+      case (isDescription t1, isDescription t2) of
+        (Just u1, Just u2) -> and (elems $ intersectionWith agroupEquality u1 u2)
         _ -> t1 == t2
 
 normalise :: Type 0 -> Type 0
--- special cases for intersection types
--- TODO: introduce omega and map Unit(1) to omega.
-normalise (IntersectTy t1 (TyApp (TyCon "Unit") (TyCon "1"))) = normalise t1
-normalise (IntersectTy (TyApp (TyCon "Unit") (TyCon "1")) t2) = normalise t2
+-- A description with unit of an Abelian group is mapped to the top element for
+-- descriptions
+normalise (TyApp (TyCon (isDescConstructor -> Just _)) (TyCon "1"))  = TyCon omega
+-- Normalise unit intersection types
+normalise (IntersectTy t1 t2) | t2 == TyCon omega = normalise t1
+normalise (IntersectTy t1 t2) | t1 == TyCon omega = normalise t2
 normalise (IntersectTy t1 t2) =
   case (normalise t1, normalise t2) of
     (t1', t2') ->
@@ -448,7 +450,7 @@ normalise (IntersectTy t1 t2) =
             then IntersectTy t1' t2'
             else IntersectTy t2' t1'
 normalise (TyApp (TyCon "Unit") t) =
-  TyApp (TyCon "Unit") (reifyUnit $ evalUnit t)
+  TyApp (TyCon "Unit") (reifyAGroup $ evalFreeAGroup t)
 normalise (ExponentTy t n) =
   if n == 1
     then (normalise t)

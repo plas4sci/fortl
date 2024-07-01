@@ -19,9 +19,14 @@ agroup = TyCon "AbelianGroup"
 desc :: Type 1
 desc = TyCon "Descriptor"
 
-typeConstructors :: [(String, Type 1)]
+-- | Representation of the top of the intersection types
+omega :: String
+omega = "?"
+
+typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
-    ("Float", type0)
+    (omega, desc)
+  , ("Float", type0)
   , ("Nat"  , type0)
   , ("Unit" , FunTy agroup desc)
   , ("Quantity", FunTy agroup desc)
@@ -31,6 +36,11 @@ typeConstructors = [
   , ("S", agroup)
   , ("Kg", agroup)
   , ("J", agroup)
-  -- Example quantities
-  , ("Length", agroup)
  ]
+
+-- | Check if a type constructors a descriptor
+isDescConstructor :: Identifier -> Maybe (Type 1)
+isDescConstructor conId =
+  case lookup conId typeConstructors of
+    Just k@(FunTy _ t) | t == desc -> Just k
+    _                              -> Nothing
