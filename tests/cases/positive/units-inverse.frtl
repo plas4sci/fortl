@@ -1,0 +1,5 @@
+lang.typed
+y : Float & [M] = 2.0
+x : Float & [M] = 1.0
+a : Float & [1] = (x / y)
+a
