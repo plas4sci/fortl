@@ -8,6 +8,8 @@ import Lang.Syntax
 import Lang.Primitives
 import Lang.PrettyPrint
 
+import Data.List (isInfixOf)
+
 -- Check if a type is well-kinded against the second argument (kind)
 checkKind :: Type 0 -> Type 1 -> Either String ()
 checkKind (FunTy t1 t2) k = do
@@ -23,7 +25,9 @@ checkKind t@(TyApp t1 t2) k = do
         else Left $ "For " <> pprint t <> ", expecting kind " <> pprint k <> " but got " <> pprint k2
     _ -> Left $ "Expecting a function kind but got " <> pprint k
 
-checkKind (TyCon c) (TyCon "Description") =
+-- Allow constructors of any abelian group to get checked
+-- as we will form a free abelian group over some arbitrary set of generators
+checkKind (TyCon c) k | k == agroup =
   return ()
 
 checkKind t k = do
@@ -105,7 +109,17 @@ synthCheckPair t1 t2 =
 
 (<|>) :: Either String (Type 1) -> Either String (Type 1) -> Either String (Type 1)
 (Left err) <|> (Left err') =
-  Left ("No resolution. Either: \n" <> indent err <> "\nor\n" <> indent err')
+  -- TODO: generalise using error data type
+  -- Filter out certain kinds of error here that are to do with
+  -- overloading
+  if "expecting kind" `isInfixOf` err
+    then Left err'
+    else
+      if "expecting kind" `isInfixOf` err
+        then Left err
+        else
+          Left ("No resolution. Either: \n" <> indent err <> "\nor\n" <> indent err')
+
 (Right x) <|> _ = Right x
 _ <|> (Right x) = Right x
 
