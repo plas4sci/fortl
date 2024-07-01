@@ -171,6 +171,7 @@ TypeAtom
                             else error "Type variables not supported in simple types; try lang.poly." }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
+  | '?'              { \opts -> TyCon "?" }
 
 Juxt :: { [Option] -> Expr PCF }
   : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
