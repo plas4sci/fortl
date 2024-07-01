@@ -1,0 +1,5 @@
+lang.typed
+x : Float = 1.0
+y : Float & ? = 2.0   -- idempotence in constant
+z : Float = x + y -- idempotencen in operation
+x + y + z
