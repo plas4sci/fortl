@@ -1,0 +1,6 @@
+lang.typed
+y : Float & [M] & Quantity(Length) = 2.0
+x : Float & [M] & Quantity(Length) = 1.0 + y
+t : Float & [S] = 4.0
+v : Float & [S^-1 * M] = x / t
+v

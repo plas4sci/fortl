@@ -23,6 +23,9 @@ checkKind t@(TyApp t1 t2) k = do
         else Left $ "For " <> pprint t <> ", expecting kind " <> pprint k <> " but got " <> pprint k2
     _ -> Left $ "Expecting a function kind but got " <> pprint k
 
+checkKind (TyCon c) (TyCon "Description") =
+  return ()
+
 checkKind t k = do
   k' <- synthKind t
   if k == k'
@@ -66,16 +69,16 @@ synthKind (IntersectTy t1 t2) =
     checkKind t2 desc
     return type0)
   <|>
-  (do
-    checkKind t1 desc
-    checkKind t2 type0
-    return type0)
-  <|>
-  -- Two descriptiors
+   -- Two descriptiors
   (do
     checkKind t1 desc
     checkKind t2 desc
     return desc)
+ <|>
+  (do
+    checkKind t1 desc
+    checkKind t2 type0
+    return type0)
 
 synthKind (TyVar t) =
   -- TODO: allow generalisation of type variables
@@ -102,6 +105,9 @@ synthCheckPair t1 t2 =
 
 (<|>) :: Either String (Type 1) -> Either String (Type 1) -> Either String (Type 1)
 (Left err) <|> (Left err') =
-  Left ("No resolution. Either: \n\t" <> err <> "\nor\n\t" <> err')
+  Left ("No resolution. Either: \n" <> indent err <> "\nor\n" <> indent err')
 (Right x) <|> _ = Right x
 _ <|> (Right x) = Right x
+
+indent :: String -> String
+indent = unlines . map ("  " <>) . lines

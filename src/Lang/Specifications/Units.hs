@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 
+-- TODO: rename to something about AbelianGroup descriptors
 module Lang.Specifications.Units where
 
 import Lang.Syntax
@@ -14,17 +15,23 @@ import Data.Map.Lazy
 
 -- | Predicate on whether a type is a unit description: if so extract
 -- the unit
-isUnitTy :: Type 0 -> Maybe (Type 0)
-isUnitTy (TyApp (TyCon "Unit") t) = Just t
+-- TOOD: generalise naming
+isUnitTy :: Type 0 -> Maybe (Map Identifier (Type 0))
+isUnitTy (TyApp (TyCon "Unit") t)     = Just $ singleton "Unit" t
+isUnitTy (TyApp (TyCon "Quantity") t) = Just $ singleton "Quantity" t
+isUnitTy (IntersectTy t1 t2) = do
+  d1 <- isUnitTy t1
+  d2 <- isUnitTy t2
+  Just $ union d1 d2
 isUnitTy _ = Nothing
 
 -- | Matches on a type that is either a Float or an
 -- intersection type containing a float, extracting its unit
-floatWithUnit :: Type 0 -> Maybe (Type 0)
+floatWithUnit :: Type 0 -> Maybe (Map Identifier (Type 0))
 
 -- Dimensionless/unitless float
 floatWithUnit (TyCon "Float") =
-  Just (TyCon "1")
+  Just empty
 
 -- Extract the unit in any position of the intersection
 floatWithUnit (IntersectTy (TyCon "Float") t) =
@@ -37,11 +44,23 @@ floatWithUnit (IntersectTy t (TyCon "Float")) =
 -- TODO: Extensibility to other properties would need to come here
 floatWithUnit t = Nothing
 
+reifyDescription :: Map Identifier (Type 0) -> Type 0
+reifyDescription = foldrWithKey (\k v t -> TyApp (TyCon k) v `IntersectTy` t) (TyCon "1")
+
 -- | Given a unit, construct its inverse
 reciprocalUnit :: Type 0 -> Type 0
 reciprocalUnit t = ExponentTy t (-1.0)
 
 --------------------------------------------
+
+descriptionEquality :: Map Identifier (Type 0)
+                    -> Map Identifier (Type 0)
+                    -> Bool
+descriptionEquality d1 d2 =
+  all
+   (\((k1, u1), (k2, u2)) -> k1 == k2 && unitEquality u1 u2)
+   (zip (assocs d1) (assocs d2))
+
 
 unitEquality :: Type 0 -> Type 0 -> Bool
 unitEquality u1 u2 =

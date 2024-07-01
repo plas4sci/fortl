@@ -14,6 +14,7 @@ import Lang.Primitives
 import Data.Maybe (mapMaybe)
 import Data.List (intercalate)
 --import Debug.Trace
+import Data.Map (Map, elems, intersectionWith)
 
 {-
 
@@ -102,25 +103,30 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isUnitTy -> Just unit)) | 
         Right t1 ->
           case isFloatWithUnit t1 of
             Nothing -> Left $ "Expecting Float but got " ++ pprint t1
-            Just u1 ->
+            Just d1 ->
               case synth gamma e2 of
                 Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
                 Right t2 ->
                   case isFloatWithUnit t2 of
                     Nothing -> Left $ "Expecting Float but got " ++ pprint t2
-                    Just u2 ->
+                    Just d2 ->
                       case op of
                         OpTimes ->
-                          if unitEquality (ProdTy u1 u2) unit
-                            then Right ()
-                            else Left $ "Expecting unit " <> pprint unit <> " but got "
-                                                     <> pprint (ProdTy u1 u2)
+                          let d = intersectionWith ProdTy d1 d2
+                          in
+                            if descriptionEquality d unit
+                              then Right ()
+                              else Left $ "Expecting unit "
+                                    <> pprint (reifyDescription unit) <> " but got "
+                                    <> pprint (reifyDescription d)
                         OpDivide ->
-                          if unitEquality (ProdTy u1 (reciprocalUnit u2)) unit
-                            then Right ()
-                            else Left $ "Expecting unit " <> pprint unit <> " but got "
-                                                     <> pprint (ProdTy u1 (reciprocalUnit u2))
-                        -- _        -> error "impossible"
+                          let d = intersectionWith ProdTy d1 (fmap reciprocalUnit d2)
+                          in
+                            if descriptionEquality d unit
+                              then Right ()
+                              else Left $ "Expecting unit "
+                                  <> pprint (reifyDescription unit) <> " but got "
+                                  <> pprint (reifyDescription d)
 
 -- check gamma e (IntersectTy t1 t2) = do
 --   check gamma e t1
@@ -367,12 +373,15 @@ synth gamma (Ext (BinOp op e1 e2)) =
                 Nothing -> Left $ "Expecting Float type but got " ++ pprint t2
                 Just u2 ->
                   case op of
-                    OpTimes -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 u2)
-                    OpDivide -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") (ProdTy u1 (reciprocalUnit u2))
+                    OpTimes -> Right $ IntersectTy floatTy $ reifyDescription (intersectionWith ProdTy u1 u2)
+                    OpDivide -> Right $ IntersectTy floatTy $ reifyDescription (intersectionWith ProdTy u1 (fmap reciprocalUnit u2))
                     _        ->
-                      case unitEquality u1 u2 of
-                        True -> Right $ IntersectTy floatTy $ TyApp (TyCon "Unit") u1
-                        False -> Left $ "Expecting units to be the same but got " ++ pprint u1 ++ " and " ++ pprint u2
+                      case descriptionEquality u1 u2 of
+                        True  -> Right $ IntersectTy floatTy $ reifyDescription u1
+                        False -> Left $ "Expecting units to be the same but got "
+                              ++ (pprint $ reifyDescription u1)
+                              ++ " and "
+                              ++ (pprint $ reifyDescription u2)
 
 
 {-
@@ -402,7 +411,7 @@ synth gamma e =
 
 data Specificational a = IsSpec { unwrapSpec :: a }
 
-isFloatWithUnit :: Type 0 -> Maybe (Type 0)
+isFloatWithUnit :: Type 0 -> Maybe (Map Identifier (Type 0))
 isFloatWithUnit = floatWithUnit . normalise
 
 isSubType :: Type 0 -> Specificational (Type 0) -> Bool
@@ -421,7 +430,7 @@ isSubType t (IsSpec t') =
     -- Fall through case
     isSubType' t1 (IsSpec t2) =
       case (isUnitTy t1, isUnitTy t2) of
-        (Just u1, Just u2) -> unitEquality u1 u2
+        (Just u1, Just u2) -> and (elems $ intersectionWith unitEquality u1 u2)
         _ -> t1 == t2
 
 normalise :: Type 0 -> Type 0
