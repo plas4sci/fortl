@@ -59,8 +59,8 @@ descriptionEquality :: Map Identifier (Type 0)
                     -> Bool
 descriptionEquality d1 d2 =
   all
-   (\((k1, u1), (k2, u2)) -> k1 == k2 && agroupEquality u1 u2)
-   (zip (assocs d1) (assocs d2))
+  (\((k1, u1), (k2, u2)) -> k1 == k2 && agroupEquality u1 u2)
+  (zip (assocs d1) (assocs d2))
 
 
 agroupEquality :: Type 0 -> Type 0 -> Bool
@@ -70,12 +70,16 @@ agroupEquality u1 u2 =
 type AGroupRepr = Map Identifier Float
 
 evalFreeAGroup :: Type 0 -> AGroupRepr
-evalFreeAGroup (TyCon "1") = empty
-evalFreeAGroup (ExponentTy t n) = scale n (evalFreeAGroup t)
-evalFreeAGroup (ProdTy t1 t2) =
-  unionWith (+) (evalFreeAGroup t1) (evalFreeAGroup t2)
-evalFreeAGroup (TyCon c) = singleton c 1.0
-evalFreeAGroup t = error $ "Not well kinded unit " <> pprint t
+evalFreeAGroup t =
+    Data.Map.Lazy.filter (/= 0) (evalFreeAGroup' t)
+  where
+    evalFreeAGroup' :: Type 0 -> AGroupRepr
+    evalFreeAGroup' (TyCon "1") = empty
+    evalFreeAGroup' (ExponentTy t n) = scale n (evalFreeAGroup' t)
+    evalFreeAGroup' (ProdTy t1 t2) =
+      unionWith (+) (evalFreeAGroup' t1) (evalFreeAGroup' t2)
+    evalFreeAGroup' (TyCon c) = singleton c 1.0
+    evalFreeAGroup' t = error $ "Not well kinded unit " <> pprint t
 
 scale :: Float -> AGroupRepr -> AGroupRepr
 scale n = fmap (n *)
