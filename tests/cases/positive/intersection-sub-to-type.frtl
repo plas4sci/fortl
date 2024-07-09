@@ -1,0 +1,4 @@
+lang.typed
+f : ((Float & Unit(M) & Quantity(L)) -> Float) = \x -> x
+a : Float = f 1.0
+a
