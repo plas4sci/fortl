@@ -57,14 +57,14 @@ synthKind (FunTy t1 t2) = do
   return k
 
 synthKind (ProdTy t1 t2) = do
-  synthCheckPair t1 t2
+ synthCheckPair t1 t2
 
 synthKind (SumTy t1 t2) = do
-  synthCheckPair t1 t2
+ synthCheckPair t1 t2
 
 synthKind (ExponentTy t _) = do
-  checkKind t agroup
-  return agroup
+ checkKind t agroup
+ return agroup
 
 synthKind (IntersectTy t1 t2) =
   -- Symmetry of intersectTy despite its asymmetry
