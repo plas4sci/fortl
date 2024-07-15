@@ -75,6 +75,19 @@ check gamma (Abs x Nothing expr) (FunTy tyA tyB) =
 check gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) | isSubType tyA' (IsSpec tyA) =
   check ([(x, tyA)] ++ gamma) expr tyB
 
+-- Cast
+check gamma (Cast e) t@(IntersectTy t1 t2) =
+  case synthKind t1 of
+    Left err -> Left err
+    Right k | k == type0 -> check gamma e t1
+    Right k1 ->
+      case synthKind t2 of
+        Left err -> Left err
+        Right k | k == type0 -> check gamma e t2
+        Right k2 ->
+          Left $ "Cannot project out of " <> pprint t <> " as the kinds are "
+                <> pprint k1 <> " and " <> pprint k2 <> " and thus no base Type remains."
+
 --- PCF rules
 check gamma (Ext (Fix e)) t = check gamma e (FunTy t t)
 

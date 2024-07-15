@@ -1,4 +1,4 @@
 lang.typed
-f : ((Float & Unit(M) & Quantity(L)) -> Float) = \x -> x
+f : ((Float & Unit(M) & Quantity(L)) -> Float) = \x -> (cast x) : Float
 a : Float = f 1.0
 a

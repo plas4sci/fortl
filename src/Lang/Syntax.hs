@@ -32,6 +32,9 @@ data Expr ex where
     -- ML
     GenLet :: Identifier -> Expr ex -> Expr ex -> Expr ex -- let x = e1 in e2 (ML-style polymorphism)
 
+    -- Casts
+    Cast :: Expr ex -> Expr ex
+
     -- Extend the ast at this point
     Ext :: ex -> Expr ex
   deriving Show
@@ -130,6 +133,7 @@ instance Term (Expr PCF) where
   boundVars (Var var)                    = Set.empty
   boundVars (Sig e _)                    = boundVars e
   boundVars (GenLet var e1 e2)           = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
+  boundVars (Cast e)                     = boundVars e
   boundVars (Ext (NatCase e e1 (x,e2)))  =
     x `Set.insert` (boundVars e `Set.union` boundVars e1 `Set.union` boundVars e2)
   boundVars (Ext (Fix e))                = boundVars e
@@ -150,6 +154,7 @@ instance Term (Expr PCF) where
   freeVars (Var var)                     = Set.singleton var
   freeVars (Sig e _)                     = freeVars e
   freeVars (GenLet var e1 e2)            = Set.delete var (freeVars e1 `Set.union` freeVars e2)
+  freeVars (Cast e)                      = freeVars e
   freeVars (Ext (NatCase e e1 (x,e2)))   =
     freeVars e `Set.union` freeVars e1 `Set.union` (Set.delete x (freeVars e2))
   freeVars (Ext (Fix e))                 = freeVars e

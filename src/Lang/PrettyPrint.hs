@@ -32,6 +32,7 @@ instance PrettyPrint ex => PrettyPrint (Expr ex) where
     pprint (App e1 e2) = pprint e1 ++ " " ++ bracket_pprint e2
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
+    pprint (Cast t)  = "cast " ++ pprint t
     -- Source extensions
     pprint (Ext e) = pprint e
     -- Poly

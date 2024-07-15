@@ -23,6 +23,7 @@ import Lang.Options
 
 %token
     nl      { TokenNL _ }
+    cast    { TokenCast _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
     natcase { TokenNatCase _ }
@@ -175,6 +176,7 @@ TypeAtom
 
 Juxt :: { [Option] -> Expr PCF }
   : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
+  | cast Atom                 { \opts -> Cast ($2 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr PCF }

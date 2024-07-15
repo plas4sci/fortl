@@ -33,6 +33,7 @@ callByValue (App e1 e2) | isValue e1 = zeta2 callByValue e1 e2
 callByValue (App e1 e2) = zeta1 callByValue e1 e2
 callByValue (Abs x _ e) = Nothing
 callByValue (Sig e _)   = Just e
+callByValue (Cast e)    = Just e
 callByValue (Ext e)     = reducePCF callByValue (Ext e)
 -- Poly
 callByValue (TyAbs x e) = Nothing
@@ -143,6 +144,10 @@ substituteExpr (Sig e t) s = Sig (substituteExpr e s) t
 
 substituteExpr (GenLet x e1 e2) s =
   let (x' , e2') = substitute_binding x e2 s in GenLet x' (substituteExpr e1 s) e2'
+
+-- Casts
+substituteExpr (Cast e) s =
+  Cast (substituteExpr e s)
 
 -- PCF terms
 substituteExpr (Ext Zero) s = Ext Zero
