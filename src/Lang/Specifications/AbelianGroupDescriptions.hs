@@ -14,9 +14,11 @@ import Data.Map.Lazy
 -- # Description-specific typing
 ------------------------------------
 
+type Descriptions = Map Identifier (Type 0)
+
 -- | Predicate on whether a type is a description: if so extract this part
 -- and give its normalised representation
-isDescription :: Type 0 -> Maybe (Map Identifier (Type 0))
+isDescription :: Type 0 -> Maybe Descriptions
 isDescription (TyApp (TyCon "Unit") t)     = Just $ singleton "Unit" t
 isDescription (TyApp (TyCon "Quantity") t) = Just $ singleton "Quantity" t
 isDescription (IntersectTy t1 t2) = do
@@ -27,7 +29,7 @@ isDescription _ = Nothing
 
 -- | Matches on a type that is either a Float or an
 -- intersection type containing a float and something of kind description
-floatWithDescription :: Type 0 -> Maybe (Map Identifier (Type 0))
+floatWithDescription :: Type 0 -> Maybe Descriptions
 
 -- Dimensionless/unitless float
 floatWithDescription (TyCon "Float") =
@@ -44,7 +46,7 @@ floatWithDescription (IntersectTy t (TyCon "Float")) =
 -- TODO: Extensibility to other properties would need to come here
 floatWithDescription t = Nothing
 
-reifyDescription :: Map Identifier (Type 0) -> Type 0
+reifyDescription :: Descriptions -> Type 0
 reifyDescription =
   foldrWithKey (\k v t -> TyApp (TyCon k) v `IntersectTy` t) (TyCon omega)
 
@@ -54,8 +56,8 @@ reciprocalUnit t = ExponentTy t (-1.0)
 
 --------------------------------------------
 
-descriptionEquality :: Map Identifier (Type 0)
-                    -> Map Identifier (Type 0)
+descriptionEquality :: Descriptions
+                    -> Descriptions
                     -> Bool
 descriptionEquality d1 d2 =
   all

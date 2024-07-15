@@ -124,22 +124,8 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isDescription -> Just unit
                     Nothing -> Left $ "Expecting Float but got " ++ pprint t2
                     Just d2 ->
                       case op of
-                        OpTimes ->
-                          let d = intersectionWith ProdTy d1 d2
-                          in
-                            if descriptionEquality d unit
-                              then Right ()
-                              else Left $ "Expecting description "
-                                    <> pprint (reifyDescription unit) <> " but got "
-                                    <> pprint (reifyDescription d)
-                        OpDivide ->
-                          let d = intersectionWith ProdTy d1 (fmap reciprocalUnit d2)
-                          in
-                            if descriptionEquality d unit
-                              then Right ()
-                              else Left $ "Expecting description "
-                                  <> pprint (reifyDescription unit) <> " but got "
-                                  <> pprint (reifyDescription d)
+                        OpTimes -> descriptionsEquality (intersectionWith ProdTy d1 d2) (IsSpec unit)
+                        OpDivide -> descriptionsEquality (intersectionWith ProdTy d1 (fmap reciprocalUnit d2)) (IsSpec unit)
 
 -- check gamma e (IntersectTy t1 t2) = do
 --   check gamma e t1
@@ -417,6 +403,15 @@ synth gamma (Sig e ty) =
 -- catch all (cannot synth here)
 synth gamma e =
    Left $ "Cannot synth the type for " ++ pprint e
+
+descriptionsEquality :: Descriptions -> Specificational Descriptions -> Either String ()
+descriptionsEquality d (IsSpec d') =
+  if descriptionEquality d d'
+    then Right ()
+    else Left $ "Expecting description "
+          <> pprint (reifyDescription d') <> " but got "
+          <> pprint (reifyDescription d)
+
 
 ---------------------------------
 -- # Type equality
