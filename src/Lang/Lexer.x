@@ -21,8 +21,8 @@ $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
-@sym    = $lower ($alphanum | \')*
-@constr = ($upper ($alphanum | \')* | \(\))
+@sym    = ($lower | $upper) ($alphanum | \')*
+@var    = \' @sym
 @float   = \-? $digit+ \. $digit+
 @int    = \-? $digit+
 @charLiteral = \' ([\\.]|[^\']| . ) \'
@@ -36,9 +36,10 @@ tokens :-
   $eol+                         { \p s -> TokenNL p }
   $white+                       ;
   "--".*                        ;
-  @constr                       { \p s -> TokenConstr p s }
+  @var                          { \p s -> TokenVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
   forall                        { \p _ -> TokenForall p }
+  data                          { \p s -> TokenData p }
   let                           { \p s -> TokenLet p }
   in                            { \p s -> TokenIn p }
   succ                          { \p s -> TokenSucc p }
@@ -82,6 +83,7 @@ tokens :-
 
 data Token
   = TokenLang     AlexPosn String
+  | TokenData     AlexPosn
   | TokenCase     AlexPosn
   | TokenNatCase  AlexPosn
   | TokenOf       AlexPosn
@@ -92,6 +94,7 @@ data Token
   | TokenTyLambda  AlexPosn
   | TokenLambda   AlexPosn
   | TokenSym      AlexPosn String
+  | TokenVar      AlexPosn String
   | TokenZero     AlexPosn
   | TokenSucc     AlexPosn
   | TokenArrow    AlexPosn

@@ -1,6 +1,7 @@
 lang.typed
+data unit : type = m | s
 y : Float & [M] = 2.0
 x : Float & [M] = 1.0 + y
 t : Float & [S] = 4.0
-v : Float & [S^-1 * M] = x / t
-v
+v : Float & [M * S^-1] = x / t
+x

@@ -26,6 +26,8 @@ synthProgram = synthProgram' []
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
     synthProgram' gamma ((Return e):defs) = synth gamma e
+    synthProgram' gamma ((DataDef v constrs ty):defs) =
+      synthProgram' gamma defs
     synthProgram' gamma (_:defs) = synthProgram' gamma defs
 {-
 

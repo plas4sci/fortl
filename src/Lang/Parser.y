@@ -23,6 +23,7 @@ import Lang.Options
 
 %token
     nl      { TokenNL _ }
+    data    { TokenData _ }
     cast    { TokenCast _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
@@ -37,9 +38,9 @@ import Lang.Options
     in      { TokenIn  _  }
     zero    { TokenZero _ }
     succ    { TokenSucc _ }
-    VAR     { TokenSym _ _ }
+    IDENT   { TokenSym _ _ }
     LANG    { TokenLang _ _ }
-    CONSTR  { TokenConstr _ _ }
+    VAR     { TokenVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     forall  { TokenForall _ }
@@ -89,21 +90,28 @@ NL :: { () }
   | nl                        { }
 
 Def :: { [Option] -> Def PCF }
-  : VAR '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
-  | VAR ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
+  : IDENT '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
+  | IDENT ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
+  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+
+ConstructorList :: { [Option] -> [(Identifier, [Type 0])] }
+ConstructorList
+  : IDENT '|' ConstructorList { \opts -> ((symString $1) , []) : ($3 opts) }
+  | IDENT                     { \opts -> [(symString $1, [])] }
+  | {- empty -}              { \_ -> [] }
 
 Expr :: { [Option] -> Expr PCF }
-  : let VAR '=' Expr in Expr
+  : let IDENT '=' Expr in Expr
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
 
-  | '\\' '(' VAR ':' Type ')' '->' Expr
+  | '\\' '(' IDENT ':' Type ')' '->' Expr
     { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
 
-  | '\\' VAR '->' Expr
+  | '\\' IDENT '->' Expr
     { \opts -> Abs (symString $2) Nothing ($4 opts) }
 
-  | Lam VAR '->' Expr
+  | Lam IDENT '->' Expr
     { \opts -> TyAbs (symString $2) ($4 opts) }
 
   | Expr ':' Type  { \opts -> Sig ($1 opts) ($3 opts) }
@@ -114,7 +122,7 @@ Expr :: { [Option] -> Expr PCF }
   | fix '(' Expr ')'
      { \opts -> Ext (Fix ($3 opts)) }
 
-  | natcase Expr of zero '->' Expr '|' succ VAR '->' Expr
+  | natcase Expr of zero '->' Expr '|' succ IDENT '->' Expr
      { \opts -> Ext (NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts))) }
 
   | fst '(' Expr ')'
@@ -129,7 +137,7 @@ Expr :: { [Option] -> Expr PCF }
   | inr '(' Expr ')'
      { \opts -> Ext (Inr ($3 opts)) }
 
- | case Expr of inl VAR '->' Expr '|' inr VAR '->' Expr
+ | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
      { \opts -> Ext (Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts))) }
 
 Form :: { [Option] -> Expr PCF }
@@ -139,6 +147,13 @@ Form :: { [Option] -> Expr PCF }
   | Form '/' Form  { \opts -> Ext $ BinOp OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 
+Kind :: { [Option] -> Type 1 }
+Kind
+  : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
+  | IDENT            { \opts -> case symString $1 of
+                                  "type" -> TyCon "type"
+                                  v -> error "TODO" }
+  
 Type :: { [Option] -> Type 0 }
 Type
   : Type '->' Type   { \opts -> FunTy ($1 opts) ($3 opts) }
@@ -148,7 +163,7 @@ Type
   | Type '^' NumFloat   { \opts -> ExponentTy ($1 opts) $3 }
   | TyJuxt           { $1 }
   | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
-  | forall VAR '.' Type { \opts ->
+  | forall IDENT '.' Type { \opts ->
                             if isPoly opts
                               then Forall (symString $2) ($4 opts)
                               else error "Type quantification not supported in simple types; try lang.poly. " }
@@ -165,7 +180,7 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : CONSTR           { \opts -> TyCon $ constrString $1 }
+  : IDENT           { \opts -> TyCon $ constrString $1 }
   | VAR              { \opts ->
                           if isPoly opts
                             then TyVar (symString $1)
@@ -181,7 +196,7 @@ Juxt :: { [Option] -> Expr PCF }
 
 Atom :: { [Option] -> Expr PCF }
   : '(' Expr ')'              { $2 }
-  | VAR                       { \opts -> Var $ symString $1 }
+  | IDENT                     { \opts -> Var $ symString $1 }
   | zero
     { \opts -> Ext Zero }
   | succ
