@@ -10,115 +10,137 @@ import Lang.Options
 
 import qualified Data.Set as Set
 
+type Env = [(Identifier, Expr PCF)]
+
+-- Evaluate a program to normal form
+interpret :: [Option] -> Program PCF -> Expr PCF
+interpret = interpretDefs []
+
+-- Interpret the definitions, including building an environment
+-- for the rest of the program
+interpretDefs :: Env -> [Option] -> Program PCF -> Expr PCF
+
+interpretDefs env opts ((VarDef v _ e):defs) = 
+  case multiStep env opts e of
+    (e', _) -> interpretDefs (env ++ [(v, e')]) opts defs
+
+-- Return expression
+interpretDefs env opts ((Return e):defs) = 
+  fst $ multiStep env opts e
+
+interpretDefs env opts (_:defs ) = interpretDefs env opts defs
+
+interpretDefs env opts [] = error "No return statement"
+
 -- Keep doing small step reductions until normal form reached
-multiStep :: [Option] -> Expr PCF -> (Expr PCF, Int)
-multiStep opts e = multiStep' callByValue e 0
+multiStep :: Env -> [Option] -> Expr PCF -> (Expr PCF, Int)
+multiStep env opts e = multiStep' env callByValue e 0
 
-type Reducer a = a -> Maybe a
+type Reducer a = Env -> a -> Maybe a
 
-multiStep' :: Reducer (Expr PCF) -> Expr PCF -> Int -> (Expr PCF, Int)
-multiStep' step t n =
-  case step t of
+multiStep' :: Env -> Reducer (Expr PCF) -> Expr PCF -> Int -> (Expr PCF, Int)
+multiStep' env step t n =
+  case step env t of
     -- Normal form reached
     Nothing -> (t, n)
     -- Can do more reduction
-    Just t' -> multiStep' step t' (n+1)
+    Just t' -> multiStep' env step t' (n+1)
 
 callByValue :: Reducer (Expr PCF)
-callByValue (Var _) = Nothing
-callByValue (App (Abs x _ e) e') | isValue e' = beta e x e'
+callByValue env (Var _) = Nothing
+callByValue env (App (Abs x _ e) e') | isValue e' = beta e x e'
 -- Poly beta
-callByValue (App (TyAbs var e) (TyEmbed t)) = beta e var (TyEmbed t)
-callByValue (App e1 e2) | isValue e1 = zeta2 callByValue e1 e2
-callByValue (App e1 e2) = zeta1 callByValue e1 e2
-callByValue (Abs x _ e) = Nothing
-callByValue (Sig e _)   = Just e
-callByValue (Cast e)    = Just e
-callByValue (Ext e)     = reducePCF callByValue (Ext e)
+callByValue env (App (TyAbs var e) (TyEmbed t)) = beta e var (TyEmbed t)
+callByValue env (App e1 e2) | isValue e1 = zeta2 env callByValue e1 e2
+callByValue env (App e1 e2) = zeta1 env callByValue e1 e2
+callByValue env (Abs x _ e) = Nothing
+callByValue env (Sig e _)   = Just e
+callByValue env (Cast e)    = Just e
+callByValue env (Ext e)     = reducePCF env callByValue (Ext e)
 -- Poly
-callByValue (TyAbs x e) = Nothing
-callByValue (TyEmbed t) = Nothing
-callByValue (GenLet x e' e)
+callByValue env (TyAbs x e) = Nothing
+callByValue env (TyEmbed t) = Nothing
+callByValue env (GenLet x e' e)
   | isValue e' = beta e x e'
-  | otherwise = (callByValue e') >>= (\e' -> return $ GenLet x e' e)
+  | otherwise = (callByValue env e') >>= (\e' -> return $ GenLet x e' e)
 
 -- Base case
 beta :: (Substitutable t) => t -> Identifier -> t -> Maybe t
 beta e x e' = Just (substitute e (x, e'))
 
 -- Inductive rules
-zeta1 :: Reducer (Expr PCF) -> Expr PCF -> Expr PCF -> Maybe (Expr PCF)
-zeta1 step e1 e2 = (\e1' -> App e1' e2) <$> step e1
+zeta1 :: Env -> Reducer (Expr PCF) -> Expr PCF -> Expr PCF -> Maybe (Expr PCF)
+zeta1 env step e1 e2 = (\e1' -> App e1' e2) <$> step env e1
 
-zeta2 :: Reducer (Expr PCF)  -> Expr PCF -> Expr PCF -> Maybe (Expr PCF)
-zeta2 step e1 e2 = (\e2' -> App e1 e2') <$> step e2
+zeta2 :: Env -> Reducer (Expr PCF)  -> Expr PCF -> Expr PCF -> Maybe (Expr PCF)
+zeta2 env step e1 e2 = (\e2' -> App e1 e2') <$> step env e2
 
-zeta3 :: Reducer (Expr PCF)  -> Identifier -> Expr PCF -> Maybe (Expr PCF)
-zeta3 step x e = (\e' -> Abs x Nothing e') <$> step e
+zeta3 :: Env -> Reducer (Expr PCF)  -> Identifier -> Expr PCF -> Maybe (Expr PCF)
+zeta3 env step x e = (\e' -> Abs x Nothing e') <$> step env e
 
-zeta3Ty :: Reducer (Expr PCF)  -> Identifier -> Expr PCF -> Maybe (Expr PCF)
-zeta3Ty step x e = (\e' -> TyAbs x e') <$> step e
+zeta3Ty :: Env -> Reducer (Expr PCF)  -> Identifier -> Expr PCF -> Maybe (Expr PCF)
+zeta3Ty env step x e = (\e' -> TyAbs x e') <$> step env e
 
 
 -- Reducer for the extended PCF syntax
-reducePCF :: Reducer (Expr PCF) -> Reducer (Expr PCF)
+reducePCF :: Env -> Reducer (Expr PCF) -> Expr PCF -> Maybe (Expr PCF)
 
 -- Fix point
-reducePCF step (Ext (Fix e)) = return $ App e (Ext $ Fix e)
+reducePCF env step (Ext (Fix e)) = return $ App e (Ext $ Fix e)
 
 -- Beta-rules for Nat
-reducePCF step (Ext (NatCase (Ext Zero) e1 _)) = Just e1
+reducePCF env step (Ext (NatCase (Ext Zero) e1 _)) = Just e1
 
-reducePCF step (Ext (NatCase (App (Ext Succ) n) _ (x,e2))) = Just $ substitute e2 (x,n)
+reducePCF env step (Ext (NatCase (App (Ext Succ) n) _ (x,e2))) = Just $ substitute e2 (x,n)
 
 -- Congruence for Nat-eliminator
-reducePCF step (Ext (NatCase e e1 (x,e2))) =
-  (\e' -> Ext (NatCase e' e1 (x,e2))) <$> step e
+reducePCF env step (Ext (NatCase e e1 (x,e2))) =
+  (\e' -> Ext (NatCase e' e1 (x,e2))) <$> step env e
 
 -- Congruence for productor constructor
-reducePCF step (Ext (Pair e1 e2)) =
-  case step e1 of
+reducePCF env step (Ext (Pair e1 e2)) =
+  case step env e1 of
     Just e1' -> Just $ Ext $ Pair e1' e2
-    Nothing -> (\e2' -> Ext $ Pair e1 e2') <$> step e2
+    Nothing -> (\e2' -> Ext $ Pair e1 e2') <$> step env e2
 
 -- Beta-rules for products
-reducePCF step (Ext (Fst (Ext (Pair e1 e2)))) = Just e1
-reducePCF step (Ext (Snd (Ext (Pair e1 e2)))) = Just e2
+reducePCF env step (Ext (Fst (Ext (Pair e1 e2)))) = Just e1
+reducePCF env step (Ext (Snd (Ext (Pair e1 e2)))) = Just e2
 
 -- Congruence rules for product eliminators
-reducePCF step (Ext (Fst e)) = (\e' -> Ext $ Fst e') <$> step e
-reducePCF step (Ext (Snd e)) = (\e' -> Ext $ Snd e') <$> step e
+reducePCF env step (Ext (Fst e)) = (\e' -> Ext $ Fst e') <$> step env e
+reducePCF env step (Ext (Snd e)) = (\e' -> Ext $ Snd e') <$> step env e
 
 -- Beta-rules for sum types
-reducePCF step (Ext (Case (Ext (Inl e)) (x,e1) _)) = Just $ substitute e1 (x,e)
-reducePCF step (Ext (Case (Ext (Inr e)) _ (y,e2))) = Just $ substitute e2 (y,e)
+reducePCF env step (Ext (Case (Ext (Inl e)) (x,e1) _)) = Just $ substitute e1 (x,e)
+reducePCF env step (Ext (Case (Ext (Inr e)) _ (y,e2))) = Just $ substitute e2 (y,e)
 
 -- Congruence for sum eliminator
-reducePCF step (Ext (Case e (x,e1) (y,e2))) =
-  (\e' -> Ext (Case e' (x,e1) (y,e2))) <$> step e
+reducePCF env step (Ext (Case e (x,e1) (y,e2))) =
+  (\e' -> Ext (Case e' (x,e1) (y,e2))) <$> step env e
 
 -- Congruence for sum constructor
-reducePCF step (Ext (Inl e)) = (\e' -> Ext $ Inl e') <$> step e
-reducePCF step (Ext (Inr e)) = (\e' -> Ext $ Inr e') <$> step e
+reducePCF env step (Ext (Inl e)) = (\e' -> Ext $ Inl e') <$> step env e
+reducePCF env step (Ext (Inr e)) = (\e' -> Ext $ Inr e') <$> step env e
 
 -- Binary oeprators
-reducePCF step (Ext (BinOp op (Ext (NumFloat v1)) (Ext (NumFloat v2)))) =
+reducePCF env step (Ext (BinOp op (Ext (NumFloat v1)) (Ext (NumFloat v2)))) =
   case op of
     OpPlus   -> return $ Ext (NumFloat $ v1 + v2)
     OpTimes  -> return $ Ext (NumFloat $ v1 * v2)
     OpMinus  -> return $ Ext (NumFloat $ v1 - v2)
     OpDivide -> return $ Ext (NumFloat $ v1 / v2)
 
-reducePCF step (Ext (BinOp op e1 e2)) =
-  case step e1 of
+reducePCF env step (Ext (BinOp op e1 e2)) =
+  case step env e1 of
     Just e1' -> Just $ Ext $ BinOp op e1' e2
-    Nothing -> (\e2' -> Ext $ BinOp op e1 e2') <$> step e2
+    Nothing -> (\e2' -> Ext $ BinOp op e1 e2') <$> step env e2
 
 -- other Ext terms
-reducePCF step (Ext _) = Nothing
+reducePCF env step (Ext _) = Nothing
 
 -- Non Ext terms
-reducePCF _ _ = error "invalid term"
+reducePCF _ _ _ = error "invalid term"
 
 class Substitutable e where
   substitute :: e -> (Identifier, e) -> e

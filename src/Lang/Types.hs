@@ -16,6 +16,17 @@ import Data.List (intercalate)
 --import Debug.Trace
 import Data.Map (Map, elems, intersectionWith)
 
+synthProgram :: Program PCF -> Either String (Type 0)
+synthProgram = synthProgram' []
+  where
+    synthProgram' :: Context -> Program PCF -> Either String (Type 0)
+    synthProgram' gamma [] = Left "No return statement"
+    synthProgram' gamma ((VarDef v _ e):defs) =
+      case synth gamma e of
+        Right ty -> synthProgram' ((v, ty) : gamma) defs
+        Left err -> Left err
+    synthProgram' gamma ((Return e):defs) = synth gamma e
+    synthProgram' gamma (_:defs) = synthProgram' gamma defs
 {-
 
 **********************************************************************************

@@ -72,7 +72,7 @@ import Lang.Options
 %left '*'
 %%
 
-Program :: { (Expr PCF, [Option]) }
+Program :: { (Program PCF, [Option]) }
   : LangOpts Defs  { ($2 $1, $1) }
 
 LangOpts :: { [Option] }
@@ -80,17 +80,17 @@ LangOpts :: { [Option] }
   | LANG                {% readOption $1 >>= (return . (:[])) }
   | {- empty -}         { [] }
 
-Defs :: { [Option] -> Expr PCF }
-  : Def NL Defs           { \opts -> ($1 opts) ($3 opts) }
-  | Expr                  { \opts -> $1 opts }
+Defs :: { [Option] -> Program PCF }
+  : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
+  | Expr                  { \opts -> [Return ($1 opts)] }
 
 NL :: { () }
   : nl NL                     { }
   | nl                        { }
 
-Def :: { [Option] -> Expr PCF -> Expr PCF }
-  : VAR '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) ($3 opts) }
-  | VAR ':' Type '=' Expr { \opts -> \program -> App (Abs (symString $1) Nothing program) (Sig ($5 opts) ($3 opts)) }
+Def :: { [Option] -> Def PCF }
+  : VAR '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
+  | VAR ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
 
 Expr :: { [Option] -> Expr PCF }
   : let VAR '=' Expr in Expr
@@ -225,7 +225,7 @@ parseError t  =  do
                         <> ": parse error"
   where (l, c) = getPos (head t)
 
-parseProgram :: FilePath -> String -> Either String (Expr PCF, [Option])
+parseProgram :: FilePath -> String -> Either String (Program PCF, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file
 
 }

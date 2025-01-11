@@ -4,7 +4,7 @@ module Lang.Frontend where
 import Lang.Options
 import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
-import Lang.Semantics   (multiStep)
+import Lang.Semantics   (interpret)
 import Lang.Syntax
 import qualified Lang.HindleyMilner as HM
 import Lang.Types
@@ -46,7 +46,7 @@ run report fname = do
       case parseProgram fname input of
         Right (ast, options) -> do
           -- Evaluate
-          let (normalForm, _count) = multiStep options ast
+          let normalForm = interpret options ast
           -- Typing
           if isTyped options
             then
@@ -65,14 +65,16 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Expr PCF -> Either String (Type 0)
-typeInference options e =
-  if elem HindleyMilner options
-    then case HM.inferType [] e of
-            Just ty -> Right ty
-            Nothing -> Left "Type inference failed."
-    else synth [] e
-
+typeInference :: [Option] -> Program PCF -> Either String (Type 0)
+typeInference options program =
+    case inferenceAlg program of
+        Right ty -> Right ty
+        Left err -> Left $ "Type inference failed.\n" <> err
+  where
+    inferenceAlg =
+      if elem HindleyMilner options then HM.hmTypeInference else synthProgram
+      
+        
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String
 ansi_red   = "\ESC[31;1m"
 ansi_green = "\ESC[32;1m"

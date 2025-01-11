@@ -17,6 +17,22 @@ unpackType (ForallTy _ ty) = ty
 
 type Context = [(Identifier, TypeScheme)]
 
+-- Hindley-Milner type inference algorithm
+hmTypeInference :: Program PCF -> Either String (Type 0)
+hmTypeInference = inferTypeProgram []
+
+inferTypeProgram :: Context -> Program PCF -> Either String (Type 0)
+inferTypeProgram ctxt [] = Left "No return statement"
+inferTypeProgram ctxt ((VarDef v _ e):defs) =
+  case inferType ctxt e of
+    Just ty -> inferTypeProgram ((v, ForallTy [] ty) : ctxt) defs
+    Nothing -> Left $ "No inferred type for " <> v
+inferTypeProgram ctxt ((Return e):defs) =
+  case inferType ctxt e of
+    Just ty -> Right ty
+    Nothing -> Left "No inferred type for return statement"
+inferTypeProgram ctxt (_:defs) = inferTypeProgram ctxt defs
+
 -- Top-level of Algorithm W (Hindley Milner algorithm)
 inferType :: Context -> Expr PCF -> Maybe (Type 0)
 inferType ctxt ast = let (s, ty, _) = infer ctxt ast 0 in Just (substitute s ty)

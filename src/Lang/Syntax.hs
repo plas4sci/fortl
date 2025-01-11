@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Lang.Syntax where
 
@@ -10,6 +11,14 @@ import qualified Data.Set as Set
 import GHC.TypeLits
 
 type Identifier = String
+
+type Program ex = [Def ex]
+
+data Def ex where
+    VarDef  :: Identifier -> Maybe (Type n) -> Expr ex -> Def ex
+    TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def ex
+    DataDef :: Identifier -> [(Identifier, Type n)] -> Type (1 + n) -> Def ex
+    Return  :: Expr ex -> Def ex
 
 -- Abstract-syntax tree for LambdaCore
 -- parameterised by an additional type `ex`
