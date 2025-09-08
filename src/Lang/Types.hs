@@ -101,7 +101,6 @@ check gamma (Cast e) t@(IntersectTy t1 t2) =
           Left $ "Cannot project out of " <> pprint t <> " as the kinds are "
                 <> pprint k1 <> " and " <> pprint k2 <> " and thus no base Type remains."
 
---- PCF rules
 check gamma (Fix e) t = check gamma e (FunTy t t)
 
 check gamma (NatCase e e1 (x,e2)) t = do

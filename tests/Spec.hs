@@ -25,7 +25,7 @@ import Control.Exception (catch, throwIO)
 import Debug.Trace
 
 type InterpreterError = String
-type InterpreterResult = Expr PCF
+type InterpreterResult = Expr
 
 
 
