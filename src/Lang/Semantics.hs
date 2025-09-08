@@ -20,136 +20,95 @@ interpret = interpretDefs []
 -- for the rest of the program
 interpretDefs :: Env -> [Option] -> Program -> Expr
 
-interpretDefs env opts ((VarDef v _ e):defs) = 
-  case multiStep env opts e of
-    (e', _) -> interpretDefs (env ++ [(v, e')]) opts defs
+interpretDefs env opts ((VarDef id _ e):defs) = 
+  case bigStep env opts e of
+    Right v -> interpretDefs ((id, v) : env) opts defs
+    Left err -> error err
 
 -- Return expression
 interpretDefs env opts ((Return e):defs) = 
-  fst $ multiStep env opts e
+  case bigStep env opts e of
+    Right v -> v
+    Left err -> error err
 
 interpretDefs env opts (_:defs ) = interpretDefs env opts defs
 
 interpretDefs env opts [] = error "No return statement"
 
--- Keep doing small step reductions until normal form reached
-multiStep :: Env -> [Option] -> Expr -> (Expr, Int)
-multiStep env opts e = multiStep' env callByValue e 0
+-- Big step operational model (i.e., expression interpreter)
+bigStep :: Env -> [Option] -> Expr -> Either String Expr
+bigStep env opts (App e1 e2) =
+  case bigStep env opts e1 of
+    Left err -> Left err
+    Right (Abs x _ body) ->
+      case bigStep env opts e2 of
+        Left err -> Left err
+        Right v2 -> bigStep env opts (substitute body (x, v2))
+    Right (TyAbs var body) ->
+      case bigStep env opts e2 of
+        Left err -> Left err
+        Right (TyEmbed t) -> bigStep env opts (substitute body (var, TyEmbed t))
+        Right _ -> Left "Type application expects a type"
+    Right _ -> Left "Application expects a function"
+bigStep env opts (Sig e _) = bigStep env opts e
+bigStep env opts (Cast e) = bigStep env opts e
+bigStep env opts (Var x) = case lookup x env of
+  Just v  -> Right v
+  Nothing -> Left $ "Unbound variable: " ++ x
+bigStep env opts (GenLet x e1 e2) = do
+  v1 <- bigStep env opts e1
+  bigStep ((x, v1) : env) opts e2
 
-type Reducer a = Env -> a -> Maybe a
+bigStep env opts (NatCase eg ez (bind, es)) =
+  case bigStep env opts eg of
+    Left err -> Left err
+    Right Zero -> bigStep env opts ez
+    Right (App Succ n) -> bigStep ((bind, n):env) opts es
+    Right _ -> Left "natcase expects a natural number"
+bigStep env opts (Fix e) =
+  case bigStep env opts e of
+    Left err -> Left err
+    Right (Abs x _ body) -> bigStep ((x, Fix (Abs x Nothing body)) : env) opts e
+    Right _ -> Left "fix expects a function"
+bigStep env opts (Case eg branchl branchr) = do
+  v <- bigStep env opts eg
+  case v of
+    Inl e1 -> bigStep ((fst branchl, e1) : env) opts (snd branchl)
+    Inr e2 -> bigStep ((fst branchr, e2) : env) opts (snd branchr)
+    _      -> Left "case expects a sum type"
+bigStep env opts (Fst e) =
+  case bigStep env opts e of
+    Right (Pair e1 _) -> bigStep env opts e1
+    _         -> Left "fst expects a pair"
+bigStep env opts (Snd e) =
+  case bigStep env opts e of
+    Right (Pair _ e2) -> bigStep env opts e2
+    _         -> Left "snd expects a pair"
+bigStep env opts (Pair e1 e2) = do
+  v1 <- bigStep env opts e1
+  v2 <- bigStep env opts e2
+  return $ Pair v1 v2
+bigStep env opts (Inl e) = Inl <$> bigStep env opts e
+bigStep env opts (Inr e) = Inr <$> bigStep env opts e
+bigStep env opts (BinOp op e1 e2) = do
+  v1 <- bigStep env opts e1
+  v2 <- bigStep env opts e2
+  case (v1, v2) of
+    (NumFloat n1, NumFloat n2) ->
+      case op of
+        OpPlus   -> return $ NumFloat $ n1 + n2
+        OpTimes  -> return $ NumFloat $ n1 * n2
+        OpMinus  -> return $ NumFloat $ n1 - n2
+        OpDivide -> return $ NumFloat $ n1 / n2
+    _ -> Left "Binary operation expects two numbers"
 
-multiStep' :: Env -> Reducer Expr -> Expr -> Int -> (Expr, Int)
-multiStep' env step t n =
-  case step env t of
-    -- Normal form reached
-    Nothing -> (t, n)
-    -- Can do more reduction
-    Just t' -> multiStep' env step t' (n+1)
-
-callByValue :: Reducer Expr
-callByValue env (Var _) = Nothing
-callByValue env (App (Abs x _ e) e') | isValue e' = beta e x e'
--- Poly beta
-callByValue env (App (TyAbs var e) (TyEmbed t)) = beta e var (TyEmbed t)
-callByValue env (App e1 e2) | isValue e1 = zeta2 env callByValue e1 e2
-callByValue env (App e1 e2) = zeta1 env callByValue e1 e2
-callByValue env (Abs x _ e) = Nothing
-callByValue env (Sig e _)   = Just e
-callByValue env (Cast e)    = Just e
--- PCF rules (previously in Ext)
-callByValue env e@Fix{} = reducePCF env callByValue e
-callByValue env e@NatCase{} = reducePCF env callByValue e
-callByValue env e@Pair{} = reducePCF env callByValue e
-callByValue env e@Fst{} = reducePCF env callByValue e
-callByValue env e@Snd{} = reducePCF env callByValue e
-callByValue env e@Case{} = reducePCF env callByValue e
-callByValue env e@BinOp{} = reducePCF env callByValue e
-callByValue env Zero = Nothing
-callByValue env Succ = Nothing
-callByValue env (NumFloat _) = Nothing
-callByValue env e@Inl{} = reducePCF env callByValue e
-callByValue env e@Inr{} = reducePCF env callByValue e
--- Poly
-callByValue env (TyAbs x e) = Nothing
-callByValue env (TyEmbed t) = Nothing
-callByValue env (GenLet x e' e)
-  | isValue e' = beta e x e'
-  | otherwise = (callByValue env e') >>= (\e' -> return $ GenLet x e' e)
-
--- Base case
-beta :: (Substitutable t) => t -> Identifier -> t -> Maybe t
-beta e x e' = Just (substitute e (x, e'))
-
--- Inductive rules
-zeta1 :: Env -> Reducer Expr -> Expr -> Expr -> Maybe Expr
-zeta1 env step e1 e2 = (\e1' -> App e1' e2) <$> step env e1
-
-zeta2 :: Env -> Reducer Expr  -> Expr -> Expr -> Maybe Expr
-zeta2 env step e1 e2 = (\e2' -> App e1 e2') <$> step env e2
-
-zeta3 :: Env -> Reducer Expr  -> Identifier -> Expr -> Maybe Expr
-zeta3 env step x e = (\e' -> Abs x Nothing e') <$> step env e
-
-zeta3Ty :: Env -> Reducer Expr  -> Identifier -> Expr -> Maybe Expr
-zeta3Ty env step x e = (\e' -> TyAbs x e') <$> step env e
-
-
--- Reducer for the PCF syntax
-reducePCF :: Env -> Reducer Expr -> Expr -> Maybe Expr
-
--- Fix point
-reducePCF env step (Fix e) = return $ App e (Fix e)
-
--- Beta-rules for Nat
-reducePCF env step (NatCase Zero e1 _) = Just e1
-
-reducePCF env step (NatCase (App Succ n) _ (x,e2)) = Just $ substitute e2 (x,n)
-
--- Congruence for Nat-eliminator
-reducePCF env step (NatCase e e1 (x,e2)) =
-  (\e' -> NatCase e' e1 (x,e2)) <$> step env e
-
--- Congruence for productor constructor
-reducePCF env step (Pair e1 e2) =
-  case step env e1 of
-    Just e1' -> Just $ Pair e1' e2
-    Nothing -> (\e2' -> Pair e1 e2') <$> step env e2
-
--- Beta-rules for products
-reducePCF env step (Fst (Pair e1 e2)) = Just e1
-reducePCF env step (Snd (Pair e1 e2)) = Just e2
-
--- Congruence rules for product eliminators
-reducePCF env step (Fst e) = (\e' -> Fst e') <$> step env e
-reducePCF env step (Snd e) = (\e' -> Snd e') <$> step env e
-
--- Beta-rules for sum types
-reducePCF env step (Case (Inl e) (x,e1) _) = Just $ substitute e1 (x,e)
-reducePCF env step (Case (Inr e) _ (y,e2)) = Just $ substitute e2 (y,e)
-
--- Congruence for sum eliminator
-reducePCF env step (Case e (x,e1) (y,e2)) =
-  (\e' -> Case e' (x,e1) (y,e2)) <$> step env e
-
--- Congruence for sum constructor
-reducePCF env step (Inl e) = (\e' -> Inl e') <$> step env e
-reducePCF env step (Inr e) = (\e' -> Inr e') <$> step env e
-
--- Binary oeprators
-reducePCF env step (BinOp op (NumFloat v1) (NumFloat v2)) =
-  case op of
-    OpPlus   -> return $ NumFloat $ v1 + v2
-    OpTimes  -> return $ NumFloat $ v1 * v2
-    OpMinus  -> return $ NumFloat $ v1 - v2
-    OpDivide -> return $ NumFloat $ v1 / v2
-
-reducePCF env step (BinOp op e1 e2) =
-  case step env e1 of
-    Just e1' -> Just $ BinOp op e1' e2
-    Nothing -> (\e2' -> BinOp op e1 e2') <$> step env e2
-
--- other terms
-reducePCF env step _ = Nothing
+-- Values
+bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
+bigStep env opts (TyAbs x e) = Right $ TyAbs x e
+bigStep env opts (NumFloat f) = Right $ NumFloat f
+bigStep env opts Succ = Right Succ
+bigStep env opts Zero = Right Zero
+bigStep env opts (Abs x mt body) = Right $ Abs x mt body
 
 class Substitutable e where
   substitute :: e -> (Identifier, e) -> e
