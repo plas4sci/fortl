@@ -18,9 +18,11 @@ bracket_pprint t | isLexicallyAtomic t = pprint t
                  | otherwise           = "(" ++ pprint t ++ ")"
 
 -- Untyped lambda calculus
-instance PrettyPrint ex => PrettyPrint (Expr ex) where
+instance PrettyPrint Expr where
     isLexicallyAtomic (Var _) = True
-    isLexicallyAtomic (Ext e) = isLexicallyAtomic e
+    isLexicallyAtomic Zero = True
+    isLexicallyAtomic Succ = True
+    isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "\\" ++ var ++ " -> " ++ pprint e
@@ -33,22 +35,16 @@ instance PrettyPrint ex => PrettyPrint (Expr ex) where
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
     pprint (Cast t)  = "cast " ++ pprint t
-    -- Source extensions
-    pprint (Ext e) = pprint e
     -- Poly
     pprint (TyAbs var e) = "/\\" ++ var ++ " -> " ++ pprint e
     pprint (TyEmbed t) = "@" ++ bracket_pprint t
     -- ML
     pprint (GenLet x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
-
-instance PrettyPrint PCF where
-    isLexicallyAtomic Zero    = True
-    isLexicallyAtomic _       = False
-
+    -- PCF expressions
     pprint Zero                   = "zero"
     pprint Succ                   = "succ"
     pprint (Fix e)                = "fix " ++ bracket_pprint e
-    pprint (NatCase e e1 (x, e2)) =
+    pprint (NatCase e e1 (x,e2))  =
       "natcase " ++ bracket_pprint e ++ " of zero => " ++
       bracket_pprint e1 ++ " | succ " ++ x ++ " => " ++ bracket_pprint e2
     pprint (Pair e1 e2)           = "<" ++ pprint e1 ++ ", " ++ pprint e2 ++ ">"
@@ -59,14 +55,12 @@ instance PrettyPrint PCF where
     pprint (Case e (x,e1) (y,e2)) =
       "case " ++ bracket_pprint e ++ " of inl " ++ x ++ " => " ++
       bracket_pprint e1 ++ " | inr " ++ y ++ " => " ++ bracket_pprint e2
-
     pprint (BinOp op e1 e2) =
       let arg1 = bracket_pprint e1
           arg2 = bracket_pprint e2
           operator = pprint op
       in
         arg1 <> operator <> arg2
-
     pprint (NumFloat f) = show f
 
 instance PrettyPrint Op where

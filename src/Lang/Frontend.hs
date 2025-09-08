@@ -31,7 +31,7 @@ main = do
           putStrLn $ pprint result
           exitSuccess
 
-run :: Bool -> String -> IO (Either String (Expr PCF))
+run :: Bool -> String -> IO (Either String Expr)
 run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname
@@ -65,7 +65,7 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program PCF -> Either String (Type 0)
+typeInference :: [Option] -> Program -> Either String (Type 0)
 typeInference options program =
     case inferenceAlg program of
         Right ty -> Right ty

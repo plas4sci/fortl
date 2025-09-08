@@ -73,7 +73,7 @@ import Lang.Options
 %left '*'
 %%
 
-Program :: { (Program PCF, [Option]) }
+Program :: { (Program, [Option]) }
   : LangOpts Defs  { ($2 $1, $1) }
 
 LangOpts :: { [Option] }
@@ -81,7 +81,7 @@ LangOpts :: { [Option] }
   | LANG                {% readOption $1 >>= (return . (:[])) }
   | {- empty -}         { [] }
 
-Defs :: { [Option] -> Program PCF }
+Defs :: { [Option] -> Program }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
   | Expr                  { \opts -> [Return ($1 opts)] }
 
@@ -89,7 +89,7 @@ NL :: { () }
   : nl NL                     { }
   | nl                        { }
 
-Def :: { [Option] -> Def PCF }
+Def :: { [Option] -> Def }
   : IDENT '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
   | IDENT ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
@@ -100,7 +100,7 @@ ConstructorList
   | IDENT                     { \opts -> [(symString $1, [])] }
   | {- empty -}              { \_ -> [] }
 
-Expr :: { [Option] -> Expr PCF }
+Expr :: { [Option] -> Expr }
   : let IDENT '=' Expr in Expr
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
@@ -120,31 +120,31 @@ Expr :: { [Option] -> Expr PCF }
     { $1 }
 
   | fix '(' Expr ')'
-     { \opts -> Ext (Fix ($3 opts)) }
+     { \opts -> Fix ($3 opts) }
 
   | natcase Expr of zero '->' Expr '|' succ IDENT '->' Expr
-     { \opts -> Ext (NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts))) }
+     { \opts -> NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts)) }
 
   | fst '(' Expr ')'
-     { \opts -> Ext (Fst ($3 opts)) }
+     { \opts -> Fst ($3 opts) }
 
   | snd '(' Expr ')'
-     { \opts -> Ext (Snd ($3 opts)) }
+     { \opts -> Snd ($3 opts) }
 
   | inl '(' Expr ')'
-     { \opts -> Ext (Inl ($3 opts)) }
+     { \opts -> Inl ($3 opts) }
 
   | inr '(' Expr ')'
-     { \opts -> Ext (Inr ($3 opts)) }
+     { \opts -> Inr ($3 opts) }
 
  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
-     { \opts -> Ext (Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts))) }
+     { \opts -> Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
 
-Form :: { [Option] -> Expr PCF }
-  : Form '+' Form  { \opts -> Ext $ BinOp OpPlus ($1 opts) ($3 opts) }
-  | Form '-' Form  { \opts -> Ext $ BinOp OpMinus ($1 opts) ($3 opts) }
-  | Form '*' Form  { \opts -> Ext $ BinOp OpTimes ($1 opts) ($3 opts) }
-  | Form '/' Form  { \opts -> Ext $ BinOp OpDivide ($1 opts) ($3 opts) }
+Form :: { [Option] -> Expr }
+  : Form '+' Form  { \opts -> BinOp OpPlus ($1 opts) ($3 opts) }
+  | Form '-' Form  { \opts -> BinOp OpMinus ($1 opts) ($3 opts) }
+  | Form '*' Form  { \opts -> BinOp OpTimes ($1 opts) ($3 opts) }
+  | Form '/' Form  { \opts -> BinOp OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }
@@ -189,18 +189,18 @@ TypeAtom
   | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
   | '?'              { \opts -> TyCon "?" }
 
-Juxt :: { [Option] -> Expr PCF }
+Juxt :: { [Option] -> Expr }
   : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
   | cast Atom                 { \opts -> Cast ($2 opts) }
   | Atom                      { $1 }
 
-Atom :: { [Option] -> Expr PCF }
+Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> Var $ symString $1 }
   | zero
-    { \opts -> Ext Zero }
+    { \opts -> Zero }
   | succ
-    { \opts -> Ext Succ }
+    { \opts -> Succ }
 
   | '@' TypeAtom
     { \opts ->
@@ -209,17 +209,17 @@ Atom :: { [Option] -> Expr PCF }
           else error "Cannot embed a type as a term; try lang.poly" }
 
   | '<' Expr ', ' Expr '>'
-     { \opts -> Ext (Pair ($2 opts) ($4 opts)) }
+     { \opts -> Pair ($2 opts) ($4 opts) }
 
   | FLOAT
      { \opts ->
           let (TokenFloat _ x) = $1
-          in Ext (NumFloat $ read x) }
+          in NumFloat $ read x }
 
   | INT
      { \opts ->
           let (TokenInt _ x) = $1
-          in Ext (NumFloat $ fromIntegral $ read x) }
+          in NumFloat $ fromIntegral $ read x }
 
   -- For later
   -- | '?' { Hole }
@@ -240,7 +240,7 @@ parseError t  =  do
                         <> ": parse error"
   where (l, c) = getPos (head t)
 
-parseProgram :: FilePath -> String -> Either String (Program PCF, [Option])
+parseProgram :: FilePath -> String -> Either String (Program, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file
 
 }

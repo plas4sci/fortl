@@ -12,89 +12,73 @@ import GHC.TypeLits
 
 type Identifier = String
 
-type Program ex = [Def ex]
+type Program = [Def]
 
-data Def ex where
-    VarDef  :: Identifier -> Maybe (Type n) -> Expr ex -> Def ex
-    TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def ex
-    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def ex
-    Return  :: Expr ex -> Def ex
+data Def where
+    VarDef  :: Identifier -> Maybe (Type n) -> Expr -> Def
+    TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def
+    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def
+    Return  :: Expr -> Def
 
--- Abstract-syntax tree for LambdaCore
--- parameterised by an additional type `ex`
--- used to represent the abstract syntax
--- tree of additional commands
-data Expr ex where
-    Abs :: Identifier -> Maybe (Type 0) -> Expr ex -> Expr ex
+-- Abstract-syntax tree for LambdaCore with PCF extensions
+data Expr where
+    Abs :: Identifier -> Maybe (Type 0) -> Expr -> Expr
                                             -- \x -> e  [λ x . e] (Curry style)
                                             -- or
                                             -- \(x : A) -> e (Church style)
-    App :: Expr ex ->  Expr ex   -> Expr ex -- e1 e2
-    Var :: Identifier            -> Expr ex -- x
+    App :: Expr ->  Expr   -> Expr -- e1 e2
+    Var :: Identifier      -> Expr -- x
 
-    Sig :: Expr ex -> Type 0     -> Expr ex -- e : A
+    Sig :: Expr -> Type 0  -> Expr -- e : A
 
     -- Poly
-    TyAbs   :: Identifier -> Expr ex -> Expr ex -- /\ a -> e
-    TyEmbed :: Type 0                -> Expr ex -- @A
+    TyAbs   :: Identifier -> Expr -> Expr -- /\ a -> e
+    TyEmbed :: Type 0             -> Expr -- @A
 
     -- ML
-    GenLet :: Identifier -> Expr ex -> Expr ex -> Expr ex -- let x = e1 in e2 (ML-style polymorphism)
+    GenLet :: Identifier -> Expr -> Expr -> Expr -- let x = e1 in e2 (ML-style polymorphism)
 
     -- Casts
-    Cast :: Expr ex -> Expr ex
+    Cast :: Expr -> Expr
 
-    -- Extend the ast at this point
-    Ext :: ex -> Expr ex
-  deriving Show
-
-----------------------------
--- Extend the language to PCF (natural number constructors
--- and deconstructor + fixed point)
-
-data PCF =
-    NatCase (Expr PCF) (Expr PCF) (Identifier, Expr PCF)
+    -- PCF extensions (previously in the PCF data type)
+    NatCase :: Expr -> Expr -> (Identifier, Expr) -> Expr
                                -- case e of zero -> e1 | succ x -> e2
-  | Fix (Expr PCF)             -- fix(e)
-  | Succ                       -- succ (function)
-  | Zero                       -- zero
-  | Pair (Expr PCF) (Expr PCF) -- <e1, e2>
-  | Fst (Expr PCF)             -- fst(e)
-  | Snd (Expr PCF)             -- snd(e)
-  | Inl (Expr PCF)             -- inl(e)
-  | Inr (Expr PCF)             -- inr(e)
-  | Case (Expr PCF) (Identifier, Expr PCF) (Identifier, Expr PCF)
+    Fix :: Expr              -> Expr             -- fix(e)
+    Succ                     :: Expr             -- succ (function)
+    Zero                     :: Expr             -- zero
+    Pair :: Expr -> Expr     -> Expr             -- <e1, e2>
+    Fst :: Expr              -> Expr             -- fst(e)
+    Snd :: Expr              -> Expr             -- snd(e)
+    Inl :: Expr              -> Expr             -- inl(e)
+    Inr :: Expr              -> Expr             -- inr(e)
+    Case :: Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
                                -- case e of inl x -> e1 | inr y -> e2
-  | NumFloat Float
-  | BinOp Op (Expr PCF) (Expr PCF)
+    NumFloat :: Float        -> Expr
+    BinOp :: Op -> Expr -> Expr -> Expr
   deriving Show
 
 -- Operators
 data Op = OpPlus | OpTimes | OpMinus | OpDivide
   deriving Show
 
-isValue :: Expr PCF -> Bool
+isValue :: Expr -> Bool
 isValue Abs{}   = True
 isValue TyAbs{} = True
 isValue Var{}   = True
-isValue (Ext (NumFloat _)) = True
-isValue (Ext p) = isValuePCF p
+isValue (NumFloat _) = True
+isValue Zero = True
+isValue Succ = True
+isValue (Pair e1 e2) = isValue e1 && isValue e2
+isValue (Inl e) = isValue e
+isValue (Inr e) = isValue e
 isValue e       = isNatVal e
 
-isNatVal :: Expr PCF -> Bool
-isNatVal (Ext Zero)  = True
-isNatVal (Ext Succ)  = True
+isNatVal :: Expr -> Bool
+isNatVal Zero = True
+isNatVal Succ = True
 isNatVal (App e1 e2) = isNatVal e1 && isNatVal e2
 isNatVal _           = False
-
-isValuePCF :: PCF -> Bool
-isValuePCF (Pair e1 e2) = isValue e1 && isValue e2
-isValuePCF (Inl e) = isValue e
-isValuePCF (Inr e) = isValue e
-isValuePCF Zero = True
-isValuePCF Succ = True
-isValuePCF (NumFloat f) = True
-isValuePCF _ = False
 
 
 ------------------------------
@@ -134,7 +118,7 @@ class Term t where
   freeVars  :: t -> Set.Set Identifier
   mkVar     :: Identifier -> t
 
-instance Term (Expr PCF) where
+instance Term Expr where
   boundVars (Abs var _ e)                = var `Set.insert` boundVars e
   boundVars (TyAbs var e)                = var `Set.insert` boundVars e
   boundVars (TyEmbed t)                  = boundVars t
@@ -143,18 +127,18 @@ instance Term (Expr PCF) where
   boundVars (Sig e _)                    = boundVars e
   boundVars (GenLet var e1 e2)           = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
   boundVars (Cast e)                     = boundVars e
-  boundVars (Ext (NatCase e e1 (x,e2)))  =
+  boundVars (NatCase e e1 (x,e2))        =
     x `Set.insert` (boundVars e `Set.union` boundVars e1 `Set.union` boundVars e2)
-  boundVars (Ext (Fix e))                = boundVars e
-  boundVars (Ext (Pair e1 e2))           = boundVars e1 `Set.union` boundVars e2
-  boundVars (Ext (Fst e))                = boundVars e
-  boundVars (Ext (Snd e))                = boundVars e
-  boundVars (Ext (Inl e))                = boundVars e
-  boundVars (Ext (Inr e))                = boundVars e
-  boundVars (Ext (Case e (x,e1) (y,e2))) =
+  boundVars (Fix e)                      = boundVars e
+  boundVars (Pair e1 e2)                 = boundVars e1 `Set.union` boundVars e2
+  boundVars (Fst e)                      = boundVars e
+  boundVars (Snd e)                      = boundVars e
+  boundVars (Inl e)                      = boundVars e
+  boundVars (Inr e)                      = boundVars e
+  boundVars (Case e (x,e1) (y,e2))       =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
-  boundVars (Ext (BinOp _ e1 e2))        = boundVars e1 `Set.union` boundVars e2
-  boundVars (Ext _)                      = Set.empty
+  boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
+  boundVars _                            = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
   freeVars (TyAbs var e)                 = Set.delete var (freeVars e)
@@ -164,18 +148,18 @@ instance Term (Expr PCF) where
   freeVars (Sig e _)                     = freeVars e
   freeVars (GenLet var e1 e2)            = Set.delete var (freeVars e1 `Set.union` freeVars e2)
   freeVars (Cast e)                      = freeVars e
-  freeVars (Ext (NatCase e e1 (x,e2)))   =
+  freeVars (NatCase e e1 (x,e2))         =
     freeVars e `Set.union` freeVars e1 `Set.union` (Set.delete x (freeVars e2))
-  freeVars (Ext (Fix e))                 = freeVars e
-  freeVars (Ext (Pair e1 e2))            = freeVars e1 `Set.union` freeVars e2
-  freeVars (Ext (Fst e))                 = freeVars e
-  freeVars (Ext (Snd e))                 = freeVars e
-  freeVars (Ext (Inl e))                 = freeVars e
-  freeVars (Ext (Inr e))                 = freeVars e
-  freeVars (Ext (Case e (x,e1) (y,e2)))  =
+  freeVars (Fix e)                       = freeVars e
+  freeVars (Pair e1 e2)                  = freeVars e1 `Set.union` freeVars e2
+  freeVars (Fst e)                       = freeVars e
+  freeVars (Snd e)                       = freeVars e
+  freeVars (Inl e)                       = freeVars e
+  freeVars (Inr e)                       = freeVars e
+  freeVars (Case e (x,e1) (y,e2))        =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
-  freeVars (Ext (BinOp _ e1 e2))         = freeVars e1 `Set.union` freeVars e2
-  freeVars (Ext _)                       = Set.empty
+  freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
+  freeVars _                             = Set.empty
 
   mkVar = Var
 

@@ -18,10 +18,10 @@ unpackType (ForallTy _ ty) = ty
 type Context = [(Identifier, TypeScheme)]
 
 -- Hindley-Milner type inference algorithm
-hmTypeInference :: Program PCF -> Either String (Type 0)
+hmTypeInference :: Program -> Either String (Type 0)
 hmTypeInference = inferTypeProgram []
 
-inferTypeProgram :: Context -> Program PCF -> Either String (Type 0)
+inferTypeProgram :: Context -> Program -> Either String (Type 0)
 inferTypeProgram ctxt [] = Left "No return statement"
 inferTypeProgram ctxt ((VarDef v _ e):defs) =
   case inferType ctxt e of
@@ -34,7 +34,7 @@ inferTypeProgram ctxt ((Return e):defs) =
 inferTypeProgram ctxt (_:defs) = inferTypeProgram ctxt defs
 
 -- Top-level of Algorithm W (Hindley Milner algorithm)
-inferType :: Context -> Expr PCF -> Maybe (Type 0)
+inferType :: Context -> Expr -> Maybe (Type 0)
 inferType ctxt ast = let (s, ty, _) = infer ctxt ast 0 in Just (substitute s ty)
 
 type TypeVariable = String
@@ -49,7 +49,7 @@ type Substitution = TypeVariable -> Type 0
 --   * a substitution on type variables
 --   * a type (if succesful)
 --   * an updated gensym seed
-infer :: Context -> Expr PCF -> Int -> (Substitution, Type 0, Int)
+infer :: Context -> Expr -> Int -> (Substitution, Type 0, Int)
 infer ctxt (Abs var _ e) fv =
   let alpha     = "a" ++ show fv
       (s , tyB , fv') = infer ((var , ForallTy [] (TyVar alpha)) : ctxt) e (fv+1)
@@ -80,8 +80,8 @@ infer ctxt (GenLet x e1 e2) fv =
       (s2, t2, fv'') = infer ((x, ForallTy (toList alphas) t1) : substitute s1 ctxt) e2 fv'
   in (s2 <.> s1, t2, fv'')
 
-infer ctxt (Ext Zero) fv = (idSubst, natTy, fv)
-infer ctxt (Ext Succ) fv = (idSubst, FunTy natTy natTy, fv)
+infer ctxt Zero fv = (idSubst, natTy, fv)
+infer ctxt Succ fv = (idSubst, FunTy natTy natTy, fv)
 
 infer ctxt t fv =
   error $ "I don't know how to infer the type of " ++ pprint t

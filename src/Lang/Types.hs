@@ -16,10 +16,10 @@ import Data.List (intercalate)
 --import Debug.Trace
 import Data.Map (Map, elems, intersectionWith)
 
-synthProgram :: Program PCF -> Either String (Type 0)
+synthProgram :: Program -> Either String (Type 0)
 synthProgram = synthProgram' []
   where
-    synthProgram' :: Context -> Program PCF -> Either String (Type 0)
+    synthProgram' :: Context -> Program -> Either String (Type 0)
     synthProgram' gamma [] = Left "No return statement"
     synthProgram' gamma ((VarDef v _ e):defs) =
       case synth gamma e of
@@ -64,7 +64,7 @@ G |- e <= A    check
 **********************************
 -}
 
-check :: Context -> Expr PCF -> Type 0 -> Either String ()
+check :: Context -> Expr -> Type 0 -> Either String ()
 
 check gamma (Var x) ty =
   case lookup x gamma of
@@ -102,18 +102,18 @@ check gamma (Cast e) t@(IntersectTy t1 t2) =
                 <> pprint k1 <> " and " <> pprint k2 <> " and thus no base Type remains."
 
 --- PCF rules
-check gamma (Ext (Fix e)) t = check gamma e (FunTy t t)
+check gamma (Fix e) t = check gamma e (FunTy t t)
 
-check gamma (Ext (NatCase e e1 (x,e2))) t = do
+check gamma (NatCase e e1 (x,e2)) t = do
   check gamma e natTy
   check gamma e1 t
   check ([(x, natTy)] ++ gamma) e2 t
 
-check gamma (Ext (Pair e1 e2)) (ProdTy t1 t2) = do
+check gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isDescription -> Just unit)) | t == floatTy = do
+check gamma (BinOp op e1 e2) ty@(IntersectTy t (isDescription -> Just unit)) | t == floatTy = do
   case op of
     OpPlus ->
       case check gamma e1 ty of
@@ -144,29 +144,29 @@ check gamma (Ext (BinOp op e1 e2)) ty@(IntersectTy t (isDescription -> Just unit
 --   check gamma e t1
 --   check gamma e t2
 
-check gamma (Ext (Pair _ _)) t = Left $ "Trying to assign non-product type " <> pprint t <> " to pair."
+check gamma (Pair _ _) t = Left $ "Trying to assign non-product type " <> pprint t <> " to pair."
 
-check gamma (Ext (Fst e)) t =
+check gamma (Fst e) t =
   case synth gamma e of
     Right (ProdTy t1 t2) ->
       if isSubType t1 (IsSpec t) then Right ()
       else Left $ "Expecting " <> pprint t1 <> " but got " <> pprint t
     _ -> Left $ "Expecting product type but got " <> pprint t
 
-check gamma (Ext (Snd e)) t =
+check gamma (Snd e) t =
   case synth gamma e of
     Right (ProdTy t1 t2) ->
       if isSubType t2 (IsSpec t) then Right ()
       else Left $ "Expecting " <> pprint t2 <> " but got " <> pprint t
     _ -> Left $ "Expecting product type but got " <> pprint t
 
-check gamma (Ext (Inl e)) (SumTy t1 t2) = check gamma e t1
-check gamma (Ext (Inl e)) t = Left $ "Sum construction cannot have type " <> pprint t
+check gamma (Inl e) (SumTy t1 t2) = check gamma e t1
+check gamma (Inl e) t = Left $ "Sum construction cannot have type " <> pprint t
 
-check gamma (Ext (Inr e)) (SumTy t1 t2) = check gamma e t2
-check gamma (Ext (Inr e)) t = Left $ "Sum construction cannot have type " <> pprint t
+check gamma (Inr e) (SumTy t1 t2) = check gamma e t2
+check gamma (Inr e) t = Left $ "Sum construction cannot have type " <> pprint t
 
-check gamma (Ext (Case e (x,e1) (y,e2))) t =
+check gamma (Case e (x,e1) (y,e2)) t =
   case synth gamma e of
     Right (SumTy t1 t2) -> do
       check ([(x,t1)] ++ gamma) e1 t
@@ -212,7 +212,7 @@ Bidirectional synthesis
 **********************************
 -}
 
-synth :: Context -> Expr PCF -> Either String (Type 0)
+synth :: Context -> Expr -> Either String (Type 0)
 
 {-
 
@@ -297,13 +297,13 @@ synth gamma (App e1 e2) =
       Left $ err <> "\nExpecting (" ++ pprint e1 ++ ") to have function type."
 
 -- PCF rules
-synth gamma (Ext Zero) =
+synth gamma Zero =
   Right natTy
 
-synth gamma (Ext Succ) =
+synth gamma Succ =
   Right (FunTy natTy natTy)
 
-synth gamma (Ext (NatCase e e1 (x,e2))) =
+synth gamma (NatCase e e1 (x,e2)) =
   case check gamma e natTy of
     Right () ->
       case synth gamma e1 of
@@ -320,7 +320,7 @@ synth gamma (Ext (NatCase e e1 (x,e2))) =
             Left err -> Left err
     Left err -> Left err
 
-synth gamma (Ext (Fix e)) =
+synth gamma (Fix e) =
   case synth gamma e of
     Right (FunTy t1 t2) ->
       if t1 == t2 then Right t1
@@ -328,7 +328,7 @@ synth gamma (Ext (Fix e)) =
     Right t -> Left $ "Expecting (" ++ pprint e ++ ") to have function type with equal domain/range but got " ++ pprint t
     Left err -> Left $ err <> "\nExpecting (" ++ pprint e ++ ") to have function type with equal domain/range"
 
-synth gamma (Ext (Pair e1 e2)) =
+synth gamma (Pair e1 e2) =
   case synth gamma e1 of
     Right t1 ->
       case synth gamma e2 of
@@ -336,19 +336,19 @@ synth gamma (Ext (Pair e1 e2)) =
         Left err -> Left err
     Left err -> Left err
 
-synth gamma (Ext (Fst e)) =
+synth gamma (Fst e) =
   case synth gamma e of
     Right (ProdTy t1 t2) -> Right t1
     Right t -> Left $ "Expecting (" ++ pprint e ++ ") to have product type but got " ++ pprint t
     Left err -> Left err
 
-synth gamma (Ext (Snd e)) =
+synth gamma (Snd e) =
   case synth gamma e of
     Right (ProdTy t1 t2) -> Right t2
     Right t -> Left $ "Expecting (" ++ pprint e ++ ") to have product type but got " ++ pprint t
     Left err -> Left err
 
-synth gamma (Ext (Case e (x,e1) (y,e2))) =
+synth gamma (Case e (x,e1) (y,e2)) =
   case synth gamma e of
     Right (SumTy t1 t2) -> (
       case synth ([(x,t1)] ++ gamma) e1 of
@@ -368,10 +368,10 @@ synth gamma (Ext (Case e (x,e1) (y,e2))) =
     Right t -> Left $ "Expecting (" ++ pprint e ++ ") to have sum type but got " ++ pprint t
     Left err -> Left $ "Could not synth type for " ++ pprint e
 
-synth gamma (Ext (NumFloat n)) =
+synth gamma (NumFloat n) =
   Right floatTy
 
-synth gamma (Ext (BinOp op e1 e2)) =
+synth gamma (BinOp op e1 e2) =
   case synth gamma e1 of
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
