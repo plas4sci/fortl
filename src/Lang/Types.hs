@@ -13,7 +13,6 @@ import Lang.Primitives
 
 import Data.Maybe (mapMaybe)
 import Data.List (intercalate)
---import Debug.Trace
 import Data.Map (Map, elems, intersectionWith)
 
 {-
@@ -363,13 +362,13 @@ synth gamma (Ext (BinOp op e1 e2)) =
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
       case isFloatWithDescription t1 of
-        Nothing -> Left $ "Expecting Float type at " <> pprint e1 <> " but got " ++ pprint t1
+        Nothing -> Left $ "Expecting Float type at `" <> pprint e1 <> ";" <> show gamma <> "` but got " ++ pprint t1
         Just u1 ->
           case synth gamma e2 of
             Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
             Right t2 ->
               case isFloatWithDescription t2 of
-                Nothing -> Left $ "Expecting Float type but got " ++ pprint t2
+                Nothing -> Left $ "Expecting Float type at `" <> pprint e2 <> "` but got " ++ pprint t2
                 Just u2 ->
                   case op of
                     OpTimes -> Right $ IntersectTy floatTy $ reifyDescription (intersectionWith ProdTy u1 u2)
@@ -445,6 +444,9 @@ normalise :: Type 0 -> Type 0
 -- A description with unit of an Abelian group is mapped to the top element for
 -- descriptions
 normalise (TyApp (TyCon (isDescConstructor -> Just _)) (TyCon "1"))  = TyCon omega
+-- normalise right associated intersections to left associated
+normalise (IntersectTy t1 (IntersectTy t2 t3)) =
+  normalise (IntersectTy (normalise (IntersectTy t1 t2)) (normalise t3))
 -- Normalise unit intersection types
 normalise (IntersectTy t1 t2) | t2 == TyCon omega = normalise t1
 normalise (IntersectTy t1 t2) | t1 == TyCon omega = normalise t2

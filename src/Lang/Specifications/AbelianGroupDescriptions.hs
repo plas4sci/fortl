@@ -8,7 +8,7 @@ module Lang.Specifications.AbelianGroupDescriptions where
 import Lang.Syntax
 import Lang.PrettyPrint
 import Lang.Primitives
-import Data.Map.Lazy
+import Data.Map.Lazy hiding (foldr)
 
 ------------------------------------
 -- # Description-specific typing
@@ -25,26 +25,34 @@ isDescription (IntersectTy t1 t2) = do
   d1 <- isDescription t1
   d2 <- isDescription t2
   Just $ union d1 d2
+isDescription (ProdTy t1 t2) = do
+  k1 <- isDescription t1
+  k2 <- isDescription t2
+  Just $ union k1 k2
 isDescription _ = Nothing
 
 -- | Matches on a type that is either a Float or an
 -- intersection type containing a float and something of kind description
 floatWithDescription :: Type 0 -> Maybe Descriptions
-
--- Dimensionless/unitless float
-floatWithDescription (TyCon "Float") =
-  Just empty
-
--- Extract the unit in any position of the intersection
-floatWithDescription (IntersectTy (TyCon "Float") t) =
-  isDescription t
-
--- Commutativity
-floatWithDescription (IntersectTy t (TyCon "Float")) =
-  floatWithDescription (IntersectTy (TyCon "Float") t)
-
--- TODO: Extensibility to other properties would need to come here
-floatWithDescription t = Nothing
+floatWithDescription t =
+  -- First flatten out intersections into a list
+  if (TyCon "Float" `elem` floatWithDescription' t) then
+    -- Remove the Float and fold up the rest as descriptions
+    let descs = Prelude.filter (/= TyCon "Float") (floatWithDescription' t) in
+      foldr
+      (\d acc -> do
+          dDesc <- isDescription d
+          accDesc <- acc
+          Just $ union dDesc accDesc)
+      (Just empty)
+      descs
+  else
+    Nothing
+  where
+    floatWithDescription' :: Type 0 -> [Type 0]
+    floatWithDescription' (IntersectTy t1 t2) = do
+      floatWithDescription' t1 ++ floatWithDescription' t2
+    floatWithDescription' t = [t]
 
 reifyDescription :: Descriptions -> Type 0
 reifyDescription =
