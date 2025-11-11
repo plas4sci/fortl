@@ -1,0 +1,9 @@
+lang.typed
+
+ratn2c   : Float & Unit(1) & Quantity(N * C^-1) = 16.0/122.0
+botcor   : Float & Unit(1) & Quantity(C * P^-1) = 42 -- example data
+extinp   : Float & Unit(Kg) & Quantity(N)       = 42
+sumsed_p : Float & Unit(Kg) * Quantity(P)       = 7  -- example data
+sumsed_n : Float & Unit(Kg) & Quantity(N)       = 11 -- example data
+ztemp    : Float & Unit(Kg) & Quantity(N) = extinp - (sumsed_p * (1.0 - botcor) * ratn2c)
+ztemp + sumsed_n -- actually <= but we don't have that
