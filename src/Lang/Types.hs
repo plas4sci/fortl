@@ -363,7 +363,7 @@ synth gamma (Ext (BinOp op e1 e2)) =
     Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
     Right t1 ->
       case isFloatWithDescription t1 of
-        Nothing -> Left $ "Expecting Float type but got " ++ pprint t1
+        Nothing -> Left $ "Expecting Float type at " <> pprint e1 <> " but got " ++ pprint t1
         Just u1 ->
           case synth gamma e2 of
             Left err -> Left $ err <> "\nError infering type for left of operator " ++ pprint op
