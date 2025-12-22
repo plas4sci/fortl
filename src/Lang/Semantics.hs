@@ -222,8 +222,8 @@ substituteType (TyVar var) (varS, t)
 substituteType (Forall var t) s =
   let (var', t') = substitute_binding var t s in Forall var' t'
 
-substituteType (IntersectTy t1 t2) s =
-  IntersectTy (substituteType t1 s) (substituteType t2 s)
+substituteType (WithTy t1 t2) s =
+  WithTy (substituteType t1 s) (substituteType t2 s)
 
 substituteType (ExponentTy t1 f) s =
   ExponentTy (substituteType t1 s) f

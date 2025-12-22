@@ -15,7 +15,7 @@ type Identifier = String
 type Program = [Def]
 
 data Def where
-    VarDef  :: Identifier -> Maybe (Type n) -> Expr -> Def
+    VarDef  :: Identifier -> Maybe (Type 0) -> Expr -> Def
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def
     Return  :: Expr -> Def
@@ -97,8 +97,8 @@ data Type (n :: Nat) where
     TyVar :: Identifier -> Type 0           -- a
     Forall :: Identifier -> Type 0 -> Type 0 -- forall a . A
 
-    -- Intersection types
-    IntersectTy :: Type 0 -> Type 0 -> Type 0
+    -- With types
+    WithTy :: Type 0 -> Type 0 -> Type 0
 
     -- For units
     -- TODO: make just a type constructor
@@ -171,7 +171,7 @@ instance Term (Type 0) where
   boundVars (TyCon _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
-  boundVars (IntersectTy t1 t2) = boundVars t1 `Set.union` boundVars t2
+  boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
 
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
@@ -181,7 +181,7 @@ instance Term (Type 0) where
   freeVars (TyCon _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
-  freeVars (IntersectTy t1 t2) = freeVars t1 `Set.union` freeVars t2
+  freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (ExponentTy t1 _) = freeVars t1
 
   mkVar = TyVar
