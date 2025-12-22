@@ -6,7 +6,6 @@ import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
 import Lang.Semantics   (interpret)
 import Lang.Syntax
-import qualified Lang.HindleyMilner as HM
 import Lang.Types
 
 import System.Directory   (doesPathExist)
@@ -48,32 +47,25 @@ run report fname = do
           -- Evaluate
           let normalForm = interpret options ast
           -- Typing
-          if isTyped options
-            then
-              (case typeInference options ast of
-                  Left err -> do
-                    putStrLn $ ansi_bold <> ansi_red
-                            <> "Not well-typed.\n" <> err <> ansi_reset
-                    return $ Left err
-                  Right ty -> do
-                    putStrLn $ ansi_bold <> ansi_green
-                            <> "Well-typed " <> ansi_reset
-                            <> ansi_bold <> "as " <> ansi_reset <> pprint ty
-                    return $ Right normalForm)
-          else return $ Right normalForm
+          case typeInference options ast of
+              Left err -> do
+                putStrLn $ ansi_bold <> ansi_red
+                        <> "Not well-typed.\n" <> err <> ansi_reset
+                return $ Left err
+              Right ty -> do
+                putStrLn $ ansi_bold <> ansi_green
+                        <> "Well-typed " <> ansi_reset
+                        <> ansi_bold <> "as " <> ansi_reset <> pprint ty
+                return $ Right normalForm
         Left msg -> do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
 typeInference :: [Option] -> Program -> Either String (Type 0)
 typeInference options program =
-    case inferenceAlg program of
+    case synthProgram program of
         Right ty -> Right ty
-        Left err -> Left $ "Type inference failed.\n" <> err
-  where
-    inferenceAlg =
-      if elem HindleyMilner options then HM.hmTypeInference else synthProgram
-      
+        Left err -> Left $ "Type inference failed.\n" <> err    
         
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String
 ansi_red   = "\ESC[31;1m"
