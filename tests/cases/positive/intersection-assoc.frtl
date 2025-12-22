@@ -1,4 +1,3 @@
-lang.typed
 y : Float & [M] = 2.0
 x : ([M] & Float) & [M] = 1.0 + y
 t : Float & [S] = 4.0

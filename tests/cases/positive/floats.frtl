@@ -1,4 +1,3 @@
-lang.typed
 x : Float = 1.0
 y : Float = x + 2.0
 z : Float = y * 3.0
