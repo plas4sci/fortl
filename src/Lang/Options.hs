@@ -3,7 +3,7 @@ module Lang.Options where
 import Control.Monad.Trans.Reader
 
 ------------------------------
--- Language options accepts in files
+-- Language options accepted in files
 
 data Option = Default
   deriving (Eq, Show)
