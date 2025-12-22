@@ -6,12 +6,10 @@ module Lang.Kinding where
 -- import Control.Monad
 import Lang.Syntax
 import Lang.Primitives
-import Lang.PrettyPrint
-
-import Data.List (isInfixOf)
+import Lang.TypeError
 
 -- Check if a type is well-kinded against the second argument (kind)
-checkKind :: Type 0 -> Type 1 -> Either String ()
+checkKind :: Type 0 -> Type 1 -> Either TypeError ()
 checkKind (FunTy t1 t2) k = do
   checkKind t1 k
   checkKind t2 k
@@ -22,8 +20,8 @@ checkKind t@(TyApp t1 t2) k = do
     FunTy k1' k2 ->
       if k == k2
         then checkKind t2 k1'
-        else Left $ "For " <> pprint t <> ", expecting kind " <> pprint k <> " but got " <> pprint k2
-    _ -> Left $ "Expecting a function kind but got " <> pprint k
+        else Left $ KindMismatch k k2 t
+    _ -> Left $ ExpectingFunctionKind k
 
 -- Allow constructors of any abelian group to get checked
 -- as we will form a free abelian group over some arbitrary set of generators
@@ -34,13 +32,13 @@ checkKind t k = do
   k' <- synthKind t
   if k == k'
     then Right ()
-    else Left $ "For type " <> pprint t <> ", expecting kind " <> pprint k <> " but got kind " <> pprint k'
+    else Left $ KindMismatch k k' t
 
 -- Infer a kind for a type
-synthKind :: Type 0 -> Either String (Type 1)
+synthKind :: Type 0 -> Either TypeError (Type 1)
 synthKind (TyCon c) =
   case lookup c typeConstructors of
-    Nothing -> Left $ "Unknown type constructor " <> c
+    Nothing -> Left $ UnknownTypeConstructor c
     Just k' -> Right k'
 
 synthKind (TyApp t1 t2) = do
@@ -49,7 +47,7 @@ synthKind (TyApp t1 t2) = do
     FunTy k1 k2 -> do
         checkKind t2 k1
         return k2
-    _ -> Left $ "Expecting a function kind but got " <> pprint k
+    _ -> Left $ ExpectingFunctionKind k
 
 synthKind (FunTy t1 t2) = do
   k <- synthKind t1

@@ -7,6 +7,7 @@ import Lang.PrettyPrint (pprint)
 import Lang.Semantics   (interpret)
 import Lang.Syntax
 import Lang.Types
+import Lang.TypeError
 
 import System.Directory   (doesPathExist)
 import System.Environment (getArgs)
@@ -50,8 +51,8 @@ run report fname = do
           case typeInference options ast of
               Left err -> do
                 putStrLn $ ansi_bold <> ansi_red
-                        <> "Not well-typed.\n" <> err <> ansi_reset
-                return $ Left err
+                        <> "Not well-typed.\n" <> errorToString err <> ansi_reset
+                return $ Left (errorToString err)
               Right ty -> do
                 putStrLn $ ansi_bold <> ansi_green
                         <> "Well-typed " <> ansi_reset
@@ -61,11 +62,11 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program -> Either String (Type 0)
+typeInference :: [Option] -> Program -> Either TypeError (Type 0)
 typeInference options program =
     case synthProgram program of
         Right ty -> Right ty
-        Left err -> Left $ "Type inference failed.\n" <> err
+        Left err -> Left err
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String
 ansi_red   = "\ESC[31;1m"
 ansi_green = "\ESC[32;1m"
