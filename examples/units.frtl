@@ -1,4 +1,3 @@
-lang.typed
 data unit : type = m | s
 y : Float & [M] = 2.0
 x : Float & [M] = 1.0 + y

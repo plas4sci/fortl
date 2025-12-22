@@ -163,10 +163,7 @@ Type
   | Type '^' NumFloat   { \opts -> ExponentTy ($1 opts) $3 }
   | TyJuxt           { $1 }
   | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
-  | forall IDENT '.' Type { \opts ->
-                            if isPoly opts
-                              then Forall (symString $2) ($4 opts)
-                              else error "Type quantification not supported in simple types; try lang.poly. " }
+  | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 
 TyJuxt :: { [Option] -> Type 0 }
 TyJuxt
@@ -181,10 +178,7 @@ NumFloat
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
   : IDENT           { \opts -> TyCon $ constrString $1 }
-  | VAR              { \opts ->
-                          if isPoly opts
-                            then TyVar (symString $1)
-                            else error "Type variables not supported in simple types; try lang.poly." }
+  | VAR              { \opts -> TyVar (symString $1) }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
   | '?'              { \opts -> TyCon "?" }
@@ -203,10 +197,7 @@ Atom :: { [Option] -> Expr }
     { \opts -> Succ }
 
   | '@' TypeAtom
-    { \opts ->
-        if isPoly opts
-          then TyEmbed ($2 opts)
-          else error "Cannot embed a type as a term; try lang.poly" }
+    { \opts -> TyEmbed ($2 opts) }
 
   | '<' Expr ', ' Expr '>'
      { \opts -> Pair ($2 opts) ($4 opts) }
@@ -226,9 +217,6 @@ Atom :: { [Option] -> Expr }
 {
 
 readOption :: Token -> ReaderT String (Either String) Option
-readOption (TokenLang _ x) | x == "lang.inference" = return HindleyMilner
-readOption (TokenLang _ x) | x == "lang.typed" = return Typed
-readOption (TokenLang _ x) | x == "lang.poly"  = return Poly
 readOption (TokenLang _ x) = lift . Left $ "Unknown language option: " <> x
 readOption _ = lift . Left $ "Wrong token for language"
 
