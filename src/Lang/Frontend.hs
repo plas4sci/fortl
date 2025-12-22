@@ -65,8 +65,7 @@ typeInference :: [Option] -> Program -> Either String (Type 0)
 typeInference options program =
     case synthProgram program of
         Right ty -> Right ty
-        Left err -> Left $ "Type inference failed.\n" <> err    
-        
+        Left err -> Left $ "Type inference failed.\n" <> err
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String
 ansi_red   = "\ESC[31;1m"
 ansi_green = "\ESC[32;1m"
