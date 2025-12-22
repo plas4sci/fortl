@@ -40,7 +40,7 @@ import Lang.Options
     succ    { TokenSucc _ }
     IDENT   { TokenSym _ _ }
     LANG    { TokenLang _ _ }
-    VAR     { TokenVar _ _ }
+    TYVAR    { TokenTyVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     forall  { TokenForall _ }
@@ -90,7 +90,7 @@ NL :: { () }
   | nl                        { }
 
 Def :: { [Option] -> Def }
-  : IDENT '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
+  : IDENT '=' Expr          { \opts -> VarDef (symString $1) Nothing ($3 opts) }
   | IDENT ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
@@ -156,19 +156,14 @@ Kind
   
 Type :: { [Option] -> Type 0 }
 Type
-  : Type '->' Type   { \opts -> FunTy ($1 opts) ($3 opts) }
-  | Type '*' Type    { \opts -> ProdTy ($1 opts) ($3 opts) }
-  | Type '+' Type    { \opts -> SumTy ($1 opts) ($3 opts) }
-  | Type '&' Type    { \opts -> IntersectTy ($1 opts) ($3 opts) }
-  | Type '^' NumFloat   { \opts -> ExponentTy ($1 opts) $3 }
-  | TyJuxt           { $1 }
-  | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
+  : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
+  | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
+  | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
+  | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
+  | TypeAtom '(' Type ')' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
-
-TyJuxt :: { [Option] -> Type 0 }
-TyJuxt
-  : TyJuxt TypeAtom { \opts -> TyApp ($1 opts) ($2 opts) }
-  | TypeAtom        { $1 }
 
 NumFloat :: { Float }
 NumFloat
@@ -177,8 +172,8 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : IDENT           { \opts -> TyCon $ constrString $1 }
-  | VAR              { \opts -> TyVar (symString $1) }
+  : IDENT            { \opts -> TyCon $ symString $1 }
+  | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
   | '?'              { \opts -> TyCon "?" }

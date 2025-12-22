@@ -64,8 +64,8 @@ synthKind (ExponentTy t _) = do
  checkKind t agroup
  return agroup
 
-synthKind (IntersectTy t1 t2) =
-  -- Symmetry of intersectTy despite its asymmetry
+synthKind (WithTy t1 t2) =
+  -- Symmetry of WithTy despite its asymmetry
   (do
     checkKind t1 type0
     checkKind t2 desc
@@ -90,9 +90,9 @@ synthKind (Forall v t) =
   -- TODO: need type variable environment
   synthKind t
 
--- synthKind t = Left $ "Cannot infer kind for " <> pprint t
+-- synthKind t = Left $ CannotInferKind t
 
-synthCheckPair :: Type 0 -> Type 0 -> Either String (Type 1)
+synthCheckPair :: Type 0 -> Type 0 -> Either TypeError (Type 1)
 synthCheckPair t1 t2 =
   -- Try to infer the kind of the first type
   case synthKind t1 of
@@ -105,19 +105,8 @@ synthCheckPair t1 t2 =
       checkKind t2 k
       return k
 
-(<|>) :: Either String (Type 1) -> Either String (Type 1) -> Either String (Type 1)
-(Left err) <|> (Left err') =
-  -- TODO: generalise using error data type
-  -- Filter out certain kinds of error here that are to do with
-  -- overloading
-  if "expecting kind" `isInfixOf` err
-    then Left err'
-    else
-      if "expecting kind" `isInfixOf` err
-        then Left err
-        else
-          Left ("No resolution. Either: \n" <> indent err <> "\nor\n" <> indent err')
-
+(<|>) :: Either TypeError (Type 1) -> Either TypeError (Type 1) -> Either TypeError (Type 1)
+(Left err) <|> (Left err') = Left err
 (Right x) <|> _ = Right x
 _ <|> (Right x) = Right x
 

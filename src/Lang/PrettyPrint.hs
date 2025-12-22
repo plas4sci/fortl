@@ -77,6 +77,8 @@ instance PrettyPrint () where
 instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyCon _) = True
     isLexicallyAtomic (TyVar _) = True
+    isLexicallyAtomic (TyApp _ _) = True
+    isLexicallyAtomic (ExponentTy _ _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon c) = c
@@ -87,10 +89,12 @@ instance PrettyPrint (Type i) where
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyApp tyA tyB) =
-      bracket_pprint tyA ++ " " ++ bracket_pprint tyB
+      bracket_pprint tyA ++ "(" ++ bracket_pprint tyB ++ ")"
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
-    pprint (IntersectTy t1 t2) =
+    pprint (WithTy t1 t2) =
       bracket_pprint t1 ++ " & " ++ bracket_pprint t2
+    pprint (ExponentTy t1 1) =
+      bracket_pprint t1
     pprint (ExponentTy t1 q) =
       bracket_pprint t1 ++ "^" ++ show q
