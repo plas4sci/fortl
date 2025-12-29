@@ -14,7 +14,6 @@ import Lang.TypeHelpers
 import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
-import Debug.Trace
 
 synthProgram :: Program -> Either TypeError (Type 0)
 synthProgram = synthProgram' []
@@ -377,7 +376,6 @@ synth gamma (BinOp op e1 e2) =
                     OpTimes -> Right $ floatTy (normalisationByEvaluation $ ProdTy d1 d2)
                     OpDivide -> Right $ floatTy (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
                     _        ->
-                      ("Eq on " <> show d1 <> " == " <> show d2) `trace`
                       case typeEquality d1 (IsSpec d2) of
                         -- d1 == d2
                         Right () -> Right $ floatTy (normalisationByEvaluation d1)
@@ -530,7 +528,6 @@ normalise t =
 normalise' :: Type 0 -> Type 0
 normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
 normalise' (isGradedType "Float" -> Just desc) =
-  ("-- " ++ (show $ (normalisationByEvaluation desc))) `trace`
     floatTy (normalisationByEvaluation desc)
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
 normalise' (Forall x t) = Forall x (normalise' t)
