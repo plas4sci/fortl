@@ -522,13 +522,22 @@ errorToString (ChainedError err1 err2) =
 
 -- | Normalize a type (useful for displaying information to the user)
 normalise :: Type 0 -> Type 0
-normalise (FunTy t1 t2) = FunTy (normalise t1) (normalise t2)
-normalise (isGradedType "Float" -> Just desc) =
-  floatTy (normalisationByEvaluation desc)
-normalise (TyApp t1 t2) = TyApp (normalise t1) (normalise t2)
-normalise (Forall x t) = Forall x (normalise t)
-normalise (ProdTy t1 t2) = ProdTy (normalise t1) (normalise t2)
-normalise (SumTy t1 t2) = SumTy (normalise t1) (normalise t2)
-normalise (WithTy t1 t2) = WithTy (normalise t1) (normalise t2)
-normalise (ExponentTy t n) = ExponentTy (normalise t) n
-normalise t = t  -- Base case: TyCon, TyVar, etc.
+normalise t =
+  if normalise' t == t
+    then t
+    else normalise (normalise' t)
+
+normalise' :: Type 0 -> Type 0
+normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
+normalise' (isGradedType "Float" -> Just desc) =
+  ("-- " ++ (show $ (normalisationByEvaluation desc))) `trace`
+    floatTy (normalisationByEvaluation desc)
+normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
+normalise' (Forall x t) = Forall x (normalise' t)
+normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)
+normalise' (SumTy t1 t2) = SumTy (normalise' t1) (normalise' t2)
+normalise' (WithTy t (TyCon "1")) = normalise' t
+normalise' (WithTy (TyCon "1") t) = normalise' t
+normalise' (WithTy t1 t2) = WithTy (normalise' t1) (normalise' t2)
+normalise' (ExponentTy t n) = ExponentTy (normalise' t) n
+normalise' t = t  -- Base case: TyCon, TyVar, etc.
