@@ -107,7 +107,16 @@ instance Representation DescriptionRepr where
     -- | Reify a description representation back to a type term
     reifyToTypeTerm :: DescriptionRepr -> Type 0
     reifyToTypeTerm (FreeAGroup a) =
-      foldrWithKey (\k v t -> ExponentTy (TyCon k) v `ProdTy` t) (TyCon "1") a
+      if length (assocs a) == 0
+        then TyCon "1"
+        else
+          Prelude.foldr (\(k, v) t -> exp k v `ProdTy` t) base rest
+          where
+            exp k 1 = TyCon k
+            exp k v = ExponentTy (TyCon k) v
+            base    = exp k v
+            (k, v)  = head (assocs a)
+            rest    = tail (assocs a)
     reifyToTypeTerm (TypeTree t) = t
 
     -- | Equality on description representations
