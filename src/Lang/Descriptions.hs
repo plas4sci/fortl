@@ -74,7 +74,14 @@ instance Representation DescriptionsRepr where
     -- | Reify a description representation back to a type term
     reifyToTypeTerm :: DescriptionsRepr -> Type 0
     reifyToTypeTerm ds =
-        foldrWithKey (\k v t -> TyApp (TyCon k) (reifyToTypeTerm v) `WithTy` t) (TyCon "1") ds
+      if length (keys ds) == 0
+        then TyCon "1"
+        else
+          Prelude.foldr (\(k, v) t -> WithTy (TyApp (TyCon k) (reifyToTypeTerm v)) t) base rest
+          where
+            base    = TyApp (TyCon k) (reifyToTypeTerm v)
+            (k, v)  = head (assocs ds)
+            rest    = tail (assocs ds)
 
     -- | Equality on description representations
     reprEquality :: DescriptionsRepr -> Specificational DescriptionsRepr -> Either TypeError ()
