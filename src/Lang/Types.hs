@@ -77,6 +77,13 @@ check gamma (Var x) ty =
         Right () -> Right ()
         Left err -> Left $ TypeCheckFailure t ty (errorToString err)
 
+check gamma (NumFloat n) ty =
+  case isGradedType "Float" ty of
+    Just desc ->
+      -- Float type of any grade will do
+        Right ()
+    Nothing -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
+
 {--
 
 G, x : A |- e <= B
@@ -356,6 +363,7 @@ synth gamma (Case e (x,e1) (y,e2)) =
       )
     Right t -> Left $ ExpectingSumType e
     Left err -> Left $ err
+
 synth gamma (NumFloat n) =
   Right (floatTy unitDescription)
 
