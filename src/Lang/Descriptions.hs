@@ -69,6 +69,7 @@ instance Representation DescriptionsRepr where
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
         Just $ union d1 d2
+    computeRepresentation (TyCon "1") = Just empty
     computeRepresentation _ = Nothing
 
     -- | Reify a description representation back to a type term
