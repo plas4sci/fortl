@@ -38,6 +38,7 @@ import Lang.Options
     in      { TokenIn  _  }
     zero    { TokenZero _ }
     succ    { TokenSucc _ }
+    return  { TokenReturn _ }
     IDENT   { TokenSym _ _ }
     LANG    { TokenLang _ _ }
     TYVAR    { TokenTyVar _ _ }
@@ -83,7 +84,7 @@ LangOpts :: { [Option] }
 
 Defs :: { [Option] -> Program }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
-  | Expr                  { \opts -> [Return ($1 opts)] }
+  | return Expr           { \opts -> [Return ($2 opts)] }
 
 NL :: { () }
   : nl NL                     { }

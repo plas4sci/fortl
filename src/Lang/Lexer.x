@@ -53,6 +53,7 @@ tokens :-
   inl                           { \p s -> TokenInl p }
   inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
+  return                        { \p s -> TokenReturn p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
@@ -126,6 +127,7 @@ data Token
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
+  | TokenReturn   AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String
