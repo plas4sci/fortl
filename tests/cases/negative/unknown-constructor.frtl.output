@@ -1,1 +1,2 @@
-Kinding error: Unknown type constructor Floats
+Expecting Float type.
+Trying to check at Floats but got type Float(1)

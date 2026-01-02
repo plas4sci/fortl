@@ -1,0 +1,4 @@
+-- data Description += SpecificHeat
+cp : Float (Unit(Kg) & Quantity(SpecificHeat)) = 2.0
+theta : Float(Unit(M)) = 3.0
+it = cp

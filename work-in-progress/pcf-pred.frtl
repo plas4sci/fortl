@@ -1,0 +1,4 @@
+
+pred = (lambda n: natcase n of zero -> zero | succ x -> x) : Nat -> Nat
+
+it = (pred(succ(succ(zero)))) : Nat

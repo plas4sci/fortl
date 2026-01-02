@@ -38,13 +38,13 @@ import Lang.Options
     in      { TokenIn  _  }
     zero    { TokenZero _ }
     succ    { TokenSucc _ }
+    return  { TokenReturn _ }
     IDENT   { TokenSym _ _ }
     LANG    { TokenLang _ _ }
-    VAR     { TokenVar _ _ }
+    TYVAR   { TokenTyVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     forall  { TokenForall _ }
-    '\\'    { TokenLambda _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
     '='     { TokenEq _ }
@@ -65,10 +65,12 @@ import Lang.Options
     ', '    { TokenMPair _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
+    LAMBDA  { TokenLambda _ }
 
 %right in
 %right '->'
 %left ':'
+%nonassoc LAMBDA
 %left '+' '-'
 %left '*'
 %%
@@ -83,14 +85,15 @@ LangOpts :: { [Option] }
 
 Defs :: { [Option] -> Program }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
-  | Expr                  { \opts -> [Return ($1 opts)] }
+  | return Expr           { \opts -> [Return ($2 opts)] }
+  | Def                   { \opts -> [$1 opts] }
 
 NL :: { () }
   : nl NL                     { }
   | nl                        { }
 
 Def :: { [Option] -> Def }
-  : IDENT '=' Expr { \opts -> VarDef (symString $1) Nothing ($3 opts) }
+  : IDENT '=' Expr          { \opts -> VarDef (symString $1) Nothing ($3 opts) }
   | IDENT ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
@@ -105,16 +108,12 @@ Expr :: { [Option] -> Expr }
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
 
-  | '\\' '(' IDENT ':' Type ')' '->' Expr
-    { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
-
-  | '\\' IDENT '->' Expr
-    { \opts -> Abs (symString $2) Nothing ($4 opts) }
-
+   -- TODO: probably needs reconciling with lambda syntax
   | Lam IDENT '->' Expr
     { \opts -> TyAbs (symString $2) ($4 opts) }
 
-  | Expr ':' Type  { \opts -> Sig ($1 opts) ($3 opts) }
+  | Form ':' Type
+    { \opts -> Sig ($1 opts) ($3 opts) }
 
   | Form
     { $1 }
@@ -156,19 +155,14 @@ Kind
   
 Type :: { [Option] -> Type 0 }
 Type
-  : Type '->' Type   { \opts -> FunTy ($1 opts) ($3 opts) }
-  | Type '*' Type    { \opts -> ProdTy ($1 opts) ($3 opts) }
-  | Type '+' Type    { \opts -> SumTy ($1 opts) ($3 opts) }
-  | Type '&' Type    { \opts -> IntersectTy ($1 opts) ($3 opts) }
-  | Type '^' NumFloat   { \opts -> ExponentTy ($1 opts) $3 }
-  | TyJuxt           { $1 }
-  | '[' Type ']'     { \opts -> TyApp (TyCon "Unit") ($2 opts) }
+  : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
+  | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
+  | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
+  | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
+  | TypeAtom '(' Type ')' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
-
-TyJuxt :: { [Option] -> Type 0 }
-TyJuxt
-  : TyJuxt TypeAtom { \opts -> TyApp ($1 opts) ($2 opts) }
-  | TypeAtom        { $1 }
 
 NumFloat :: { Float }
 NumFloat
@@ -177,20 +171,22 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : IDENT           { \opts -> TyCon $ constrString $1 }
-  | VAR              { \opts -> TyVar (symString $1) }
+  : IDENT            { \opts -> TyCon $ symString $1 }
+  | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
   | '?'              { \opts -> TyCon "?" }
 
 Juxt :: { [Option] -> Expr }
-  : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
-  | cast Atom                 { \opts -> Cast ($2 opts) }
+  : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  | cast '(' Atom ')'                 { \opts -> Cast ($3 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> Var $ symString $1 }
+  | LAMBDA IDENT ':' Expr
+    { \opts -> Abs (symString $2) Nothing ($4 opts) }
   | zero
     { \opts -> Zero }
   | succ

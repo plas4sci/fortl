@@ -5,7 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Lang.Lexer (Token(..),scanTokens,symString
-                 ,getPos, constrString) where
+                 ,getPos, tyVarString) where
 
 import Data.Text (Text)
 import Lang.FirstParameter
@@ -16,13 +16,13 @@ import GHC.Generics (Generic)
 %wrapper "posn"
 
 $digit  = 0-9
-$alpha  = [a-zA-Z\_\-\=]
+$alpha  = [a-zA-Z\_\-]
 $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
 @sym    = ($lower | $upper) ($alphanum | \')*
-@var    = \' @sym
+@tyvar    = \' @sym
 @float   = \-? $digit+ \. $digit+
 @int    = \-? $digit+
 @charLiteral = \' ([\\.]|[^\']| . ) \'
@@ -36,7 +36,7 @@ tokens :-
   $eol+                         { \p s -> TokenNL p }
   $white+                       ;
   "--".*                        ;
-  @var                          { \p s -> TokenVar p (tail s) }
+  @tyvar                          { \p s -> TokenTyVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
   forall                        { \p _ -> TokenForall p }
   data                          { \p s -> TokenData p }
@@ -53,12 +53,13 @@ tokens :-
   inl                           { \p s -> TokenInl p }
   inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
+  return                        { \p s -> TokenReturn p }
+  lambda                        { \p s -> TokenLambda p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
   @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
-  \\                            { \p s -> TokenLambda p }
   \/\\                          { \p s -> TokenTyLambda p }
   \=                            { \p s -> TokenEq p }
   \(                            { \p s -> TokenLParen p }
@@ -94,7 +95,7 @@ data Token
   | TokenTyLambda  AlexPosn
   | TokenLambda   AlexPosn
   | TokenSym      AlexPosn String
-  | TokenVar      AlexPosn String
+  | TokenTyVar    AlexPosn String
   | TokenZero     AlexPosn
   | TokenSucc     AlexPosn
   | TokenArrow    AlexPosn
@@ -102,7 +103,6 @@ data Token
   | TokenLParen   AlexPosn
   | TokenRParen   AlexPosn
   | TokenNL       AlexPosn
-  | TokenConstr   AlexPosn String
   | TokenSig      AlexPosn
   | TokenEquiv    AlexPosn
   | TokenHole     AlexPosn
@@ -127,14 +127,16 @@ data Token
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
+  | TokenReturn   AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String
 symString (TokenSym _ x) = x
 symString t = error $ "Not a symbol " ++ show t
 
-constrString :: Token -> String
-constrString (TokenConstr _ x) = x
+tyVarString :: Token -> String
+tyVarString (TokenTyVar _ x) = x
+tyVarString t = error $ "Not a type variable " ++ show t
 
 scanTokens = alexScanTokens >>= (return . trim)
 

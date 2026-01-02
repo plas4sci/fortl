@@ -1,5 +1,4 @@
-y : Float & [M] & Quantity(Length) = 2.0
-x : Float & [M] & Quantity(Length) = 1.0 + y
-t : Float & [S] = 4.0
-v : Float & [S^-1 * M] = x / t
-v
+y : Float(Unit(m) & Quantity(length)) = 2.0
+x : Float(Unit(m) & Quantity(length)) = 1.0 + y
+t : Float(Unit(s)) = 4.0
+it : Float(Unit(s^-1 * m) & Quantity(length)) = (x + y) / t

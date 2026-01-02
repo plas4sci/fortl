@@ -25,8 +25,8 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic _       = False
 
-    pprint (Abs var Nothing e)  = "\\" ++ var ++ " -> " ++ pprint e
-    pprint (Abs var (Just t) e) = "\\ (" ++ var ++ " : " ++ pprint t ++ ") -> " ++ pprint e
+    pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
+    pprint (Abs var (Just t) e) = "lambda (" ++ var ++ " : " ++ pprint t ++ "): " ++ pprint e
     pprint (App (Abs var mt e1) e2) =
       bracket_pprint (Abs var mt e1) ++ " " ++ bracket_pprint e2
     pprint (App (Sig e1 t) e2) =
@@ -62,6 +62,9 @@ instance PrettyPrint Expr where
       in
         arg1 <> operator <> arg2
     pprint (NumFloat f) = show f
+    pprint (Con c []) = c
+    pprint (Con c es) =
+      c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
 
 instance PrettyPrint Op where
   pprint op =
@@ -77,6 +80,8 @@ instance PrettyPrint () where
 instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyCon _) = True
     isLexicallyAtomic (TyVar _) = True
+    isLexicallyAtomic (TyApp _ _) = True
+    isLexicallyAtomic (ExponentTy _ _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon c) = c
@@ -87,10 +92,12 @@ instance PrettyPrint (Type i) where
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyApp tyA tyB) =
-      bracket_pprint tyA ++ " " ++ bracket_pprint tyB
+      bracket_pprint tyA ++ "(" ++ bracket_pprint tyB ++ ")"
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
-    pprint (IntersectTy t1 t2) =
+    pprint (WithTy t1 t2) =
       bracket_pprint t1 ++ " & " ++ bracket_pprint t2
+    pprint (ExponentTy t1 1) =
+      bracket_pprint t1
     pprint (ExponentTy t1 q) =
       bracket_pprint t1 ++ "^" ++ show q
