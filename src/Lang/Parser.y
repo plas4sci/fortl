@@ -108,6 +108,7 @@ Expr :: { [Option] -> Expr }
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
 
+   -- TODO: probably needs reconciling with lambda syntax
   | Lam IDENT '->' Expr
     { \opts -> TyAbs (symString $2) ($4 opts) }
 
