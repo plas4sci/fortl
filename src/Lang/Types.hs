@@ -384,7 +384,7 @@ synth gamma (BinOp op e1 e2) =
                     OpTimes -> Right $ floatTy (normalisationByEvaluation $ ProdTy d1 d2)
                     OpDivide -> Right $ floatTy (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
                     _        ->
-                      case typeEquality d1 (IsSpec d2) of
+                      case descriptionEquality d1 (IsSpec d2) of
                         -- d1 == d2
                         Right () -> Right $ floatTy (normalisationByEvaluation d1)
                         Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
