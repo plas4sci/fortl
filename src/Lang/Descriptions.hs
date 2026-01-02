@@ -12,8 +12,6 @@ import Lang.PrettyPrint
 import Data.Map.Lazy
 import Lang.TypeError
 
-import Debug.Trace
-
 unitDescription :: Type 0
 unitDescription = TyCon "1"
 
@@ -27,7 +25,7 @@ descriptionEquality t1 (IsSpec t2) =
         eq = do
             d1 <- computeRepresentation t1 :: Maybe DescriptionsRepr
             d2 <- computeRepresentation t2 :: Maybe DescriptionsRepr
-            (show (d1, d2, d1 `reprEquality` (IsSpec d2))) `trace` return $ d1 `reprEquality` (IsSpec d2)
+            return $ d1 `reprEquality` (IsSpec d2)
 
 -- # Representations class
 

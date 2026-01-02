@@ -1,1 +1,2 @@
-Kinding error: For type Float, expecting kind Descriptor but got kind Type
+Expecting Float type.
+Trying to check at Float(1) & Float(1) but got type Float(1)
