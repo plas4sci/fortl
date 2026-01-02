@@ -1,5 +1,4 @@
 
-id = (lambda x: x) : Nat -> Nat
-test_pair = < (lambda x: fst(x)), <id(succ(zero)), succ(succ(zero)) > > : (Nat * Nat -> Nat) * (Nat * Nat)
-
-(fst(test_pair))(snd(test_pair)) : Nat
+id : Nat -> Nat = (lambda x: x) 
+test_pair : (Nat * Nat -> Nat) * (Nat * Nat) = < (lambda x: fst(x)), <id(succ(zero)), succ(succ(zero)) > >
+it : Nat = (fst(test_pair))(snd(test_pair))
