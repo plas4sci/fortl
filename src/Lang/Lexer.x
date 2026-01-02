@@ -16,7 +16,7 @@ import GHC.Generics (Generic)
 %wrapper "posn"
 
 $digit  = 0-9
-$alpha  = [a-zA-Z\_\-\=]
+$alpha  = [a-zA-Z\_\-]
 $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
@@ -59,7 +59,7 @@ tokens :-
   @float                        { \p s -> TokenFloat p s }
   @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
-  \\                            { \p s -> TokenLambda p }
+  lambda                        { \p s -> TokenLambda p }
   \/\\                          { \p s -> TokenTyLambda p }
   \=                            { \p s -> TokenEq p }
   \(                            { \p s -> TokenLParen p }

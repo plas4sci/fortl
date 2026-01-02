@@ -62,6 +62,9 @@ instance PrettyPrint Expr where
       in
         arg1 <> operator <> arg2
     pprint (NumFloat f) = show f
+    pprint (Con c []) = c
+    pprint (Con c es) =
+      c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
 
 instance PrettyPrint Op where
   pprint op =

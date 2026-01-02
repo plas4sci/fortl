@@ -33,7 +33,12 @@ interpretDefs env opts ((Return e):defs) =
 
 interpretDefs env opts (_:defs ) = interpretDefs env opts defs
 
-interpretDefs env opts [] = error "No return statement"
+interpretDefs env opts [] = 
+  -- No definition
+  -- return the expression fro the last binder if there is one
+  case lookup "it" env of
+    Just v  -> v
+    Nothing -> Con "None" []
 
 -- Big step operational model (i.e., expression interpreter)
 bigStep :: Env -> [Option] -> Expr -> Either String Expr
@@ -109,6 +114,9 @@ bigStep env opts (NumFloat f) = Right $ NumFloat f
 bigStep env opts Succ = Right Succ
 bigStep env opts Zero = Right Zero
 bigStep env opts (Abs x mt body) = Right $ Abs x mt body
+bigStep env opts (Con c es) = do
+  vs <- mapM (bigStep env opts) es
+  return $ Con c vs
 
 class Substitutable e where
   substitute :: e -> (Identifier, e) -> e
@@ -183,6 +191,8 @@ substituteExpr (TyEmbed t) (var, _) =
 substituteExpr (TyAbs y e) s =
   TyAbs y (substituteExpr e s)
 
+substituteExpr (Con c es) s =
+  Con c (map (`substituteExpr` s) es)
 
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced

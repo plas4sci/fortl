@@ -14,6 +14,7 @@ import Lang.TypeHelpers
 import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
+import Debug.Trace
 
 synthProgram :: Program -> Either TypeError (Type 0)
 synthProgram = synthProgram' []

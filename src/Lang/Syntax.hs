@@ -56,6 +56,9 @@ data Expr where
                                -- case e of inl x -> e1 | inr y -> e2
     NumFloat :: Float        -> Expr
     BinOp :: Op -> Expr -> Expr -> Expr
+
+    -- constructors
+    Con   :: Identifier -> [Expr]  -> Expr
   deriving Show
 
 -- Operators

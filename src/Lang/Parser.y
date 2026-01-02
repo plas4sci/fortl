@@ -41,11 +41,11 @@ import Lang.Options
     return  { TokenReturn _ }
     IDENT   { TokenSym _ _ }
     LANG    { TokenLang _ _ }
-    TYVAR    { TokenTyVar _ _ }
+    TYVAR   { TokenTyVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     forall  { TokenForall _ }
-    '\\'    { TokenLambda _ }
+    lambda  { TokenLambda _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
     '='     { TokenEq _ }
@@ -85,6 +85,7 @@ LangOpts :: { [Option] }
 Defs :: { [Option] -> Program }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
   | return Expr           { \opts -> [Return ($2 opts)] }
+  | Def                   { \opts -> [$1 opts] }
 
 NL :: { () }
   : nl NL                     { }
@@ -106,16 +107,14 @@ Expr :: { [Option] -> Expr }
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
 
-  | '\\' '(' IDENT ':' Type ')' '->' Expr
-    { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
+  -- | lambda '(' IDENT ':' Type ')' ':' Expr
+  --   { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
 
-  | '\\' IDENT '->' Expr
+  | lambda IDENT ':' Expr
     { \opts -> Abs (symString $2) Nothing ($4 opts) }
 
   | Lam IDENT '->' Expr
     { \opts -> TyAbs (symString $2) ($4 opts) }
-
-  | Expr ':' Type  { \opts -> Sig ($1 opts) ($3 opts) }
 
   | Form
     { $1 }
@@ -180,8 +179,8 @@ TypeAtom
   | '?'              { \opts -> TyCon "?" }
 
 Juxt :: { [Option] -> Expr }
-  : Juxt Atom                 { \opts -> App ($1 opts) ($2 opts) }
-  | cast Atom                 { \opts -> Cast ($2 opts) }
+  : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  | cast '(' Atom ')'                 { \opts -> Cast ($3 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
