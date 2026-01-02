@@ -45,7 +45,6 @@ import Lang.Options
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     forall  { TokenForall _ }
-    lambda  { TokenLambda _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
     '='     { TokenEq _ }
@@ -66,10 +65,12 @@ import Lang.Options
     ', '    { TokenMPair _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
+    LAMBDA  { TokenLambda _ }
 
 %right in
 %right '->'
 %left ':'
+%nonassoc LAMBDA
 %left '+' '-'
 %left '*'
 %%
@@ -107,14 +108,11 @@ Expr :: { [Option] -> Expr }
     { \opts ->
       GenLet (symString $2) ($4 opts) ($6 opts) }
 
-  -- | lambda '(' IDENT ':' Type ')' ':' Expr
-  --   { \opts -> Abs (symString $3) (Just ($5 opts)) ($8 opts) }
-
-  | lambda IDENT ':' Expr
-    { \opts -> Abs (symString $2) Nothing ($4 opts) }
-
   | Lam IDENT '->' Expr
     { \opts -> TyAbs (symString $2) ($4 opts) }
+
+  | Form ':' Type
+    { \opts -> Sig ($1 opts) ($3 opts) }
 
   | Form
     { $1 }
@@ -186,6 +184,8 @@ Juxt :: { [Option] -> Expr }
 Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> Var $ symString $1 }
+  | LAMBDA IDENT ':' Expr
+    { \opts -> Abs (symString $2) Nothing ($4 opts) }
   | zero
     { \opts -> Zero }
   | succ

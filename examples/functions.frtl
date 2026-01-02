@@ -1,2 +1,2 @@
-f = lambda x: x
+f : Float -> Float = lambda x: x
 it = f(1.0)

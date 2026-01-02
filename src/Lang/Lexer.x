@@ -54,12 +54,12 @@ tokens :-
   inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
   return                        { \p s -> TokenReturn p }
+  lambda                        { \p s -> TokenLambda p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
   @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
-  lambda                        { \p s -> TokenLambda p }
   \/\\                          { \p s -> TokenTyLambda p }
   \=                            { \p s -> TokenEq p }
   \(                            { \p s -> TokenLParen p }
