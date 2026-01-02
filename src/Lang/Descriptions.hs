@@ -69,6 +69,13 @@ instance Representation DescriptionsRepr where
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
         Just $ union d1 d2
+    computeRepresentation (ExponentTy t n) = do
+        d <- computeRepresentation t
+        Just $ fmap (exp n) d
+        where
+          exp :: Float -> DescriptionRepr -> DescriptionRepr
+          exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
+          exp n (TypeTree t)   = TypeTree $ ExponentTy t n
     computeRepresentation (TyCon "1") = Just empty
     computeRepresentation _ = Nothing
 
