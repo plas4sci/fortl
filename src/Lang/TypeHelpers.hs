@@ -17,6 +17,10 @@ reciprocalType t = ExponentTy t (-1.0)
 isGradableNumericType :: Type 0 -> Maybe (Identifier, Type 0)
 isGradableNumericType ty =
   case ty of
+    TyCon conId -> 
+      case isDescConstructor conId of
+        Just _  -> Just (conId, TyCon "1") -- Default index for base type
+        Nothing -> Nothing
     TyApp (TyCon conId) t ->
       case isDescConstructor conId of
         Just _  -> Just (conId, t)

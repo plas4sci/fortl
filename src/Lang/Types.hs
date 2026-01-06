@@ -84,6 +84,13 @@ check gamma (NumFloat n) ty =
         Right ()
     Nothing -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
+check gamma (NumInteger n) ty =
+  case isGradedType "Integer" ty of
+    Just desc ->
+      -- Integer type of any grade will do
+        Right ()
+    Nothing -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
+
 check gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
     Right () -> check gamma e tyA

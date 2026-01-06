@@ -41,6 +41,6 @@ typeConstructors = [
 isDescConstructor :: Identifier -> Maybe (Type 1)
 isDescConstructor conId =
   case lookup conId typeConstructors of
-    Just k@(FunTy _ t) | t == desc -> Just k
+    Just k@(FunTy t _) | t == desc -> Just k
     _                              -> Nothing
 
