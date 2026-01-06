@@ -13,6 +13,9 @@ natTy = TyCon "Nat"
 floatTy :: Type 0 -> Type 0
 floatTy t = TyApp (TyCon "Float") t
 
+integerTy :: Type 0 -> Type 0
+integerTy t = TyApp (TyCon "Integer") t
+
 agroup :: Type 1
 agroup = TyCon "AbelianGroup"
 
@@ -21,7 +24,8 @@ desc = TyCon "Descriptor"
 
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
-    ("Float", FunTy desc type0) -- Graded float
+    ("Float", FunTy desc type0)   -- Graded float
+  , ("Integer", FunTy desc type0) -- Graded integer
   , ("Nat"  , type0)
   , ("Unit" , FunTy agroup desc)
   , ("Quantity", FunTy agroup desc)

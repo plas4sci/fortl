@@ -3,6 +3,7 @@
 module Lang.TypeHelpers where
 
 import Lang.Syntax
+import Lang.Primitives
 
 -- # Smart constructors
 
@@ -11,6 +12,17 @@ reciprocalType :: Type 0 -> Type 0
 reciprocalType t = ExponentTy t (-1.0)
 
 -- # Smart destructors
+
+-- | Check if a type is an indexed type and extract the index
+isGradableNumericType :: Type 0 -> Maybe (Identifier, Type 0)
+isGradableNumericType ty =
+  case ty of
+    TyApp (TyCon conId) t ->
+      case isDescConstructor conId of
+        Just _  -> Just (conId, t)
+        Nothing -> Nothing
+    _ -> Nothing
+
 
 -- | Check if a type is an indexed type and extract the index
 isGradedType :: Identifier -> Type 0 -> Maybe (Type 0)

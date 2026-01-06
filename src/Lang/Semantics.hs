@@ -104,13 +104,24 @@ bigStep env opts (BinOp op e1 e2) = do
         OpPlus   -> return $ NumFloat $ n1 + n2
         OpTimes  -> return $ NumFloat $ n1 * n2
         OpMinus  -> return $ NumFloat $ n1 - n2
-        OpDivide -> return $ NumFloat $ n1 / n2
+        OpDivide -> if n2 /= 0
+                      then return $ NumFloat $ n1 / n2
+                      else Left "Division by zero"
+    (NumInteger n1, NumInteger n2) ->
+      case op of
+        OpPlus   -> return $ NumInteger $ n1 + n2
+        OpTimes  -> return $ NumInteger $ n1 * n2
+        OpMinus  -> return $ NumInteger $ n1 - n2
+        OpDivide -> if n2 /= 0
+                      then return $ NumInteger $ n1 `div` n2
+                      else Left "Division by zero"
     _ -> Left "Binary operation expects two numbers"
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
 bigStep env opts (TyAbs x e) = Right $ TyAbs x e
 bigStep env opts (NumFloat f) = Right $ NumFloat f
+bigStep env opts (NumInteger n) = Right $ NumInteger n
 bigStep env opts Succ = Right Succ
 bigStep env opts Zero = Right Zero
 bigStep env opts (Abs x mt body) = Right $ Abs x mt body
@@ -175,6 +186,7 @@ substituteExpr (Inl e) s = Inl $ substituteExpr e s
 substituteExpr (Inr e) s = Inr $ substituteExpr e s
 
 substituteExpr (NumFloat n) s = NumFloat n
+substituteExpr (NumInteger n) s = NumInteger n
 
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
