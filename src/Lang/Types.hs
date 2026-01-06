@@ -444,8 +444,11 @@ synth gamma e =
 ---------------------------------
 
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
-typeEquality (isGradedType "Float" -> Just d1) (IsSpec (isGradedType "Float" -> Just d2)) =
-  descriptionEquality d1 (IsSpec d2)
+typeEquality (isGradableNumericType -> Just (baseType1, d1))
+     (IsSpec (isGradableNumericType -> Just (baseType2, d2))) =
+  if baseType1 == baseType2
+    then descriptionEquality d1 (IsSpec d2)
+    else Left $ BaseTypeMismatch baseType1 baseType2
 typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
@@ -566,8 +569,8 @@ normalise t =
 
 normalise' :: Type 0 -> Type 0
 normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
-normalise' (isGradedType "Float" -> Just desc) =
-    floatTy (normalisationByEvaluation desc)
+normalise' (isGradableNumericType -> Just (baseType, desc)) =
+  TyApp (TyCon baseType) (normalisationByEvaluation desc)
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
 normalise' (Forall x t) = Forall x (normalise' t)
 normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)
