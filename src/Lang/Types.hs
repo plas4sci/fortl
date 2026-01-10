@@ -92,11 +92,11 @@ G |- (\x -> e) <= A -> B
 
 -}
 -- Curry style
-check gamma (Abs x Nothing expr) (FunTy tyA tyB) =
+check gamma (Abs x Nothing expr) (FunTy _ tyA tyB) =
   check ([(x, tyA)] ++ gamma) expr tyB
 
 -- Church style
-check gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) =
+check gamma (Abs x (Just tyA') expr) (FunTy _ tyA tyB) =
   case typeEquality tyA' (IsSpec tyA) of
     Right () -> check ([(x, tyA)] ++ gamma) expr tyB
     Left err -> Left $ ChainedError (FunctionAbstractionTypeMismatch tyA tyA') err
@@ -113,7 +113,7 @@ check gamma (Cast e) t@(WithTy t1 t2) =
         Right k2 ->
           Left $ CannotProjectFromType t (pprint k1 <> " and " <> pprint k2 <> " and thus no base Type remains.")
 
-check gamma (Fix e) t = check gamma e (FunTy t t)
+check gamma (Fix e) t = check gamma e (FunTy "" t t)
 
 check gamma (NatCase e e1 (x,e2)) t = do
   check gamma e natTy
@@ -283,7 +283,7 @@ synth gamma (App e (TyEmbed tau')) =
 synth gamma (App e1 e2) =
   -- Synth the left-hand side
   case synth gamma e1 of
-    Right (FunTy tyA tyB) ->
+    Right (FunTy _ tyA tyB) ->
       -- Check the right-hand side
       case check gamma e2 tyA of
         -- Yay!
@@ -300,7 +300,7 @@ synth gamma Zero =
   Right natTy
 
 synth gamma Succ =
-  Right (FunTy natTy natTy)
+  Right (FunTy "" natTy natTy)
 
 synth gamma (NatCase e e1 (x,e2)) =
   case check gamma e natTy of
@@ -321,7 +321,7 @@ synth gamma (NatCase e e1 (x,e2)) =
 
 synth gamma (Fix e) =
   case synth gamma e of
-    Right (FunTy t1 t2) ->
+    Right (FunTy _ t1 t2) ->
       if t1 == t2 then Right t1
       else Left $ FixpointDomainRangeMismatch e t1 t2
     Right t -> Left $ ExpectingFunctionType e t
@@ -467,7 +467,7 @@ errorToString (FunctionAbstractionTypeMismatch expected actual) =
 
 errorToString (FixpointDomainRangeMismatch e t1 t2) =
   "Expecting (" ++ pprint e ++ ") to have function type with equal domain/range but got " 
-  ++ pprint (normalise (FunTy t1 t2))
+  ++ pprint (normalise (FunTy "" t1 t2))
 
 errorToString (ExplicitSignatureCheckFailure ty err) =
   errorToString err <> "\nTrying to check explicit signature " ++ pprint (normalise ty)
@@ -534,7 +534,7 @@ normalise t =
     else normalise (normalise' t)
 
 normalise' :: Type 0 -> Type 0
-normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
+normalise' (FunTy x t1 t2) = FunTy x (normalise' t1) (normalise' t2)
 normalise' (isGradedType "Float" -> Just desc) =
     floatTy (normalisationByEvaluation desc)
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)

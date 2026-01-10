@@ -10,14 +10,14 @@ import Lang.TypeError
 
 -- Check if a type is well-kinded against the second argument (kind)
 checkKind :: Type 0 -> Type 1 -> Either TypeError ()
-checkKind (FunTy t1 t2) k = do
+checkKind (FunTy _ t1 t2) k = do
   checkKind t1 k
   checkKind t2 k
 
 checkKind t@(TyApp t1 t2) k = do
   k1 <- synthKind t1
   case k1 of
-    FunTy k1' k2 ->
+    FunTy _ k1' k2 ->
       if k == k2
         then checkKind t2 k1'
         else Left $ KindMismatch k k2 t
@@ -44,12 +44,12 @@ synthKind (TyCon c) =
 synthKind (TyApp t1 t2) = do
   k <- synthKind t1
   case k of
-    FunTy k1 k2 -> do
+    FunTy _ k1 k2 -> do
         checkKind t2 k1
         return k2
     _ -> Left $ ExpectingFunctionKind k
 
-synthKind (FunTy t1 t2) = do
+synthKind (FunTy _ t1 t2) = do
   k <- synthKind t1
   checkKind t2 k
   return k

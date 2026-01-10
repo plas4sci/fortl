@@ -85,8 +85,10 @@ instance PrettyPrint (Type i) where
     isLexicallyAtomic _     = False
 
     pprint (TyCon c) = c
-    pprint (FunTy tyA tyB) =
+    pprint (FunTy "" tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
+    pprint (FunTy x tyA tyB) =
+      "(" ++ x ++ " : " ++ pprint tyA ++ ") -> " ++ pprint tyB
     pprint (ProdTy tyA tyB) =
       bracket_pprint tyA ++ " * " ++ bracket_pprint tyB
     pprint (SumTy tyA tyB) =

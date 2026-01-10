@@ -21,11 +21,12 @@ desc = TyCon "Descriptor"
 
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
-    ("Float", FunTy desc type0) -- Graded float
+    ("Float", FunTy "" desc type0) -- Graded float
   , ("Nat"  , type0)
-  , ("Unit" , FunTy agroup desc)
-  , ("Quantity", FunTy agroup desc)
+  , ("Unit" , FunTy "" agroup desc)
+  , ("Quantity", FunTy "" agroup desc)
   , ("1", agroup)
+  , ("Vec", FunTy "n" (TyCon "Nat") type0)
   -- SI Units
   , ("M", agroup)
   , ("S", agroup)
@@ -37,6 +38,6 @@ typeConstructors = [
 isDescConstructor :: Identifier -> Maybe (Type 1)
 isDescConstructor conId =
   case lookup conId typeConstructors of
-    Just k@(FunTy _ t) | t == desc -> Just k
+    Just k@(FunTy _ _ t) | t == desc -> Just k
     _                              -> Nothing
 

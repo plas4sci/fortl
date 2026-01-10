@@ -148,14 +148,16 @@ Form :: { [Option] -> Expr }
 
 Kind :: { [Option] -> Type 1 }
 Kind
-  : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
+  : Kind '->' Kind   { \opts -> FunTy "" ($1 opts) ($3 opts) }
   | IDENT            { \opts -> case symString $1 of
                                   "type" -> TyCon "type"
                                   v -> error "TODO" }
   
 Type :: { [Option] -> Type 0 }
 Type
-  : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  : Type '->' Type        { \opts -> FunTy "" ($1 opts) ($3 opts) }
+  | '(' IDENT ':' Type ')' '->' Type 
+                          { \opts -> FunTy (symString $2) ($4 opts) ($7 opts) }
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }

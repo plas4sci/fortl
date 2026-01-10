@@ -88,7 +88,7 @@ isNatVal _           = False
 -- Type syntax
 
 data Type (n :: Nat) where
-    FunTy :: Type l -> Type l -> Type l  -- A -> B
+    FunTy :: Identifier -> Type l -> Type l -> Type l  -- (x : A) -> B
 
     TyCon :: Identifier -> Type l        -- K
     TyApp :: Type l -> Type l -> Type l  -- A B
@@ -167,7 +167,7 @@ instance Term Expr where
   mkVar = Var
 
 instance Term (Type 0) where
-  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (FunTy _ t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
@@ -177,7 +177,7 @@ instance Term (Type 0) where
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
 
-  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (FunTy _ t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2

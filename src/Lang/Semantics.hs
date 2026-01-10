@@ -210,8 +210,8 @@ instance Substitutable (Type 0) where
     substitute = substituteType
 
 substituteType :: Type 0 -> (Identifier, Type 0) -> Type 0
-substituteType (FunTy t1 t2) s =
-  FunTy (substituteType t1 s) (substituteType t2 s)
+substituteType (FunTy x t1 t2) s =
+  FunTy x (substituteType t1 s) (substituteType t2 s)
 
 substituteType (TyCon c) s = TyCon c
 
