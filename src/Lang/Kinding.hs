@@ -64,6 +64,8 @@ synthKind (ExponentTy t _) = do
  checkKind t agroup
  return agroup
 
+synthKind (TyNat _) = return type0
+
 synthKind (WithTy t1 t2) =
   -- Symmetry of WithTy despite its asymmetry
   (do

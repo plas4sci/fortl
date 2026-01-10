@@ -84,9 +84,11 @@ instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic (TyApp _ _) = True
     isLexicallyAtomic (ExponentTy _ _) = True
+    isLexicallyAtomic (TyNat _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon c) = c
+    pprint (TyNat n) = show n
     pprint (FunTy "" tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
     pprint (FunTy x tyA tyB) =

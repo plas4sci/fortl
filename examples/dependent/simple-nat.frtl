@@ -1,2 +1,3 @@
-xs : Vec(2,Integer) = [1,2]
-ys : Vec(1,Integer) = [3]
+xs : Vec(2,Nat) = [1,2]
+ys : Vec(1,Nat) = [3]
+it = xs

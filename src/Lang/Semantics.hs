@@ -240,3 +240,5 @@ substituteType (WithTy t1 t2) s =
 
 substituteType (ExponentTy t1 f) s =
   ExponentTy (substituteType t1 s) f
+
+substituteType (TyNat n) s = TyNat n

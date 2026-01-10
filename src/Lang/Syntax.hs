@@ -105,6 +105,9 @@ data Type (n :: Nat) where
     -- With types
     WithTy :: Type 0 -> Type 0 -> Type 0
 
+    -- Type nats
+    TyNat :: Integer -> Type 0
+
     -- For units
     -- TODO: make just a type constructor
     ExponentTy :: Type 0 -> Float -> Type 0
@@ -178,6 +181,7 @@ instance Term (Type 0) where
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
+  boundVars (TyNat _) = Set.empty
 
   freeVars (FunTy _ t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
@@ -188,6 +192,7 @@ instance Term (Type 0) where
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (ExponentTy t1 _) = freeVars t1
+  freeVars (TyNat _) = Set.empty
 
   mkVar = TyVar
 

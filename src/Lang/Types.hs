@@ -200,6 +200,22 @@ G |- e <= A
 
 --}
 
+-- Vector constants checking
+check gamma expr (TyApp (TyApp (TyCon "Vec") (TyNat n)) ty) =
+  case expr of
+    Con "[]" [] ->
+      if n == 0 then Right ()
+      else Left $ TypeMismatch (TyApp (TyApp (TyCon "Vec") (TyNat n)) ty) (TyApp (TyApp (TyCon "Vec") (TyNat 0)) ty)
+    Con ":" [headE, tailE] ->
+      case n of
+        0 -> Left $ TypeMismatch (TyApp (TyApp (TyCon "Vec") (TyNat n)) ty) (TyApp (TyApp (TyCon "Vec") (TyNat 0)) ty)
+        _ -> do
+          check gamma headE ty
+          check gamma tailE (TyApp (TyApp (TyCon "Vec") (TyNat (n - 1))) ty)
+    _ -> Left $ TypeMismatch (TyApp (TyApp (TyCon "Vec") (TyNat n)) ty) (TyApp (TyApp (TyCon "Vec") (TyNat n)) ty)
+
+
+
 check gamma expr tyA =
   case synth gamma expr of
     Left err -> Left $ ChainedError err (CannotSynthType expr)

@@ -181,7 +181,7 @@ TypeAtom
   : IDENT            { \opts -> TyCon $ symString $1 }
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
-  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
+  | INT              { \opts -> TyNat $ let (TokenInt _ x) = $1 in read x }
   | '?'              { \opts -> TyCon "?" }
 
 Juxt :: { [Option] -> Expr }
