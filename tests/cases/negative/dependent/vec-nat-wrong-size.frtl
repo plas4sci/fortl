@@ -1,0 +1,2 @@
+xs : Vec(3,Nat) = [1,2]
+it = xs

@@ -62,7 +62,7 @@ import Lang.Options
     '>'     { TokenRPair _ }
     '['     { TokenLBrack _ }
     ']'     { TokenRBrack _ }
-    ', '    { TokenMPair _ }
+    ','     { TokenComma _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
     LAMBDA  { TokenLambda _ }
@@ -148,21 +148,28 @@ Form :: { [Option] -> Expr }
 
 Kind :: { [Option] -> Type 1 }
 Kind
-  : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
+  : Kind '->' Kind   { \opts -> FunTy "" ($1 opts) ($3 opts) }
   | IDENT            { \opts -> case symString $1 of
                                   "type" -> TyCon "type"
                                   v -> error "TODO" }
   
 Type :: { [Option] -> Type 0 }
 Type
-  : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  : Type '->' Type        { \opts -> FunTy "" ($1 opts) ($3 opts) }
+  | '(' IDENT ':' Type ')' '->' Type 
+                          { \opts -> FunTy (symString $2) ($4 opts) ($7 opts) }
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
-  | TypeAtom '(' Type ')' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | TypeAtom '(' TypeList ')' { \opts -> foldl TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
+
+TypeList :: { [Option] -> [Type 0] }
+TypeList
+  : Type ',' TypeList    { \opts -> ($1 opts) : ($3 opts) }
+  | Type                  { \opts -> [$1 opts] }
 
 NumFloat :: { Float }
 NumFloat
@@ -174,7 +181,7 @@ TypeAtom
   : IDENT            { \opts -> TyCon $ symString $1 }
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
-  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
+  | INT              { \opts -> TyNat $ let (TokenInt _ x) = $1 in read x }
   | '?'              { \opts -> TyCon "?" }
 
 Juxt :: { [Option] -> Expr }
@@ -195,7 +202,7 @@ Atom :: { [Option] -> Expr }
   | '@' TypeAtom
     { \opts -> TyEmbed ($2 opts) }
 
-  | '<' Expr ', ' Expr '>'
+  | '<' Expr ',' Expr '>'
      { \opts -> Pair ($2 opts) ($4 opts) }
 
   | FLOAT
@@ -206,10 +213,22 @@ Atom :: { [Option] -> Expr }
   | INT
      { \opts ->
           let (TokenInt _ x) = $1
-          in NumFloat $ fromIntegral $ read x }
+          in NumInteger $ fromIntegral $ read x }
+
+  -- List syntax
+  | '[' ']'
+     { \opts -> Con "[]" [] }
+  | '[' ExprList ']'
+     { \opts -> foldr (\e acc -> Con ":" [e, acc]) (Con "[]" []) ($2 opts) }
 
   -- For later
   -- | '?' { Hole }
+
+ExprList :: { [Option] -> [Expr] }
+ExprList
+  : Expr ',' ExprList     { \opts -> ($1 opts) : ($3 opts) }
+  | Expr                  { \opts -> [$1 opts] }
+
 {
 
 readOption :: Token -> ReaderT String (Either String) Option

@@ -4,6 +4,8 @@
 
 module Lang.PrettyPrint where
 
+import Data.List (intercalate)
+
 import Lang.Syntax
 
 -- Pretty print terms
@@ -23,6 +25,7 @@ instance PrettyPrint Expr where
     isLexicallyAtomic Zero = True
     isLexicallyAtomic Succ = True
     isLexicallyAtomic (NumFloat _) = True
+    isLexicallyAtomic (NumInteger _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
@@ -62,6 +65,7 @@ instance PrettyPrint Expr where
       in
         arg1 <> operator <> arg2
     pprint (NumFloat f) = show f
+    pprint (NumInteger n) = show n
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
@@ -82,17 +86,29 @@ instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic (TyApp _ _) = True
     isLexicallyAtomic (ExponentTy _ _) = True
+    isLexicallyAtomic (TyNat _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon c) = c
-    pprint (FunTy tyA tyB) =
+    pprint (TyNat n) = show n
+    pprint (FunTy "" tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
+    pprint (FunTy x tyA tyB) =
+      "(" ++ x ++ " : " ++ pprint tyA ++ ") -> " ++ pprint tyB
     pprint (ProdTy tyA tyB) =
       bracket_pprint tyA ++ " * " ++ bracket_pprint tyB
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
-    pprint (TyApp tyA tyB) =
-      bracket_pprint tyA ++ "(" ++ bracket_pprint tyB ++ ")"
+    -- turn a left nested TyApp into a sequence of applications
+    -- that are comma separated
+    pprint t@(TyApp _ _) =
+      let gatherApps (TyApp t1 t2) = gatherApps t1 ++ [t2]
+          gatherApps t'            = [t']
+          apps = gatherApps t
+          func = head apps
+          args = tail apps
+      in
+        pprint func ++ "(" ++ intercalate "," (map pprint args) ++ ")"
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (WithTy t1 t2) =

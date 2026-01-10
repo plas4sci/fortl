@@ -111,6 +111,7 @@ bigStep env opts (BinOp op e1 e2) = do
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
 bigStep env opts (TyAbs x e) = Right $ TyAbs x e
 bigStep env opts (NumFloat f) = Right $ NumFloat f
+bigStep env opts (NumInteger n) = Right $ NumInteger n
 bigStep env opts Succ = Right Succ
 bigStep env opts Zero = Right Zero
 bigStep env opts (Abs x mt body) = Right $ Abs x mt body
@@ -176,6 +177,8 @@ substituteExpr (Inr e) s = Inr $ substituteExpr e s
 
 substituteExpr (NumFloat n) s = NumFloat n
 
+substituteExpr (NumInteger n) s = NumInteger n
+
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
 
@@ -210,8 +213,8 @@ instance Substitutable (Type 0) where
     substitute = substituteType
 
 substituteType :: Type 0 -> (Identifier, Type 0) -> Type 0
-substituteType (FunTy t1 t2) s =
-  FunTy (substituteType t1 s) (substituteType t2 s)
+substituteType (FunTy x t1 t2) s =
+  FunTy x (substituteType t1 s) (substituteType t2 s)
 
 substituteType (TyCon c) s = TyCon c
 
@@ -237,3 +240,5 @@ substituteType (WithTy t1 t2) s =
 
 substituteType (ExponentTy t1 f) s =
   ExponentTy (substituteType t1 s) f
+
+substituteType (TyNat n) s = TyNat n

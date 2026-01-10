@@ -55,6 +55,7 @@ data Expr where
     Case :: Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
                                -- case e of inl x -> e1 | inr y -> e2
     NumFloat :: Float        -> Expr
+    NumInteger :: Integer      -> Expr
     BinOp :: Op -> Expr -> Expr -> Expr
 
     -- constructors
@@ -70,6 +71,7 @@ isValue Abs{}   = True
 isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (NumFloat _) = True
+isValue (NumInteger _) = True
 isValue Zero = True
 isValue Succ = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
@@ -88,7 +90,7 @@ isNatVal _           = False
 -- Type syntax
 
 data Type (n :: Nat) where
-    FunTy :: Type l -> Type l -> Type l  -- A -> B
+    FunTy :: Identifier -> Type l -> Type l -> Type l  -- (x : A) -> B
 
     TyCon :: Identifier -> Type l        -- K
     TyApp :: Type l -> Type l -> Type l  -- A B
@@ -102,6 +104,9 @@ data Type (n :: Nat) where
 
     -- With types
     WithTy :: Type 0 -> Type 0 -> Type 0
+
+    -- Type nats
+    TyNat :: Integer -> Type 0
 
     -- For units
     -- TODO: make just a type constructor
@@ -167,7 +172,7 @@ instance Term Expr where
   mkVar = Var
 
 instance Term (Type 0) where
-  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (FunTy _ t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
@@ -176,8 +181,9 @@ instance Term (Type 0) where
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
+  boundVars (TyNat _) = Set.empty
 
-  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (FunTy _ t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
@@ -186,6 +192,7 @@ instance Term (Type 0) where
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (ExponentTy t1 _) = freeVars t1
+  freeVars (TyNat _) = Set.empty
 
   mkVar = TyVar
 
