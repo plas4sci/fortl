@@ -13,6 +13,9 @@ natTy = TyCon "Nat"
 floatTy :: Type 0 -> Type 0
 floatTy t = TyApp (TyCon "Float") t
 
+floatTy1 :: Type 0
+floatTy1 = floatTy (TyCon "1")
+
 agroup :: Type 1
 agroup = TyCon "AbelianGroup"
 
@@ -34,6 +37,10 @@ typeConstructors = [
   , ("J", agroup)
  ]
 
+-- Which type constructors can be promoted to type level
+promotable :: [Identifier]
+promotable = ["Nat"]
+
 -- | Check if a type constructors a descriptor
 isDescConstructor :: Identifier -> Maybe (Type 1)
 isDescConstructor conId =
@@ -41,3 +48,9 @@ isDescConstructor conId =
     Just k@(FunTy _ _ t) | t == desc -> Just k
     _                              -> Nothing
 
+
+valueConstructors :: [(Identifier, Type 0)]
+valueConstructors = [
+    ("zero", natTy)
+  , ("succ", FunTy "" natTy natTy)
+  ]

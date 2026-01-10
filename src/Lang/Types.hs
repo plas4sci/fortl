@@ -77,6 +77,9 @@ check gamma (Var x) ty =
         Right () -> Right ()
         Left err -> Left $ TypeCheckFailure t ty (errorToString err)
 
+check gamma (NumInteger n) (TyCon "Nat") =
+  Right ()
+
 check gamma (NumFloat n) ty =
   case isGradedType "Float" ty of
     Just desc ->

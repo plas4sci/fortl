@@ -75,7 +75,7 @@ tokens :-
   ">"                           { \p s -> TokenRPair p }
   "["                           { \p s -> TokenLBrack p }
   "]"                           { \p s -> TokenRBrack p }
-  ", "                          { \p s -> TokenMPair p }
+  ","                           { \p s -> TokenComma p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }
@@ -114,7 +114,7 @@ data Token
   | TokenRPair    AlexPosn
   | TokenLBrack    AlexPosn
   | TokenRBrack    AlexPosn
-  | TokenMPair    AlexPosn
+  | TokenComma    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
   | TokenInl      AlexPosn
