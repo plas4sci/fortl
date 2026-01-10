@@ -1,4 +1,2 @@
-n : Nat = 2
-xs : Vec(n,Integer) = [1,2]
-m : Nat = 1
-ys : Vec(m,Integer) = [3]
+xs : Vec(2,Integer) = [1,2]
+ys : Vec(1,Integer) = [3]
