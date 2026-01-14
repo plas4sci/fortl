@@ -62,6 +62,10 @@ data Expr where
 
     -- constructors
     Con   :: Identifier -> [Expr]  -> Expr
+
+    -- Booleans and Conditional expression
+    ConstBool :: Bool -> Expr
+    Conditional :: Expr -> Expr -> Expr -> Expr   -- e1 if e2 else e3
   deriving Show
 
 -- Operators
@@ -79,6 +83,7 @@ isValue Succ = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e
+isValue (ConstBool _) = True
 isValue e       = isNatVal e
 
 isNatVal :: Expr -> Bool

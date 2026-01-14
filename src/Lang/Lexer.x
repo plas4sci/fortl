@@ -55,6 +55,10 @@ tokens :-
   cast                          { \p s -> TokenCast p }
   return                        { \p s -> TokenReturn p }
   lambda                        { \p s -> TokenLambda p }
+  if                            { \p _ -> TokenIf p }
+  else                          { \p _ -> TokenElse p }
+  true                          { \p _ -> TokenTrue p }
+  false                         { \p _ -> TokenFalse p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
@@ -128,6 +132,10 @@ data Token
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
   | TokenReturn   AlexPosn
+  | TokenIf       AlexPosn
+  | TokenElse     AlexPosn
+  | TokenTrue     AlexPosn
+  | TokenFalse    AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String

@@ -405,6 +405,21 @@ synth gamma (BinOp op e1 e2) =
                             Right () -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation d1)
                             Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
 
+synth gamma (ConstBool _) = Right boolTy
+
+synth gamma (Conditional c e1 e2) =
+  case check gamma c boolTy of
+    Right () ->
+      case synth gamma e1 of
+        Right t1 ->
+          case synth gamma e2 of
+            Right t2 -> 
+              case typeEquality t1 (IsSpec t2) of
+                Right () -> Right t1
+                Left err -> Left err -- TODO: Create a dedicated type error for when the two branches have different return types
+            Left err -> Left err
+        Left err -> Left err
+    Left err -> Left err
 
 {-
 

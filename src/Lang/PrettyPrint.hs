@@ -66,6 +66,9 @@ instance PrettyPrint Expr where
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
+    pprint (ConstBool b) = show b
+    pprint (Conditional c e1 e2) =
+      pprint e1 ++ " if " ++ pprint c ++ " else " ++ pprint e2
 
 instance PrettyPrint Op where
   pprint op =

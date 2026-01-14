@@ -29,6 +29,10 @@ import Lang.Options
     case    { TokenCase _ }
     natcase { TokenNatCase _ }
     of      { TokenOf _ }
+    if      { TokenIf _ }
+    else    { TokenElse _ }
+    true    { TokenTrue _ }
+    false   { TokenFalse _ }
     '|'     { TokenSep _ }
     fix     { TokenFix _ }
     fst     { TokenFst _ }
@@ -136,8 +140,14 @@ Expr :: { [Option] -> Expr }
   | inr '(' Expr ')'
      { \opts -> Inr ($3 opts) }
 
- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
+  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
      { \opts -> Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+
+  | true { \opts -> ConstBool True }
+  | false { \opts -> ConstBool False }
+
+  | Expr if Expr else Expr
+     { \opts -> Conditional ($3 opts) ($1 opts) ($5 opts) }
 
 Form :: { [Option] -> Expr }
   : Form '+' Form  { \opts -> BinOp OpPlus ($1 opts) ($3 opts) }

@@ -10,6 +10,9 @@ type0 = TyCon "Type"
 natTy :: Type 0
 natTy = TyCon "Nat"
 
+boolTy :: Type 0
+boolTy = TyCon "Bool"
+
 floatTy :: Type 0 -> Type 0
 floatTy t = TyApp (TyCon "Float") t
 
@@ -27,6 +30,7 @@ typeConstructors = [
     ("Float", FunTy desc type0)   -- Graded float
   , ("Integer", FunTy desc type0) -- Graded integer
   , ("Nat"  , type0)
+  , ("Bool", type0)
   , ("Unit" , FunTy agroup desc)
   , ("Quantity", FunTy agroup desc)
   , ("1", agroup)

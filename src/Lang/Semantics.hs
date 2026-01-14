@@ -116,6 +116,13 @@ bigStep env opts (BinOp op e1 e2) = do
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
     _ -> Left "Binary operation expects two numbers"
+bigStep env opts (Conditional c e1 e2) =
+  case bigStep env opts c of
+    Left err -> Left err
+    Right (ConstBool False) -> bigStep env opts e2
+    Right (ConstBool True) -> bigStep env opts e1
+    _ -> Left "Condition must be a Boolean value"
+
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
@@ -128,6 +135,7 @@ bigStep env opts (Abs x mt body) = Right $ Abs x mt body
 bigStep env opts (Con c es) = do
   vs <- mapM (bigStep env opts) es
   return $ Con c vs
+bigStep env opts (ConstBool b) = Right $ ConstBool b
 
 class Substitutable e where
   substitute :: e -> (Identifier, e) -> e
@@ -205,6 +213,11 @@ substituteExpr (TyAbs y e) s =
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
+
+substituteExpr (ConstBool b) _ = ConstBool b
+
+substituteExpr (Conditional e1 e2 e3) s =
+  Conditional (substituteExpr e1 s) (substituteExpr e2 s) (substituteExpr e3 s)
 
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced
