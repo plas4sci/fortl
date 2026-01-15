@@ -26,11 +26,6 @@ typeConstructors = [
   , ("Unit" , FunTy agroup desc)
   , ("Quantity", FunTy agroup desc)
   , ("1", agroup)
-  -- SI Units
-  , ("M", agroup)
-  , ("S", agroup)
-  , ("Kg", agroup)
-  , ("J", agroup)
  ]
 
 -- | Check if a type constructors a descriptor
