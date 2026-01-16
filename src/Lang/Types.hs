@@ -130,8 +130,8 @@ check gamma (BinOp op e1 e2) ty@(isGradedType ("Float") -> Just desc) =
             Left err -> Left $ OperatorTypeError op err
             Right (isGradedType ("Float") -> Just d2) ->
               case op of
-                OpTimes  -> typeEquality (floatTy $ WithTy d1 d2) (IsSpec $ floatTy desc)
-                OpDivide -> typeEquality (floatTy $ WithTy d1 (reciprocalType d2)) (IsSpec $ floatTy desc)
+                OpTimes  -> typeEquality (floatTy $ ProdTy d1 d2) (IsSpec $ floatTy desc)
+                OpDivide -> typeEquality (floatTy $ ProdTy d1 (reciprocalType d2)) (IsSpec $ floatTy desc)
             Right t2  -> Left $ ExpectingFloatType t2
         Right t1  -> Left $ ExpectingFloatType t1
 
