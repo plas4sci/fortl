@@ -14,7 +14,7 @@ data TypeError
   | TypeMismatch { expected :: Type 0, actual :: Type 0 }
   | TypeCheckFailure { inferredType :: Type 0, checkType :: Type 0, reason :: String }
   | CannotSynthType Expr
-  | ExpectingFloatType (Type 0)
+  | ExpectingNumericType (Type 0)
   | ExpectingFunctionType Expr (Type 0)
   | ExpectingProductType Expr (Type 0)
   | ExpectingSumType Expr
@@ -32,6 +32,7 @@ data TypeError
   | AbelianGroupMismatch (Type 0) (Type 0)
   | TypeTreeMismatch (Type 0) (Type 0)
   | MismatchedDescriptionReprTypes
+  | BaseTypeMismatch Identifier Identifier
   
   -- Kinding errors
   | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Type 0 }

@@ -206,7 +206,7 @@ Atom :: { [Option] -> Expr }
   | INT
      { \opts ->
           let (TokenInt _ x) = $1
-          in NumFloat $ fromIntegral $ read x }
+          in NumInteger $ fromIntegral $ read x }
 
   -- For later
   -- | '?' { Hole }

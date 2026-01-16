@@ -56,7 +56,8 @@ data Expr where
     Inr :: Expr              -> Expr             -- inr(e)
     Case :: Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
                                -- case e of inl x -> e1 | inr y -> e2
-    NumFloat :: Float        -> Expr
+    NumFloat   :: Float        -> Expr
+    NumInteger :: Integer      -> Expr
     BinOp :: Op -> Expr -> Expr -> Expr
 
     -- constructors
@@ -72,6 +73,7 @@ isValue Abs{}   = True
 isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (NumFloat _) = True
+isValue (NumInteger _) = True
 isValue Zero = True
 isValue Succ = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
