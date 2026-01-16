@@ -17,7 +17,7 @@ import Control.Monad (when)
 
 main :: IO ()
 main = do
-  putStrLn $ "fortl v0.1.0 - Programming for science"
+  putStrLn $ "fortl v0.1.1 - Programming for science"
   args <- getArgs
   -- Get command line args
   case args of
