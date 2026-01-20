@@ -152,8 +152,8 @@ check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, desc))
                     then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType'')
                     else
                       case op of
-                        OpTimes  -> typeEquality (TyApp (TyCon baseType) $ WithTy d1 d2) (IsSpec ty)
-                        OpDivide -> typeEquality (TyApp (TyCon baseType) $ WithTy d1 (reciprocalType d2)) (IsSpec ty)
+                        OpTimes  -> typeEquality (TyApp (TyCon baseType) $ ProdTy d1 d2) (IsSpec ty)
+                        OpDivide -> typeEquality (TyApp (TyCon baseType) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
                 Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
 

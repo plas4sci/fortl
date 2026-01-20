@@ -75,6 +75,15 @@ instance Representation DescriptionsRepr where
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
     computeRepresentation (TyCon "1") = Just empty
+    computeRepresentation (ProdTy t1 t2) = do
+        d1 <- computeRepresentation t1
+        d2 <- computeRepresentation t2
+        Just $ unionWith combineRepr d1 d2
+        where
+          combineRepr :: DescriptionRepr -> DescriptionRepr -> DescriptionRepr
+          combineRepr (FreeAGroup a1) (FreeAGroup a2) = FreeAGroup $ unionWith (+) a1 a2
+          combineRepr (TypeTree t1) (TypeTree t2)     = TypeTree $ ProdTy t1 t2
+          combineRepr _ _                             = error "Mismatched description representation types in product"
     computeRepresentation _ = Nothing
 
     -- | Reify a description representation back to a type term
