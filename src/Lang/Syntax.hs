@@ -58,7 +58,7 @@ data Expr where
                                -- case e of inl x -> e1 | inr y -> e2
     NumFloat   :: Float        -> Expr
     NumInteger :: Integer      -> Expr
-    BinOp :: Op -> Expr -> Expr -> Expr
+    BinOp :: BinOp -> Expr -> Expr -> Expr
 
     -- constructors
     Con   :: Identifier -> [Expr]  -> Expr
@@ -69,7 +69,7 @@ data Expr where
   deriving Show
 
 -- Operators
-data Op = OpPlus | OpTimes | OpMinus | OpDivide
+data BinOp = OpPlus | OpTimes | OpMinus | OpDivide | OpAnd | OpOr
   deriving Show
 
 isValue :: Expr -> Bool

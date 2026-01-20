@@ -107,6 +107,7 @@ bigStep env opts (BinOp op e1 e2) = do
         OpDivide -> if n2 /= 0
                       then return $ NumFloat $ n1 / n2
                       else Left "Division by zero"
+        _ -> Left ("Operator " ++ show op ++ " expects two Booleans")
     (NumInteger n1, NumInteger n2) ->
       case op of
         OpPlus   -> return $ NumInteger $ n1 + n2
@@ -115,7 +116,13 @@ bigStep env opts (BinOp op e1 e2) = do
         OpDivide -> if n2 /= 0
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
-    _ -> Left "Binary operation expects two numbers"
+        _ -> Left ("Operator " ++ show op ++ " expects two Booleans")
+    (ConstBool b1, ConstBool b2) ->
+      case op of
+        OpAnd -> return $ ConstBool (b1 && b2)
+        OpOr -> return $ ConstBool (b1 || b2)
+        _ -> Left "Expected two numbers" 
+    _ -> Left ("Operator " ++ show op ++ " expects two numbers")
 bigStep env opts (Conditional c e1 e2) =
   case bigStep env opts c of
     Left err -> Left err

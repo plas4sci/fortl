@@ -29,6 +29,7 @@ typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
     ("Float", FunTy desc type0)   -- Graded float
   , ("Integer", FunTy desc type0) -- Graded integer
+  , ("Bool", FunTy desc type0) -- Graded Boolean
   , ("Nat"  , type0)
   , ("Bool", type0)
   , ("Unit" , FunTy agroup desc)

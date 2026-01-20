@@ -70,13 +70,15 @@ instance PrettyPrint Expr where
     pprint (Conditional c e1 e2) =
       pprint e1 ++ " if " ++ pprint c ++ " else " ++ pprint e2
 
-instance PrettyPrint Op where
+instance PrettyPrint BinOp where
   pprint op =
     case op of
       OpPlus -> "+"
       OpMinus -> "-"
       OpTimes -> "*"
       OpDivide -> "/"
+      OpAnd -> "&&"
+      OpOr -> "||"
 
 instance PrettyPrint () where
     pprint () = "()"

@@ -125,9 +125,20 @@ check gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e2 t2
 
 check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, desc)) =
+  -- TODO: This feels a bit adhoc ...
   -- We have a gradable numeric type
   case op of
+    -- Boolean ops must have two boolean typed sub-expressions
+    OpAnd ->
+      case check gamma e1 boolTy of
+        Right () -> check gamma e2 boolTy
+        Left err -> Left $ OperatorTypeError op err
+    OpOr ->
+      case check gamma e1 boolTy of
+        Right () -> check gamma e2 boolTy
+        Left err -> Left $ OperatorTypeError op err
     -- Plus and minus must have the same type
+    -- TODO: This would currently also type check for Boolean values ...
     OpPlus ->
       case check gamma e1 ty of
         Right () -> check gamma e2 ty
