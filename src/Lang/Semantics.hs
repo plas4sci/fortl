@@ -123,6 +123,13 @@ bigStep env opts (BinOp op e1 e2) = do
         OpOr -> return $ ConstBool (b1 || b2)
         _ -> Left "Expected two numbers" 
     _ -> Left ("Operator " ++ show op ++ " expects two numbers")
+bigStep env opts (UnOp op e) = do
+  v <- bigStep env opts e
+  case v of
+    (ConstBool b) ->
+      case op of
+        OpNot -> return $ ConstBool (not b)
+    _ -> Left "Expected a Boolean value"
 bigStep env opts (Conditional c e1 e2) =
   case bigStep env opts c of
     Left err -> Left err
@@ -205,6 +212,9 @@ substituteExpr (NumInteger n) s = NumInteger n
 
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
+
+substituteExpr (UnOp op e) s =
+  UnOp op (substituteExpr e s)
 
 -- Poly
 

@@ -76,6 +76,7 @@ tokens :-
   "/"                           { \p s -> TokenDivide p }
   "&&"                          { \p s -> TokenAnd p }
   "||"                          { \p s -> TokenOr p }
+  "~"                           { \p s -> TokenNot p }
   "&"                           { \p s -> TokenAmpersand p }
   "<"                           { \p s -> TokenLPair p }
   ">"                           { \p s -> TokenRPair p }
@@ -118,6 +119,7 @@ data Token
   | TokenDivide   AlexPosn
   | TokenAnd      AlexPosn
   | TokenOr       AlexPosn
+  | TokenNot      AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
   | TokenLBrack    AlexPosn

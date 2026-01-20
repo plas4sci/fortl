@@ -62,6 +62,7 @@ import Lang.Options
     '+'     { TokenSum _ }
     '&&'    { TokenAnd _ }
     '||'    { TokenOr _ }
+    '~'     { TokenNot _ }
     '^'     { TokenExponent _ }
     '&'     { TokenAmpersand _ }
     '<'     { TokenLPair _ }
@@ -81,6 +82,7 @@ import Lang.Options
 %left "&&"
 %left '+' '-'
 %left '*'
+%right '~'
 %%
 
 Program :: { (Program, [Option]) }
@@ -157,6 +159,7 @@ Form :: { [Option] -> Expr }
   | Form '/' Form  { \opts -> BinOp OpDivide ($1 opts) ($3 opts) }
   | Form '&&' Form { \opts -> BinOp OpAnd ($1 opts) ($3 opts) }
   | Form '||' Form { \opts -> BinOp OpOr ($1 opts) ($3 opts) }
+  | '~' Form { \opts -> UnOp OpNot ($2 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }

@@ -59,6 +59,7 @@ data Expr where
     NumFloat   :: Float        -> Expr
     NumInteger :: Integer      -> Expr
     BinOp :: BinOp -> Expr -> Expr -> Expr
+    UnOp :: UnOp -> Expr -> Expr
 
     -- constructors
     Con   :: Identifier -> [Expr]  -> Expr
@@ -70,6 +71,9 @@ data Expr where
 
 -- Operators
 data BinOp = OpPlus | OpTimes | OpMinus | OpDivide | OpAnd | OpOr
+  deriving Show
+
+data UnOp = OpNot
   deriving Show
 
 isValue :: Expr -> Bool

@@ -1,2 +1,2 @@
 c : Bool = true
-it : Float = 1.0 if c && false else 2.0
+it : Float = 1.0 if c && ~false else 2.0
