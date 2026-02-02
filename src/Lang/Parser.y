@@ -58,11 +58,9 @@ import Lang.Options
     '+'     { TokenSum _ }
     '^'     { TokenExponent _ }
     '&'     { TokenAmpersand _ }
-    '<'     { TokenLPair _ }
-    '>'     { TokenRPair _ }
     '['     { TokenLBrack _ }
     ']'     { TokenRBrack _ }
-    ', '    { TokenMPair _ }
+    ','     { TokenMPair _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
     LAMBDA  { TokenLambda _ }
@@ -71,6 +69,7 @@ import Lang.Options
 %right '->'
 %left ':'
 %nonassoc LAMBDA
+%right ','
 %left '+' '-'
 %left '*'
 %%
@@ -195,8 +194,8 @@ Atom :: { [Option] -> Expr }
   | '@' TypeAtom
     { \opts -> TyEmbed ($2 opts) }
 
-  | '<' Expr ', ' Expr '>'
-     { \opts -> Pair ($2 opts) ($4 opts) }
+  | Expr ',' Expr
+     { \opts -> Pair ($1 opts) ($3 opts) }
 
   | FLOAT
      { \opts ->
