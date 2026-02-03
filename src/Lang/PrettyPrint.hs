@@ -47,7 +47,7 @@ instance PrettyPrint Expr where
     pprint (NatCase e e1 (x,e2))  =
       "natcase " ++ bracket_pprint e ++ " of zero => " ++
       bracket_pprint e1 ++ " | succ " ++ x ++ " => " ++ bracket_pprint e2
-    pprint (Pair e1 e2)           = "<" ++ pprint e1 ++ ", " ++ pprint e2 ++ ">"
+    pprint (Pair e1 e2)           = "(" ++ pprint e1 ++ ", " ++ pprint e2 ++ ")"
     pprint (Fst e)                = "fst " ++ bracket_pprint e
     pprint (Snd e)                = "snd " ++ bracket_pprint e
     pprint (Inl e)                = "inl " ++ bracket_pprint e

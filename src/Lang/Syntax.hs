@@ -4,21 +4,35 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Lang.Syntax where
 
 import qualified Data.Set as Set
 import GHC.TypeLits
 
+data Phase = Parsed | Desugared
+
 type Identifier = String
 
-type Program = [Def]
+type Program (p :: Phase) = [Def p]
 
-data Def where
-    VarDef  :: Identifier -> Maybe (Type 0) -> Expr -> Def
-    TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def
-    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def -- Currently not implemented beyond front end
-    Return  :: Expr -> Def
+data Def (p :: Phase) where
+    ValDef  :: Lhs p -> Maybe (Type 0) -> Expr -> Def p
+    TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
+    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
+    Return  :: Expr -> Def p
+
+data Lhs (p :: Phase) where
+  VarLhs   :: Identifier -> Lhs p
+  PairLhs  :: HasTupleLhsC p => Lhs p -> Lhs p -> Lhs p
+
+type family HasTupleLhs p :: Bool where
+  HasTupleLhs 'Parsed    = 'True
+  HasTupleLhs 'Desugared = 'False
+
+type HasTupleLhsC p = (HasTupleLhs p ~ 'True)
 
 -- Abstract-syntax tree for LambdaCore with PCF extensions
 data Expr where

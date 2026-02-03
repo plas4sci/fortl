@@ -74,7 +74,7 @@ import Lang.Options
 %left '*'
 %%
 
-Program :: { (Program, [Option]) }
+Program :: { (Program 'Parsed, [Option]) }
   : LangOpts Defs  { ($2 $1, $1) }
 
 LangOpts :: { [Option] }
@@ -82,7 +82,7 @@ LangOpts :: { [Option] }
   | LANG                {% readOption $1 >>= (return . (:[])) }
   | {- empty -}         { [] }
 
-Defs :: { [Option] -> Program }
+Defs :: { [Option] -> Program 'Parsed }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
   | return Expr           { \opts -> [Return ($2 opts)] }
   | Def                   { \opts -> [$1 opts] }
@@ -91,10 +91,15 @@ NL :: { () }
   : nl NL                     { }
   | nl                        { }
 
-Def :: { [Option] -> Def }
-  : IDENT '=' Expr          { \opts -> VarDef (symString $1) Nothing ($3 opts) }
-  | IDENT ':' Type '=' Expr { \opts -> VarDef (symString $1) (Just $ $3 opts) ($5 opts) } 
+Def :: { [Option] -> Def 'Parsed}
+  : Lhs '=' Expr          { \opts -> ValDef ($1 opts) Nothing ($3 opts) }
+  | Lhs ':' Type '=' Expr { \opts -> ValDef ($1 opts) (Just $ $3 opts) ($5 opts) } 
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+
+Lhs :: { [Option] -> Lhs 'Parsed }
+  : IDENT { \opts -> VarLhs (symString $1) }
+  | Lhs ',' Lhs { \opts -> PairLhs ($1 opts) ($3 opts) }
+  | '(' Lhs ')' { $2 }
 
 ConstructorList :: { [Option] -> [(Identifier, [Type 0])] }
 ConstructorList
@@ -156,6 +161,7 @@ Type :: { [Option] -> Type 0 }
 Type
   : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
+  | Type ',' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
@@ -223,7 +229,7 @@ parseError t  =  do
                         <> ": parse error"
   where (l, c) = getPos (head t)
 
-parseProgram :: FilePath -> String -> Either String (Program, [Option])
+parseProgram :: FilePath -> String -> Either String (Program 'Parsed, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file
 
 }

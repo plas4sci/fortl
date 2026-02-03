@@ -5,6 +5,7 @@ import Lang.Options
 import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
 import Lang.Semantics   (interpret)
+import Lang.Desugar     (desugar)
 import Lang.Syntax
 import Lang.Types
 import Lang.TypeError
@@ -44,7 +45,8 @@ run report fname = do
       -- Read the file, parse, and do something...
       input <- readFile fname
       case parseProgram fname input of
-        Right (ast, options) -> do
+        Right (parsetree, options) -> do
+          let ast = desugar parsetree
           -- Evaluate
           let normalForm = interpret options ast
           -- Typing
@@ -62,7 +64,7 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program -> Either TypeError (Type 0)
+typeInference :: [Option] -> Program 'Desugared -> Either TypeError (Type 0)
 typeInference options program =
     case synthProgram program of
         Right ty -> Right ty
