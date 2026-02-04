@@ -35,6 +35,7 @@ isGradedType conId ty =
     TyApp (TyCon c) t | c == conId ->
       Just t
     TyCon "Float" -> Just (TyCon "1") -- TODO generalise so that this isn't a special case
+    TyCon "Integer" -> Just (TyCon "1") -- TODO as above
     _ -> Nothing
 
 -- # Equality helpers
