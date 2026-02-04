@@ -26,13 +26,13 @@ data Def (p :: Phase) where
 
 data Lhs (p :: Phase) where
   VarLhs   :: Identifier -> Lhs p
-  PairLhs  :: HasTupleLhsC p => Lhs p -> Lhs p -> Lhs p
+  PairLhs  :: HasPairLhsC p => Lhs p -> Lhs p -> Lhs p
 
-type family HasTupleLhs p :: Bool where
-  HasTupleLhs 'Parsed    = 'True
-  HasTupleLhs 'Desugared = 'False
+type family HasPairLhs p :: Bool where
+  HasPairLhs 'Parsed    = 'True
+  HasPairLhs 'Desugared = 'False
 
-type HasTupleLhsC p = (HasTupleLhs p ~ 'True)
+type HasPairLhsC p = (HasPairLhs p ~ 'True)
 
 -- Abstract-syntax tree for LambdaCore with PCF extensions
 data Expr where
