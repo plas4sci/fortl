@@ -69,7 +69,7 @@ import Lang.Options
 %right '->'
 %left ':'
 %nonassoc LAMBDA
-%right ','
+%left ','
 %left '+' '-'
 %left '*'
 %%
@@ -92,12 +92,12 @@ NL :: { () }
   | nl                        { }
 
 Def :: { [Option] -> Def 'Parsed}
-  : Lhs '=' Expr          { \opts -> ValDef ($1 opts) Nothing ($3 opts) }
-  | Lhs ':' Type '=' Expr { \opts -> ValDef ($1 opts) (Just $ $3 opts) ($5 opts) } 
+  : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
 Lhs :: { [Option] -> Lhs 'Parsed }
-  : IDENT { \opts -> VarLhs (symString $1) }
+  : IDENT { \opts -> VarLhs (symString $1) Nothing }
+  | IDENT ':' Type { \opts -> VarLhs (symString $1) (Just $ $3 opts) }
   | Lhs ',' Lhs { \opts -> PairLhs ($1 opts) ($3 opts) }
   | '(' Lhs ')' { $2 }
 
@@ -161,7 +161,6 @@ Type :: { [Option] -> Type 0 }
 Type
   : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
-  | Type ',' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }

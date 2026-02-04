@@ -20,11 +20,11 @@ synthProgram = synthProgram' []
   where
     synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Type 0)
     synthProgram' gamma [] = Right $ TyCon "Unit"  -- Return unit type when no return statement
-    synthProgram' gamma ((ValDef (VarLhs v) (Just ty) e):defs) =
+    synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case check gamma e ty of
         Right () -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
-    synthProgram' gamma ((ValDef (VarLhs v) Nothing e):defs) =
+    synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err

@@ -20,7 +20,7 @@ interpret = interpretDefs []
 -- for the rest of the program
 interpretDefs :: Env -> [Option] -> Program 'Desugared -> Expr
 
-interpretDefs env opts ((ValDef (VarLhs id) _ e):defs) = 
+interpretDefs env opts ((ValDef (VarLhs id _) e):defs) = 
   case bigStep env opts e of
     Right v -> interpretDefs ((id, v) : env) opts defs
     Left err -> error err

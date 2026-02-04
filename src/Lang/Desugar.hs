@@ -38,7 +38,7 @@ desugarDef :: Def 'Parsed -> Desugar ()
 desugarDef (TypeDef id ty1 ty2) = emit [TypeDef id ty1 ty2]
 desugarDef (DataDef id cs ty)   = emit [DataDef id cs ty]
 desugarDef (Return e)           = emit [Return e]
-desugarDef (ValDef lhs ty e)    = do desugarVal lhs ty e
+desugarDef (ValDef lhs e)       = do desugarVal lhs e
 
 -- (a, (b1, b2)) = c
 -- _0 = c
@@ -47,15 +47,11 @@ desugarDef (ValDef lhs ty e)    = do desugarVal lhs ty e
 -- b1 = fst _1
 -- b2 = snd _2 
 
-desugarVal :: Lhs p -> Maybe (Type 0) -> Expr -> Desugar ()
-desugarVal (VarLhs x) ty e = emit [ValDef (VarLhs x) ty e]
+desugarVal :: Lhs p -> Expr -> Desugar ()
+desugarVal (VarLhs x ty) e = emit [ValDef (VarLhs x ty) e]
 
-desugarVal (PairLhs l1 l2) ty e = do
+desugarVal (PairLhs l1 l2) e = do
     tmp <- nextVar
-    emit [ValDef (VarLhs tmp) ty e]
-    let (t1, t2) = 
-            case ty of
-                Just (ProdTy t1 t2) -> (Just t1, Just t2)
-                _ -> (Nothing, Nothing)
-    desugarVal l1 t1 (Fst (Var tmp))
-    desugarVal l2 t2 (Snd (Var tmp))
+    emit [ValDef (VarLhs tmp Nothing) e]
+    desugarVal l1 (Fst (Var tmp))
+    desugarVal l2 (Snd (Var tmp))

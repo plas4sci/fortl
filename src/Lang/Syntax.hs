@@ -19,13 +19,13 @@ type Identifier = String
 type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
-    ValDef  :: Lhs p -> Maybe (Type 0) -> Expr -> Def p
+    ValDef  :: Lhs p -> Expr -> Def p
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
     Return  :: Expr -> Def p
 
 data Lhs (p :: Phase) where
-  VarLhs   :: Identifier -> Lhs p
+  VarLhs   :: Identifier -> Maybe (Type 0) -> Lhs p
   PairLhs  :: HasPairLhsC p => Lhs p -> Lhs p -> Lhs p
 
 type family HasPairLhs p :: Bool where
