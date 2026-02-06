@@ -124,32 +124,50 @@ check gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
+check gamma (UnOp op e) ty@(isGradableNumericType -> Just (baseType, desc)) =
+  case op of
+    OpNot ->
+      case check gamma e boolTy of
+        Right () -> Right ()
+        Left err -> Left $ UnOperatorTypeError op err
+
 check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, desc)) =
+  -- TODO: This feels a bit adhoc ...
   -- We have a gradable numeric type
   case op of
+    -- Boolean ops must have two boolean typed sub-expressions
+    OpAnd ->
+      case check gamma e1 boolTy of
+        Right () -> check gamma e2 boolTy
+        Left err -> Left $ BinOperatorTypeError op err
+    OpOr ->
+      case check gamma e1 boolTy of
+        Right () -> check gamma e2 boolTy
+        Left err -> Left $ BinOperatorTypeError op err
     -- Plus and minus must have the same type
+    -- TODO: This would currently also type check for Boolean values ...
     OpPlus ->
       case check gamma e1 ty of
         Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
+        Left err -> Left $ BinOperatorTypeError op err
     OpMinus ->
       case check gamma e1 ty of
         Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
+        Left err -> Left $ BinOperatorTypeError op err
     _ ->
       -- For other operators, first synth the types of the arguments
       -- whose base type must match
       case synth gamma e1 of
-        Left err -> Left $ OperatorTypeError op err
+        Left err -> Left $ BinOperatorTypeError op err
         Right (isGradableNumericType -> Just (baseType', d1)) ->
           if baseType /= baseType'
-            then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
+            then Left $ BinOperatorTypeError op (BaseTypeMismatch baseType baseType')
             else
               case synth gamma e2 of
-                Left err -> Left $ OperatorTypeError op err
+                Left err -> Left $ BinOperatorTypeError op err
                 Right (isGradableNumericType -> Just (baseType'', d2)) ->
                   if baseType /= baseType''
-                    then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType'')
+                    then Left $ BinOperatorTypeError op (BaseTypeMismatch baseType baseType'')
                     else
                       case op of
                         OpTimes  -> typeEquality (TyApp (TyCon baseType) $ ProdTy d1 d2) (IsSpec ty)
@@ -382,19 +400,19 @@ synth gamma (NumInteger n) =
 
 synth gamma (BinOp op e1 e2) =
   case synth gamma e1 of
-    Left err -> Left $ OperatorTypeError op err
+    Left err -> Left $ BinOperatorTypeError op err
     Right t1 ->
       case isGradableNumericType t1 of
         Nothing -> Left $ ExpectingNumericType t1
         Just (baseType, d1) ->
           case synth gamma e2 of
-            Left err -> Left $ OperatorTypeError op err
+            Left err -> Left $ BinOperatorTypeError op err
             Right t2 ->
               case isGradableNumericType t2 of
                 Nothing -> Left $ ExpectingNumericType t2
                 Just (baseType', d2) ->
                   if baseType /= baseType'
-                    then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
+                    then Left $ BinOperatorTypeError op (BaseTypeMismatch baseType baseType')
                     else
                       case op of
                         OpTimes -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation $ ProdTy d1 d2)
@@ -403,8 +421,23 @@ synth gamma (BinOp op e1 e2) =
                           case descriptionEquality d1 (IsSpec d2) of
                             -- d1 == d2
                             Right () -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation d1)
-                            Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
+                            Left err -> Left $ BinOperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
 
+synth gamma (ConstBool _) = Right boolTy
+
+synth gamma (Conditional c e1 e2) =
+  case check gamma c boolTy of
+    Right () ->
+      case synth gamma e1 of
+        Right t1 ->
+          case synth gamma e2 of
+            Right t2 -> 
+              case typeEquality t1 (IsSpec t2) of
+                Right () -> Right t1
+                Left err -> Left err -- TODO: Create a dedicated type error for when the two branches have different return types
+            Left err -> Left err
+        Left err -> Left err
+    Left err -> Left err
 
 {-
 
@@ -525,12 +558,15 @@ errorToString (ExpectingFunctionKind k) =
 errorToString (CannotInferKind t) =
   "Cannot infer kind for " <> pprint (normalise t)
 
-errorToString (OperatorTypeError op err) =
+errorToString (BinOperatorTypeError op err) =
   errorToString err <> "\nError infering type for operator " ++ pprint op
 
-errorToString (OperatorDescriptionMismatch op t1 t2) =
+errorToString (BinOperatorDescriptionMismatch op t1 t2) =
   "Expecting descriptions to be the same but got " <> pprint (normalise t1) 
   <> " and " <> pprint (normalise t2) <> " for operator " ++ pprint op
+
+errorToString (UnOperatorTypeError op err) =
+  errorToString err <> "\nError infering type for operator " ++ pprint op
 
 errorToString (FreeVariablesInAbstraction vars) =
   "Free variables " <> unwords (map show vars)

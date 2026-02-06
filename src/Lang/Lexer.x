@@ -55,6 +55,10 @@ tokens :-
   cast                          { \p s -> TokenCast p }
   return                        { \p s -> TokenReturn p }
   lambda                        { \p s -> TokenLambda p }
+  if                            { \p _ -> TokenIf p }
+  else                          { \p _ -> TokenElse p }
+  true                          { \p _ -> TokenTrue p }
+  false                         { \p _ -> TokenFalse p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @float                        { \p s -> TokenFloat p s }
@@ -70,6 +74,9 @@ tokens :-
   "+"                           { \p s -> TokenSum p }
   "-"                           { \p s -> TokenMinus p }
   "/"                           { \p s -> TokenDivide p }
+  "&&"                          { \p s -> TokenAnd p }
+  "||"                          { \p s -> TokenOr p }
+  "~"                           { \p s -> TokenNot p }
   "&"                           { \p s -> TokenAmpersand p }
   "<"                           { \p s -> TokenLPair p }
   ">"                           { \p s -> TokenRPair p }
@@ -110,6 +117,9 @@ data Token
   | TokenSum      AlexPosn
   | TokenMinus    AlexPosn
   | TokenDivide   AlexPosn
+  | TokenAnd      AlexPosn
+  | TokenOr       AlexPosn
+  | TokenNot      AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
   | TokenLBrack    AlexPosn
@@ -128,6 +138,10 @@ data Token
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
   | TokenReturn   AlexPosn
+  | TokenIf       AlexPosn
+  | TokenElse     AlexPosn
+  | TokenTrue     AlexPosn
+  | TokenFalse    AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String

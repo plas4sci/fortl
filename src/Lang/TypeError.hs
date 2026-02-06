@@ -41,8 +41,9 @@ data TypeError
   | CannotInferKind (Type 0)
   
   -- Operator errors
-  | OperatorTypeError Op TypeError
-  | OperatorDescriptionMismatch Op (Type 0) (Type 0)
+  | BinOperatorTypeError BinOp TypeError
+  | BinOperatorDescriptionMismatch BinOp (Type 0) (Type 0)
+  | UnOperatorTypeError UnOp TypeError
   
   -- Abstraction and polymorphism errors
   | FreeVariablesInAbstraction [Identifier]

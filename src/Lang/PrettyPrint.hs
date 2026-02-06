@@ -61,19 +61,34 @@ instance PrettyPrint Expr where
           operator = pprint op
       in
         arg1 <> operator <> arg2
+    pprint (UnOp op e) =
+      let arg = bracket_pprint e
+          operator = pprint op
+      in
+        operator <> arg
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
+    pprint (ConstBool b) = show b
+    pprint (Conditional c e1 e2) =
+      pprint e1 ++ " if " ++ pprint c ++ " else " ++ pprint e2
 
-instance PrettyPrint Op where
+instance PrettyPrint BinOp where
   pprint op =
     case op of
       OpPlus -> "+"
       OpMinus -> "-"
       OpTimes -> "*"
       OpDivide -> "/"
+      OpAnd -> "&&"
+      OpOr -> "||"
+
+instance PrettyPrint UnOp where
+  pprint op =
+    case op of
+      OpNot -> "~"
 
 instance PrettyPrint () where
     pprint () = "()"

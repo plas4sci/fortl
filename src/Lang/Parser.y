@@ -29,6 +29,10 @@ import Lang.Options
     case    { TokenCase _ }
     natcase { TokenNatCase _ }
     of      { TokenOf _ }
+    if      { TokenIf _ }
+    else    { TokenElse _ }
+    true    { TokenTrue _ }
+    false   { TokenFalse _ }
     '|'     { TokenSep _ }
     fix     { TokenFix _ }
     fst     { TokenFst _ }
@@ -56,6 +60,9 @@ import Lang.Options
     '-'     { TokenMinus _ }
     '/'     { TokenDivide _ }
     '+'     { TokenSum _ }
+    '&&'    { TokenAnd _ }
+    '||'    { TokenOr _ }
+    '~'     { TokenNot _ }
     '^'     { TokenExponent _ }
     '&'     { TokenAmpersand _ }
     '<'     { TokenLPair _ }
@@ -71,8 +78,11 @@ import Lang.Options
 %right '->'
 %left ':'
 %nonassoc LAMBDA
+%left "||"
+%left "&&"
 %left '+' '-'
 %left '*'
+%right '~'
 %%
 
 Program :: { (Program, [Option]) }
@@ -136,14 +146,20 @@ Expr :: { [Option] -> Expr }
   | inr '(' Expr ')'
      { \opts -> Inr ($3 opts) }
 
- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
+  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
      { \opts -> Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+
+  | Expr if Expr else Expr
+     { \opts -> Conditional ($3 opts) ($1 opts) ($5 opts) }
 
 Form :: { [Option] -> Expr }
   : Form '+' Form  { \opts -> BinOp OpPlus ($1 opts) ($3 opts) }
   | Form '-' Form  { \opts -> BinOp OpMinus ($1 opts) ($3 opts) }
   | Form '*' Form  { \opts -> BinOp OpTimes ($1 opts) ($3 opts) }
   | Form '/' Form  { \opts -> BinOp OpDivide ($1 opts) ($3 opts) }
+  | Form '&&' Form { \opts -> BinOp OpAnd ($1 opts) ($3 opts) }
+  | Form '||' Form { \opts -> BinOp OpOr ($1 opts) ($3 opts) }
+  | '~' Form { \opts -> UnOp OpNot ($2 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }
@@ -207,6 +223,9 @@ Atom :: { [Option] -> Expr }
      { \opts ->
           let (TokenInt _ x) = $1
           in NumInteger $ fromIntegral $ read x }
+
+  | true { \opts -> ConstBool True }
+  | false { \opts -> ConstBool False }
 
   -- For later
   -- | '?' { Hole }

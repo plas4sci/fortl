@@ -107,6 +107,7 @@ bigStep env opts (BinOp op e1 e2) = do
         OpDivide -> if n2 /= 0
                       then return $ NumFloat $ n1 / n2
                       else Left "Division by zero"
+        _ -> Left ("Operator " ++ show op ++ " expects two Booleans")
     (NumInteger n1, NumInteger n2) ->
       case op of
         OpPlus   -> return $ NumInteger $ n1 + n2
@@ -115,7 +116,27 @@ bigStep env opts (BinOp op e1 e2) = do
         OpDivide -> if n2 /= 0
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
-    _ -> Left "Binary operation expects two numbers"
+        _ -> Left ("Operator " ++ show op ++ " expects two Booleans")
+    (ConstBool b1, ConstBool b2) ->
+      case op of
+        OpAnd -> return $ ConstBool (b1 && b2)
+        OpOr -> return $ ConstBool (b1 || b2)
+        _ -> Left "Expected two numbers" 
+    _ -> Left ("Operator " ++ show op ++ " expects two numbers")
+bigStep env opts (UnOp op e) = do
+  v <- bigStep env opts e
+  case v of
+    (ConstBool b) ->
+      case op of
+        OpNot -> return $ ConstBool (not b)
+    _ -> Left "Expected a Boolean value"
+bigStep env opts (Conditional c e1 e2) =
+  case bigStep env opts c of
+    Left err -> Left err
+    Right (ConstBool False) -> bigStep env opts e2
+    Right (ConstBool True) -> bigStep env opts e1
+    _ -> Left "Condition must be a Boolean value"
+
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
@@ -128,6 +149,7 @@ bigStep env opts (Abs x mt body) = Right $ Abs x mt body
 bigStep env opts (Con c es) = do
   vs <- mapM (bigStep env opts) es
   return $ Con c vs
+bigStep env opts (ConstBool b) = Right $ ConstBool b
 
 class Substitutable e where
   substitute :: e -> (Identifier, e) -> e
@@ -191,6 +213,9 @@ substituteExpr (NumInteger n) s = NumInteger n
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
 
+substituteExpr (UnOp op e) s =
+  UnOp op (substituteExpr e s)
+
 -- Poly
 
 -- Substitute inside types
@@ -205,6 +230,11 @@ substituteExpr (TyAbs y e) s =
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
+
+substituteExpr (ConstBool b) _ = ConstBool b
+
+substituteExpr (Conditional e1 e2 e3) s =
+  Conditional (substituteExpr e1 s) (substituteExpr e2 s) (substituteExpr e3 s)
 
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced

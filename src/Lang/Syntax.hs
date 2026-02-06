@@ -58,14 +58,22 @@ data Expr where
                                -- case e of inl x -> e1 | inr y -> e2
     NumFloat   :: Float        -> Expr
     NumInteger :: Integer      -> Expr
-    BinOp :: Op -> Expr -> Expr -> Expr
+    BinOp :: BinOp -> Expr -> Expr -> Expr
+    UnOp :: UnOp -> Expr -> Expr
 
     -- constructors
     Con   :: Identifier -> [Expr]  -> Expr
+
+    -- Booleans and Conditional expression
+    ConstBool :: Bool -> Expr
+    Conditional :: Expr -> Expr -> Expr -> Expr   -- e1 if e2 else e3
   deriving Show
 
 -- Operators
-data Op = OpPlus | OpTimes | OpMinus | OpDivide
+data BinOp = OpPlus | OpTimes | OpMinus | OpDivide | OpAnd | OpOr
+  deriving Show
+
+data UnOp = OpNot
   deriving Show
 
 isValue :: Expr -> Bool
@@ -79,6 +87,7 @@ isValue Succ = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e
+isValue (ConstBool _) = True
 isValue e       = isNatVal e
 
 isNatVal :: Expr -> Bool
