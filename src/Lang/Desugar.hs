@@ -18,8 +18,8 @@ initState = ST 0
 
 type Desugar = StateT ST (Writer [Def 'Desugared])
 
-nextVar :: Desugar Identifier
-nextVar = do
+freshVar :: Desugar Identifier
+freshVar = do
     st <- get
     let i = next_var st
     put $ st { next_var = i + 1 }
@@ -31,13 +31,14 @@ desugar p =
         (_, out) = runWriter (runStateT m initState)
     in out
 
-emit :: [Def 'Desugared] -> Desugar ()
-emit d = lift $ tell d
+-- | Add desugared definitions to the output of the desugaring pass.
+emitDefs :: [Def 'Desugared] -> Desugar ()
+emitDefs = lift . tell
 
 desugarDef :: Def 'Parsed -> Desugar ()
-desugarDef (TypeDef id ty1 ty2) = emit [TypeDef id ty1 ty2]
-desugarDef (DataDef id cs ty)   = emit [DataDef id cs ty]
-desugarDef (Return e)           = emit [Return e]
+desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
+desugarDef (DataDef id cs ty)   = emitDefs [DataDef id cs ty]
+desugarDef (Return e)           = emitDefs [Return e]
 desugarDef (ValDef lhs e)       = do desugarVal lhs e
 
 -- (a, (b1, b2)) = c
@@ -48,10 +49,10 @@ desugarDef (ValDef lhs e)       = do desugarVal lhs e
 -- b2 = snd _2 
 
 desugarVal :: Lhs p -> Expr -> Desugar ()
-desugarVal (VarLhs x ty) e = emit [ValDef (VarLhs x ty) e]
+desugarVal (VarLhs x ty) e = emitDefs [ValDef (VarLhs x ty) e]
 
 desugarVal (PairLhs l1 l2) e = do
-    tmp <- nextVar
-    emit [ValDef (VarLhs tmp Nothing) e]
+    tmp <- freshVar
+    emitDefs [ValDef (VarLhs tmp Nothing) e]
     desugarVal l1 (Fst (Var tmp))
     desugarVal l2 (Snd (Var tmp))
