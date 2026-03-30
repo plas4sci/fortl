@@ -104,7 +104,17 @@ bigStep env opts (BinOp op e1 e2) = do
         OpPlus   -> return $ NumFloat $ n1 + n2
         OpTimes  -> return $ NumFloat $ n1 * n2
         OpMinus  -> return $ NumFloat $ n1 - n2
-        OpDivide -> return $ NumFloat $ n1 / n2
+        OpDivide -> if n2 /= 0
+                      then return $ NumFloat $ n1 / n2
+                      else Left "Division by zero"
+    (NumInteger n1, NumInteger n2) ->
+      case op of
+        OpPlus   -> return $ NumInteger $ n1 + n2
+        OpTimes  -> return $ NumInteger $ n1 * n2
+        OpMinus  -> return $ NumInteger $ n1 - n2
+        OpDivide -> if n2 /= 0
+                      then return $ NumInteger $ n1 `div` n2
+                      else Left "Division by zero"
     _ -> Left "Binary operation expects two numbers"
 
 -- Values
@@ -176,7 +186,6 @@ substituteExpr (Inl e) s = Inl $ substituteExpr e s
 substituteExpr (Inr e) s = Inr $ substituteExpr e s
 
 substituteExpr (NumFloat n) s = NumFloat n
-
 substituteExpr (NumInteger n) s = NumInteger n
 
 substituteExpr (BinOp op e1 e2) s =

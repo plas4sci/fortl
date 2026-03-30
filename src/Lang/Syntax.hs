@@ -17,7 +17,7 @@ type Program = [Def]
 data Def where
     VarDef  :: Identifier -> Maybe (Type 0) -> Expr -> Def
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def
-    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def
+    DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def -- Currently not implemented beyond front end
     Return  :: Expr -> Def
 
 -- Abstract-syntax tree for LambdaCore with PCF extensions
@@ -31,7 +31,9 @@ data Expr where
 
     Sig :: Expr -> Type 0  -> Expr -- e : A
 
-    -- Poly
+    -- Poly 
+    -- CURRENTLY NOT USED
+    -- <NOT USED>
     TyAbs   :: Identifier -> Expr -> Expr -- /\ a -> e
     TyEmbed :: Type 0             -> Expr -- @A
 
