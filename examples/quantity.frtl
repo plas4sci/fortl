@@ -1,3 +1,6 @@
+"""
+Simple example showing units and quantities
+"""
 y : Float(Unit(m) & Quantity(length)) = 2.0
 x : Float(Unit(m) & Quantity(length)) = 1.0 + y
 t : Float(Unit(s)) = 4.0
