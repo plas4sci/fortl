@@ -71,11 +71,9 @@ tokens :-
   "-"                           { \p s -> TokenMinus p }
   "/"                           { \p s -> TokenDivide p }
   "&"                           { \p s -> TokenAmpersand p }
-  "<"                           { \p s -> TokenLPair p }
-  ">"                           { \p s -> TokenRPair p }
   "["                           { \p s -> TokenLBrack p }
   "]"                           { \p s -> TokenRBrack p }
-  ", "                          { \p s -> TokenMPair p }
+  ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }

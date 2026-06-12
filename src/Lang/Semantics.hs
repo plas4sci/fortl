@@ -13,14 +13,14 @@ import qualified Data.Set as Set
 type Env = [(Identifier, Expr)]
 
 -- Evaluate a program to normal form
-interpret :: [Option] -> Program -> Expr
+interpret :: [Option] -> Program 'Desugared -> Expr
 interpret = interpretDefs []
 
 -- Interpret the definitions, including building an environment
 -- for the rest of the program
-interpretDefs :: Env -> [Option] -> Program -> Expr
+interpretDefs :: Env -> [Option] -> Program 'Desugared -> Expr
 
-interpretDefs env opts ((VarDef id _ e):defs) = 
+interpretDefs env opts ((ValDef (VarLhs id _) e):defs) = 
   case bigStep env opts e of
     Right v -> interpretDefs ((id, v) : env) opts defs
     Left err -> error err
