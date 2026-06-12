@@ -1,4 +1,4 @@
--- Church encoding of pairs
+# Church encoding of pairs
 
 pair = (/\ a1 -> /\ a2 -> (lambda x: lambda y: (/\ b -> lambda z: z(x)(y)) : (forall b . (a1 -> a2 -> b) -> b)) : a1 -> a2 -> (forall b . (a1 -> a2 -> b) -> b))
         : forall a1 . forall a2 . a1 -> a2 -> (forall b . (a1 -> a2 -> b) -> b)
@@ -13,5 +13,5 @@ second' = second(@Nat)(@Nat) : (forall b . (Nat -> Nat -> b) -> b) -> Nat
 first'  = first(@Nat)(@Nat)  : (forall b . (Nat -> Nat -> b) -> b) -> Nat
 pair'   = pair(@Nat)(@Nat)   : Nat -> Nat -> (forall b . (Nat -> Nat -> b) -> b)
 
--- e.g. gives 1
+# e.g. gives 1
 second'(pair'(zero)(succ(zero)))

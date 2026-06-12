@@ -35,7 +35,7 @@ tokens :-
   $white*$eol                   { \p s -> TokenNL p }
   $eol+                         { \p s -> TokenNL p }
   $white+                       ;
-  "--".*                        ;
+  "#" .*                        ;
   @tyvar                          { \p s -> TokenTyVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
   forall                        { \p _ -> TokenForall p }

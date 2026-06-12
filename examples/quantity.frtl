@@ -1,4 +1,5 @@
 y : Float(Unit(m) & Quantity(length)) = 2.0
 x : Float(Unit(m) & Quantity(length)) = 1.0 + y
 t : Float(Unit(s)) = 4.0
+# End result
 it : Float(Unit(s^-1 * m) & Quantity(length)) = (x + y) / t

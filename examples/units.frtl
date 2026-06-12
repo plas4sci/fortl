@@ -1,4 +1,4 @@
---data unit : type = m | s
+# data unit : type = m | s
 y : Float(Unit(M)) = 2.0
 x : Float(Unit(M)) = 1.0 + y
 t : Float(Unit(S)) = 4.0
