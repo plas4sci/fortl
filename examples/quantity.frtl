@@ -1,9 +1,36 @@
 """
 Simple example showing units and quantities
 """
-from Units import *
 y : Float[Unit[m] & Quantity[length]] = 2.0
 x : Float[Unit[m] & Quantity[length]] = 1.0 + y
 t : Float[Unit[s]] = 4.0
 # End result
 it : Float[Unit[s^-1 * m] & Quantity[length]] = (x + y) / t
+
+# let's think about what is going on categorically...
+# Float : Description -> Type
+
+# Description is an abelian group
+
+# Unit : Free(UBase) -> Description
+# Quantity : Free(QBase) -> Description 
+
+# Unit is an abelian group homomorphism such that [for brevity U = Unit]
+# U[x] * U[y] = U[x * y]
+# U[x] ^-1 = U[x ^-1]
+
+# UnitBase is the free abelian group generated over some set of atoms
+
+# & is the product of abelian groups
+
+# (U[x] & Q[q]) * (U[y] & Q[s])
+# = (U[x] * U[y]) & (Q[q] & Q[s])
+# = (U[x*y] & (Q[q*s]))
+
+# And thus we would also expec that we can write
+# (U[x] & Q[q]) * (U[y])
+# = (U[x] * U[y]) & Q[q]
+# = (U[x*y] & Q[q])
+
+# But this does feel awkward now- [this is behaviour 2 on the associated issue]
+# But I can't see any smooth way from a type point of view about what to do here...

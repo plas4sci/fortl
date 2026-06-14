@@ -244,6 +244,10 @@ parseError t  =  do
                         <> ": parse error"
   where (l, c) = getPos (head t)
 
+parseExpr :: String -> Either String Expr
+parseExpr input = runReaderT (expr $ scanTokens input) ""
+ >>= (\f -> return $ f [])
+
 parseProgram :: FilePath -> String -> Either String (Program 'Parsed, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file
 
