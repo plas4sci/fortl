@@ -16,9 +16,12 @@ import System.Exit
 
 import Control.Monad (when)
 
+banner :: String
+banner = "fortl v0.2.0 - Programming for science"
+
 main :: IO ()
 main = do
-  putStrLn $ "fortl v0.1.2 - Programming for science"
+  putStrLn banner
   args <- getArgs
   -- Get command line args
   case args of

@@ -36,15 +36,15 @@ executables:
     dependencies:
      - fortl-implementation
 
-  # fortli:
-  #   main: Lang/REPL.hs
-  #   source-dirs: src
-  #   ghc-options: -main-is Lang.REPL
-  #   build-tools:
-  #    - alex
-  #    - happy
-  #   dependencies:
-  #    - fortl-implementation
+  fortli:
+    main: Lang/REPL.hs
+    source-dirs: src
+    ghc-options: -main-is Lang.REPL
+    build-tools:
+     - alex
+     - happy
+    dependencies:
+     - fortl-implementation
 
 library:
   source-dirs: src
