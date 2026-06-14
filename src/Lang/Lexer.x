@@ -35,7 +35,7 @@ tokens :-
   $white*$eol                   { \p s -> TokenNL p }
   $eol+                         { \p s -> TokenNL p }
   $white+                       ;
-  "--".*                        ;
+  "#" .*                        ;
   @tyvar                          { \p s -> TokenTyVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
   forall                        { \p _ -> TokenForall p }
@@ -136,7 +136,22 @@ tyVarString :: Token -> String
 tyVarString (TokenTyVar _ x) = x
 tyVarString t = error $ "Not a type variable " ++ show t
 
-scanTokens = alexScanTokens >>= (return . trim)
+scanTokens = alexScanTokens . stripDocstrings >>= (return . trim)
+
+-- Strip Python-style triple-quoted docstrings before lexing.
+-- We preserve newlines to keep parser layout/error positions stable.
+stripDocstrings :: String -> String
+stripDocstrings = go
+  where
+    go ('"':'"':'"':xs) = "   " ++ goDoc xs
+    go (x:xs) = x : go xs
+    go [] = []
+
+    goDoc ('"':'"':'"':xs) = "   " ++ go xs
+    goDoc (x:xs)
+      | x == '\n' = '\n' : goDoc xs
+      | otherwise = ' ' : goDoc xs
+    goDoc [] = []
 
 trim :: [Token] -> [Token]
 trim = reverse . trimNL . reverse . trimNL

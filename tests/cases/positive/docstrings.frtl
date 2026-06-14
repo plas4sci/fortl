@@ -1,0 +1,7 @@
+x = 1.0
+"""
+This is a Python-like docstring block.
+It can contain arbitrary code-like content that is ignored:
+x = x + 1000
+"""
+it = x

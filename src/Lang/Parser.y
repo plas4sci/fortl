@@ -164,7 +164,7 @@ Type
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
-  | TypeAtom '(' Type ')' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | TypeAtom '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 

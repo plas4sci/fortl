@@ -1,4 +1,4 @@
-y : Integer(Unit(m) & Quantity(length)) = 2
-x : Integer(Unit(m) & Quantity(length)) = 1 + y
-t : Integer(Unit(s)) = 4
-it : Integer(Unit(s^-1 * m) & Quantity(length)) = (x + y) / t
+y : Integer[Unit[m] & Quantity[length]] = 2
+x : Integer[Unit[m] & Quantity[length]] = 1 + y
+t : Integer[Unit[s]] = 4
+it : Integer[Unit[s^-1 * m] & Quantity[length]] = (x + y) / t
