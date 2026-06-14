@@ -1,6 +1,6 @@
-y : Float(Unit(m) & Quantity(length)) = 2.0
-x : Float(Unit(m) & Quantity(length)) = 1.0 + y
-t : Float(Unit(s)) = 4.0
+y : Float[Unit[m] & Quantity[length]] = 2.0
+x : Float[Unit[m] & Quantity[length]] = 1.0 + y
+t : Float[Unit[s]] = 4.0
 
 # should be Float(Units(s^-1 * m))
-it : Float(Unit(s^-2 * m) & Quantity(length)) = (x + y) / t
+it : Float[Unit[s^-2 * m] & Quantity[length]] = (x + y) / t

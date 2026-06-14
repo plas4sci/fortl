@@ -1,5 +1,5 @@
-x : Float(1) = 1.0       # Dimensionless
-y : Float(1) = x + 2.0   # Dimensionless in addition
-z : Float(1) = x * y + y # Dimensionless in addition/mult
-a : Float(1) = z / y
+x : Float[1] = 1.0       # Dimensionless
+y : Float[1] = x + 2.0   # Dimensionless in addition
+z : Float[1] = x * y + y # Dimensionless in addition/mult
+a : Float[1] = z / y
 it = a

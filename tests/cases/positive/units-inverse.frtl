@@ -1,3 +1,3 @@
-y : Float(Unit(m)) = 2.0
-x : Float(Unit(M)) = 1.0
-it : Float(Unit(1)) = (x / y)
+y : Float[Unit[m]] = 2.0
+x : Float[Unit[M]] = 1.0
+it : Float[Unit[1]] = (x / y)
