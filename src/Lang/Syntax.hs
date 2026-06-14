@@ -16,12 +16,19 @@ data Phase = Parsed | Desugared
 
 type Identifier = String
 
+data ImportSpec
+  = ImportModule Identifier
+  | ImportAll Identifier
+  | ImportOnly Identifier [Identifier]
+  deriving (Eq, Show)
+
 type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
     ValDef  :: Lhs p -> Expr -> Def p
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
+    ImportDef :: ImportSpec -> Def p
     Return  :: Expr -> Def p
 
 data Lhs (p :: Phase) where

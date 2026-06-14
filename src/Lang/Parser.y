@@ -24,6 +24,8 @@ import Lang.Options
 %token
     nl      { TokenNL _ }
     data    { TokenData _ }
+    from    { TokenFrom _ }
+    import  { TokenImport _ }
     cast    { TokenCast _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
@@ -75,12 +77,26 @@ import Lang.Options
 %%
 
 Program :: { (Program 'Parsed, [Option]) }
-  : LangOpts Defs  { ($2 $1, $1) }
+  : LangOpts Imports Defs  { ($2 ++ ($3 $1), $1) }
 
 LangOpts :: { [Option] }
   : LANG NL LangOpts    {% (readOption $1) >>= (\opt -> addOption opt $3) }
   | LANG                {% readOption $1 >>= (return . (:[])) }
   | {- empty -}         { [] }
+
+Imports :: { [Def 'Parsed] }
+  : Import NL Imports   { $1 : $3 }
+  | Import              { [$1] }
+  | {- empty -}         { [] }
+
+Import :: { Def 'Parsed }
+  : import IDENT                 { ImportDef (ImportModule (symString $2)) }
+  | from IDENT import '*'        { ImportDef (ImportAll (symString $2)) }
+  | from IDENT import ImportList { ImportDef (ImportOnly (symString $2) $4) }
+
+ImportList :: { [Identifier] }
+  : IDENT ',' ImportList { (symString $1) : $3 }
+  | IDENT                { [symString $1] }
 
 Defs :: { [Option] -> Program 'Parsed }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }

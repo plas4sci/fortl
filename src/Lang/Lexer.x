@@ -54,6 +54,8 @@ tokens :-
   inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
   return                        { \p s -> TokenReturn p }
+  from                          { \p s -> TokenFrom p }
+  import                        { \p s -> TokenImport p }
   lambda                        { \p s -> TokenLambda p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
@@ -126,6 +128,8 @@ data Token
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
   | TokenReturn   AlexPosn
+  | TokenFrom     AlexPosn
+  | TokenImport   AlexPosn
   deriving (Eq, Show, Generic)
 
 symString :: Token -> String

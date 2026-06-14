@@ -38,6 +38,7 @@ emitDefs = lift . tell
 desugarDef :: Def 'Parsed -> Desugar ()
 desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
 desugarDef (DataDef id cs ty)   = emitDefs [DataDef id cs ty]
+desugarDef (ImportDef spec)     = emitDefs [ImportDef spec]
 desugarDef (Return e)           = emitDefs [Return e]
 desugarDef (ValDef lhs e)       = do desugarVal lhs e
 
