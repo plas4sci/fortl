@@ -65,11 +65,11 @@ data Expr where
     Cast :: Expr -> Expr
 
     -- PCF extensions (previously in the PCF data type)
+    Zero :: Expr              -- zero
+    Succ :: Expr              -- succ (function) 
     NatCase :: Expr -> Expr -> (Identifier, Expr) -> Expr
                                -- case e of zero -> e1 | succ x -> e2
     Fix :: Expr              -> Expr             -- fix(e)
-    Succ                     :: Expr             -- succ (function)
-    Zero                     :: Expr             -- zero
     Pair :: Expr -> Expr     -> Expr             -- <e1, e2>
     Fst :: Expr              -> Expr             -- fst(e)
     Snd :: Expr              -> Expr             -- snd(e)
@@ -95,11 +95,11 @@ isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (NumFloat _) = True
 isValue (NumInteger _) = True
-isValue Zero = True
-isValue Succ = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e
+isValue Zero = True
+isValue Succ = True
 isValue e       = isNatVal e
 
 isNatVal :: Expr -> Bool
@@ -108,36 +108,72 @@ isNatVal Succ = True
 isNatVal (App e1 e2) = isNatVal e1 && isNatVal e2
 isNatVal _           = False
 
-
 ------------------------------
 -- Type syntax
 
+data ProxyN (n :: Nat) where
+  ZeroP :: ProxyN 0
+  SuccP :: ProxyN n -> ProxyN (1 + n)
+
+pToInteger :: ProxyN n -> Integer
+pToInteger ZeroP = 0
+pToInteger (SuccP n) = 1 + pToInteger n
+
+instance Show (ProxyN n) where
+  show k = show $ pToInteger k
+
+instance Eq (ProxyN n) where
+  n == n' = pToInteger n == pToInteger n'
+
+instance Ord (ProxyN n) where
+  compare n n' = compare (pToInteger n) (pToInteger n')
+
 data Type (n :: Nat) where
+    -- {id : arg1} -> arg2
+    ImplicitFunTy :: Identifier -> Type 2 -> Type 1 -> Type 1
     FunTy :: Type l -> Type l -> Type l  -- A -> B
 
-    TyCon :: Identifier -> Type l        -- K
+    TyCon :: ProxyN l -> Identifier -> Type l        -- K
+
+    ImplicitTyApp :: Type 0 -> Type 1 -> Type 0
     TyApp :: Type l -> Type l -> Type l  -- A B
 
     ProdTy :: Type 0 -> Type 0 -> Type 0 -- A * B
     SumTy  :: Type 0 -> Type 0 -> Type 0  -- A + B
 
+    -- Type variables
+    TyVar :: Identifier -> Type l            -- a
     -- Polymorphic lambda calculus types
-    TyVar :: Identifier -> Type 0           -- a
     Forall :: Identifier -> Type 0 -> Type 0 -- forall a . A
 
     -- With types
-    WithTy :: Type 0 -> Type 0 -> Type 0
+    WithTy :: Type l -> Type l -> Type l
 
     -- For units
     -- TODO: make just a type constructor
     ExponentTy :: Type 0 -> Float -> Type 0
 
+tyVar :: Identifier -> Type l
+tyVar = TyVar
+
+tyCon0 :: Identifier -> Type 0
+tyCon0 id = TyCon ZeroP id
+
+tyCon1 :: Identifier -> Type 1
+tyCon1 id = TyCon (SuccP ZeroP) id
+
+tyCon2 :: Identifier -> Type 2
+tyCon2 id = TyCon (SuccP $ SuccP ZeroP) id
+
 deriving instance Ord (Type 0)
 deriving instance Ord (Type 1)
+deriving instance Ord (Type 2)
 deriving instance Eq (Type 0)
 deriving instance Eq (Type 1)
+deriving instance Eq (Type 2)
 deriving instance Show (Type 0)
 deriving instance Show (Type 1)
+deriving instance Show (Type 2)
 
 ----------------------------
 
@@ -191,12 +227,13 @@ instance Term Expr where
 
   mkVar = Var
 
-instance Term (Type 0) where
+instance {-# OVERLAPS #-} Term (Type 0) where
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (ImplicitTyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
-  boundVars (TyCon _)      = Set.empty
+  boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
@@ -205,14 +242,49 @@ instance Term (Type 0) where
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (ImplicitTyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
-  freeVars (TyCon _)      = Set.empty
+  freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (ExponentTy t1 _) = freeVars t1
 
   mkVar = TyVar
+
+instance Term (Type 1) where
+  boundVars (ImplicitFunTy i t1 t2) = i `Set.insert` (boundVars t1 `Set.union` boundVars t2)
+  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyCon _ _)      = Set.empty
+  boundVars (TyVar var)    = Set.empty
+  boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
+
+  freeVars (ImplicitFunTy i t1 t2) = freeVars t1 `Set.union` (Set.delete i (freeVars t2))
+  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyCon _ _)      = Set.empty
+  freeVars (TyVar var)    = Set.singleton var
+  freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
+
+  mkVar = TyVar
+
+instance Term (Type 2) where
+  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyCon _ _)      = Set.empty
+  boundVars (TyVar var)    = Set.empty
+  boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
+
+  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyCon _ _)      = Set.empty
+  freeVars (TyVar var)    = Set.singleton var
+  freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
+
+  mkVar = TyVar
+
+
 
   ----------------------------
 -- Fresh variable with respect to a set of variables

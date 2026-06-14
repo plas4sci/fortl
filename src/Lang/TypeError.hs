@@ -35,10 +35,12 @@ data TypeError
   | BaseTypeMismatch Identifier Identifier
   
   -- Kinding errors
-  | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Type 0 }
+  | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Maybe (Type 0) }
   | UnknownTypeConstructor Identifier
   | ExpectingFunctionKind (Type 1)
+  | ExpectingFunctionSort (Type 2)
   | CannotInferKind (Type 0)
+  | SortMismatch { expectedSort :: Type 2, actualSort :: Type 2, kindInQuestion :: Type 1 }
   
   -- Operator errors
   | OperatorTypeError Op TypeError
@@ -56,3 +58,8 @@ data TypeError
   | ChainedError TypeError TypeError
   
   deriving (Show)
+
+(<|>) :: Either TypeError a -> Either TypeError a -> Either TypeError a
+(Left err) <|> (Left err') = Left err
+(Right x) <|> _ = Right x
+_ <|> (Right x) = Right x

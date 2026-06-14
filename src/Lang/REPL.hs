@@ -31,7 +31,11 @@ replLoop = do
         Right ty -> 
           case synthKind ty of
             Left err -> putStrLn $ errorToString err
-            Right kind -> putStrLn $ pprint kind
+            Right (ty', kind) -> do
+              if ty /= ty'
+                then putStrLn $ "Elaborated type: " ++ pprint ty'
+                else return ()
+              putStrLn $ pprint kind
       replLoop
     rest -> do
       case parseExpr rest of

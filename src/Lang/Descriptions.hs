@@ -13,7 +13,7 @@ import Data.Map.Lazy
 import Lang.TypeError
 
 unitDescription :: Type 0
-unitDescription = TyCon "1"
+unitDescription = tyCon0 "1"
 
 -- | Equality on descriptions
 descriptionEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
@@ -57,10 +57,10 @@ type AGroupRepr = Map Identifier Float
 instance Representation DescriptionsRepr where
     -- | Compute the representation of a description type
     computeRepresentation :: Type 0 -> Maybe DescriptionsRepr
-    computeRepresentation (TyApp (TyCon "Unit") t)     = do
+    computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
         d <- computeRepresentation t
         Just $ singleton "Unit" d
-    computeRepresentation (TyApp (TyCon "Quantity") t) = do
+    computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
         d <- computeRepresentation t
         Just $ singleton "Quantity" d
     computeRepresentation (WithTy t1 t2) = do
@@ -74,7 +74,7 @@ instance Representation DescriptionsRepr where
           exp :: Float -> DescriptionRepr -> DescriptionRepr
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
-    computeRepresentation (TyCon "1") = Just empty
+    computeRepresentation (TyCon ZeroP "1") = Just empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -90,11 +90,11 @@ instance Representation DescriptionsRepr where
     reifyToTypeTerm :: DescriptionsRepr -> Type 0
     reifyToTypeTerm ds =
       if length (keys ds) == 0
-        then TyCon "1"
+        then tyCon0 "1"
         else
-          Prelude.foldr (\(k, v) t -> WithTy (TyApp (TyCon k) (reifyToTypeTerm v)) t) base rest
+          Prelude.foldr (\(k, v) t -> WithTy (TyApp (tyCon0 k) (reifyToTypeTerm v)) t) base rest
           where
-            base    = TyApp (TyCon k) (reifyToTypeTerm v)
+            base    = TyApp (tyCon0 k) (reifyToTypeTerm v)
             (k, v)  = head (assocs ds)
             rest    = tail (assocs ds)
 
@@ -116,11 +116,11 @@ instance Representation DescriptionRepr where
             Just $ FreeAGroup $ Data.Map.Lazy.filter (/= 0) (computeFreeAGroupRepr' t)
         where
             computeFreeAGroupRepr' :: Type 0 -> AGroupRepr
-            computeFreeAGroupRepr' (TyCon "1") = empty
+            computeFreeAGroupRepr' (TyCon ZeroP "1") = empty
             computeFreeAGroupRepr' (ExponentTy t n) = scale n (computeFreeAGroupRepr' t)
             computeFreeAGroupRepr' (ProdTy t1 t2) =
                 unionWith (+) (computeFreeAGroupRepr' t1) (computeFreeAGroupRepr' t2)
-            computeFreeAGroupRepr' (TyCon c) = singleton c 1.0
+            computeFreeAGroupRepr' (TyCon ZeroP c) = singleton c 1.0
             computeFreeAGroupRepr' t = error $ "Not well kinded unit " <> pprint t
 
             scale :: Float -> AGroupRepr -> AGroupRepr
@@ -130,12 +130,12 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm :: DescriptionRepr -> Type 0
     reifyToTypeTerm (FreeAGroup a) =
       if length (assocs a) == 0
-        then TyCon "1"
+        then tyCon0 "1"
         else
           Prelude.foldr (\(k, v) t -> exp k v `ProdTy` t) base rest
           where
-            exp k 1 = TyCon k
-            exp k v = ExponentTy (TyCon k) v
+            exp k 1 = tyCon0 k
+            exp k v = ExponentTy (tyCon0 k) v
             base    = exp k v
             (k, v)  = head (assocs a)
             rest    = tail (assocs a)
@@ -156,11 +156,7 @@ instance Representation DescriptionRepr where
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
 
-
-
-
-
-
-
 --------
+
+-- coercions :: 
 

@@ -53,7 +53,7 @@ library:
   - Lang.Syntax
   - Lang.Parser
   - Lang.PrettyPrint
-  - Lang.Descriptions
+  - Lang.Frontend
 
 tests:
   fortl-golden:

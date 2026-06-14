@@ -17,6 +17,7 @@ import Lang.Options
 
 %name program Program
 %name expr Expr
+%name typeParser Type
 %tokentype { Token }
 %error { parseError }
 %monad { ReaderT String (Either String) }
@@ -62,6 +63,8 @@ import Lang.Options
     '&'     { TokenAmpersand _ }
     '['     { TokenLBrack _ }
     ']'     { TokenRBrack _ }
+    '{'     { TokenLBrace _ }
+    '}'     { TokenRBrace _ }
     ','     { TokenMPair _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
@@ -170,8 +173,7 @@ Kind :: { [Option] -> Type 1 }
 Kind
   : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
   | IDENT            { \opts -> case symString $1 of
-                                  "type" -> TyCon "type"
-                                  v -> error "TODO" }
+                                  k -> tyCon1 k }
   
 Type :: { [Option] -> Type 0 }
 Type
@@ -180,6 +182,7 @@ Type
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
+  | TypeAtom '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | TypeAtom '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
@@ -191,11 +194,11 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : IDENT            { \opts -> TyCon $ symString $1 }
+  : IDENT            { \opts -> tyCon0 $ symString $1 }
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
-  | INT              { \opts -> TyCon $ let (TokenInt _ x) = $1 in x }
-  | '?'              { \opts -> TyCon "?" }
+  | INT              { \opts -> tyCon0 $ let (TokenInt _ x) = $1 in x }
+  | '?'              { \opts -> tyCon0 "?" }
 
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
@@ -247,6 +250,11 @@ parseError t  =  do
 parseExpr :: String -> Either String Expr
 parseExpr input = runReaderT (expr $ scanTokens input) ""
  >>= (\f -> return $ f [])
+
+parseType :: String -> Either String (Type 0)
+parseType input = runReaderT (typeParser $ scanTokens input) ""
+ >>= (\f -> return $ f [])
+
 
 parseProgram :: FilePath -> String -> Either String (Program 'Parsed, [Option])
 parseProgram file input = runReaderT (program $ scanTokens input) file

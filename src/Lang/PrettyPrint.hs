@@ -20,8 +20,6 @@ bracket_pprint t | isLexicallyAtomic t = pprint t
 -- Untyped lambda calculus
 instance PrettyPrint Expr where
     isLexicallyAtomic (Var _) = True
-    isLexicallyAtomic Zero = True
-    isLexicallyAtomic Succ = True
     isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic _       = False
 
@@ -79,13 +77,15 @@ instance PrettyPrint () where
     pprint () = "()"
 
 instance PrettyPrint (Type i) where
-    isLexicallyAtomic (TyCon _) = True
+    isLexicallyAtomic (TyCon _ _) = True
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic (TyApp _ _) = True
     isLexicallyAtomic (ExponentTy _ _) = True
     isLexicallyAtomic _     = False
 
-    pprint (TyCon c) = c
+    pprint (TyCon _ c) = c
+    pprint (ImplicitFunTy var tyA tyB) =
+      "{" ++ var ++ " : " ++ pprint tyA ++ "} -> " ++ pprint tyB
     pprint (FunTy tyA tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
     pprint (ProdTy tyA tyB) =
@@ -93,7 +93,9 @@ instance PrettyPrint (Type i) where
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyApp tyA tyB) =
-      bracket_pprint tyA ++ "(" ++ bracket_pprint tyB ++ ")"
+      pprint tyA ++ "[" ++ bracket_pprint tyB ++ "]"
+    pprint (ImplicitTyApp tyA tyB) =
+      bracket_pprint tyA ++ "[{" ++ bracket_pprint tyB ++ "}]"
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (WithTy t1 t2) =

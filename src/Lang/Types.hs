@@ -6,7 +6,7 @@ module Lang.Types where
 
 import Lang.Syntax
 import Lang.PrettyPrint
-import Lang.Semantics (substituteType)
+import Lang.Substitution
 import Lang.Kinding
 import Lang.Primitives
 import Lang.Descriptions
@@ -15,6 +15,8 @@ import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
 
+import Debug.Trace
+
 synthProgram :: Program 'Desugared -> Either TypeError (Type 0)
 synthProgram = synthProgram' []
   where
@@ -22,11 +24,16 @@ synthProgram = synthProgram' []
     synthProgram' gamma [] = 
       case lookup "it" gamma of
         Just ty -> return ty
-        Nothing -> Right $ TyCon "Unit"  -- Return unit type when no return statement
+        Nothing -> Right $ tyCon0 "Unit"  -- Return unit type when no return statement
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
-      case check gamma e ty of
-        Right () -> synthProgram' ((v, ty) : gamma) defs
+      case synthKind ty of
         Left err -> Left err
+        Right (ty', kind) ->
+          "done with synth k" `trace`
+          case check gamma e ty' of
+            Right () -> synthProgram' ((v, ty') : gamma) defs
+            Left err -> Left err
+                  
     synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
@@ -81,18 +88,18 @@ check gamma (Var x) ty =
         Left err -> Left $ TypeCheckFailure t ty (errorToString err)
 
 check gamma (NumFloat n) ty =
-  case isGradedType "Float" ty of
-    Just desc ->
+  case isGradableNumericType ty of
+    Just (base, _, _) | base == "Float" ->
       -- Float type of any grade will do
         Right ()
-    Nothing -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
+    _ -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
 check gamma (NumInteger n) ty =
-  case isGradedType "Integer" ty of
-    Just desc ->
+  case isGradableNumericType ty of
+    Just (base, _, _) | base == "Integer" ->
       -- Integer type of any grade will do
         Right ()
-    Nothing -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
+    _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
 
 check gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -127,7 +134,7 @@ check gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, desc)) =
+check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, gradeType, desc)) =
   -- We have a gradable numeric type
   case op of
     -- Plus and minus must have the same type
@@ -144,25 +151,23 @@ check gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, desc))
       -- whose base type must match
       case synth gamma e1 of
         Left err -> Left $ OperatorTypeError op err
-        Right (isGradableNumericType -> Just (baseType', d1)) ->
+        Right (isGradableNumericType -> Just (baseType', gradeType1, d1)) ->
           if baseType /= baseType'
             then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
             else
               case synth gamma e2 of
                 Left err -> Left $ OperatorTypeError op err
-                Right (isGradableNumericType -> Just (baseType'', d2)) ->
+                Right (isGradableNumericType -> Just (baseType'', gradeType2, d2)) ->
                   if baseType /= baseType''
                     then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType'')
-                    else
+                    else do
+                      () <- kindEquality gradeType1 (IsSpec gradeType2)
                       case op of
-                        OpTimes  -> typeEquality (TyApp (TyCon baseType) $ ProdTy d1 d2) (IsSpec ty)
-                        OpDivide -> typeEquality (TyApp (TyCon baseType) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
+                        OpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                        OpDivide -> 
+                          typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
                 Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
-
--- check gamma e (WithTy t1 t2) = do
---   check gamma e t1
---   check gamma e t2
 
 check gamma (Pair _ _) t = Left $ NonProductTypeToPair t
 
@@ -262,7 +267,7 @@ i.e., we know we have a signature for the argument.
 synth gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
   case checkKind tyA type0 of
     Left err -> Left err
-    Right () ->
+    Right tyA ->
       case check gamma e2 tyA of
         Right () -> synth ((x, tyA) : gamma) e1
         Left err -> Left err
@@ -273,13 +278,13 @@ synth gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 synth gamma (Abs x (Just tyA) e) =
   case checkKind tyA type0 of
     Left err -> Left err
-    Right () -> synth ((x, tyA) : gamma) e
+    Right tyA' -> synth ((x, tyA') : gamma) e
 
 -- Type checking a type speciaisation
 synth gamma (App e (TyEmbed tau')) =
   case checkKind tau' type0 of
     Left err -> Left err
-    Right () ->
+    Right tau' ->
       case synth gamma e of
         Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
         Right t -> Left $ ExpectingPolymorphicType t
@@ -381,7 +386,7 @@ synth gamma (NumFloat n) =
   Right (floatTy unitDescription)
 
 synth gamma (NumInteger n) =
-  Right (TyApp (TyCon "Integer") unitDescription)
+  Right (integerTy unitDescription)
 
 synth gamma (BinOp op e1 e2) =
   case synth gamma e1 of
@@ -389,24 +394,25 @@ synth gamma (BinOp op e1 e2) =
     Right t1 ->
       case isGradableNumericType t1 of
         Nothing -> Left $ ExpectingNumericType t1
-        Just (baseType, d1) ->
+        Just (baseType, gradeType1, d1) ->
           case synth gamma e2 of
             Left err -> Left $ OperatorTypeError op err
             Right t2 ->
               case isGradableNumericType t2 of
                 Nothing -> Left $ ExpectingNumericType t2
-                Just (baseType', d2) ->
+                Just (baseType', gradeType2, d2) ->
                   if baseType /= baseType'
                     then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
-                    else
+                    else do
+                      () <- kindEquality gradeType1 (IsSpec gradeType2)
                       case op of
-                        OpTimes -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation $ ProdTy d1 d2)
-                        OpDivide -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
-                        _        ->
-                          case descriptionEquality d1 (IsSpec d2) of
-                            -- d1 == d2
-                            Right () -> Right $ TyApp (TyCon baseType) (normalisationByEvaluation d1)
-                            Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
+                          OpTimes -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 d2)
+                          OpDivide -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
+                          _        ->
+                            case descriptionEquality d1 (IsSpec d2) of
+                              -- d1 == d2
+                              Right () -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation d1)
+                              Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
 
 
 {-
@@ -421,8 +427,9 @@ synth gamma (BinOp op e1 e2) =
 synth gamma (Sig e ty) =
   case checkKind ty type0 of
     Left err -> Left err
-    Right () ->
-      case check gamma e ty of
+    -- Get elaborated type
+    Right ty' ->
+      case check gamma e ty' of
         Right () -> Right ty
         Left err -> Left $ ExplicitSignatureCheckFailure ty err
 
@@ -435,11 +442,18 @@ synth gamma e =
 ---------------------------------
 
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
-typeEquality (isGradableNumericType -> Just (baseType1, d1))
-     (IsSpec (isGradableNumericType -> Just (baseType2, d2))) =
+typeEquality (isGradableNumericType -> Just (baseType1, gradeType1, d1))
+     (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
   if baseType1 == baseType2
-    then descriptionEquality d1 (IsSpec d2)
+    then do
+      () <- kindEquality gradeType1 (IsSpec gradeType2)
+      (pprint d1 <> " == " <> pprint d2) `trace`   descriptionEquality d1 (IsSpec d2)
+      
     else Left $ BaseTypeMismatch baseType1 baseType2
+typeEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
+  (typeEquality t1 (IsSpec t1') >> typeEquality t2 (IsSpec t2')) <|>
+  (typeEquality t1 (IsSpec t2') >> typeEquality t2 (IsSpec t1'))
+
 typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
@@ -515,15 +529,28 @@ errorToString MismatchedDescriptionReprTypes =
 errorToString (BaseTypeMismatch expected actual) =
   "Mismatch between base type of graded types, expected " <> expected <> " but got " <> actual
 
-errorToString (KindMismatch expectedK actualK t) =
+errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK 
   <> " but got " <> pprint actualK
+
+errorToString (KindMismatch expectedK actualK Nothing) =
+  "Expecting kind " <> pprint expectedK 
+  <> " but got " <> pprint actualK
+
+errorToString (SortMismatch expectedK actualK t) =
+  "For " <> pprint t <> ", expecting sort " <> pprint expectedK 
+  <> " but got " <> pprint actualK
+
 
 errorToString (UnknownTypeConstructor c) =
   "Unknown type constructor " <> c
 
 errorToString (ExpectingFunctionKind k) =
   "Expecting a function kind but got " <> pprint k
+
+errorToString (ExpectingFunctionSort k) =
+  "Expecting a function sort but got " <> pprint k
+
 
 errorToString (CannotInferKind t) =
   "Cannot infer kind for " <> pprint (normalise t)
@@ -560,14 +587,15 @@ normalise t =
 
 normalise' :: Type 0 -> Type 0
 normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
-normalise' (isGradableNumericType -> Just (baseType, desc)) =
-  TyApp (TyCon baseType) (normalisationByEvaluation desc)
+normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
+  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (normalisationByEvaluation desc)
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
 normalise' (Forall x t) = Forall x (normalise' t)
 normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)
 normalise' (SumTy t1 t2) = SumTy (normalise' t1) (normalise' t2)
-normalise' (WithTy t (TyCon "1")) = normalise' t
-normalise' (WithTy (TyCon "1") t) = normalise' t
+normalise' (WithTy t (TyCon ZeroP "1")) = normalise' t
+normalise' (WithTy (TyCon ZeroP "1") t) = normalise' t
 normalise' (WithTy t1 t2) = WithTy (normalise' t1) (normalise' t2)
 normalise' (ExponentTy t n) = ExponentTy (normalise' t) n
 normalise' t = t  -- Base case: TyCon, TyVar, etc.
+

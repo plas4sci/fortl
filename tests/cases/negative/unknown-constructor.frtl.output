@@ -1,2 +1,2 @@
 Expecting Float type.
-Trying to check at Floats but got type Float(1)
+Trying to check at Floats but got type Float[{Base}][1]

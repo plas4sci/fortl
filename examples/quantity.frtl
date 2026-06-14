@@ -1,10 +1,10 @@
 """
 Simple example showing units and quantities
 """
-y : Float[Unit[m] & Quantity[length]] = 2.0
-x : Float[Unit[m] & Quantity[length]] = 1.0 + y
-t : Float[Unit[s]] = 4.0
-# End result
+x : Float[Unit[m] & Quantity[length]] = 2.0
+y : Float[Unit[m] & Quantity[length]] = 1.0
+t : Float[Unit[s] & Quantity[time]] = 4.0
+# # # End result
 it : Float[Unit[s^-1 * m] & Quantity[length]] = (x + y) / t
 
 # let's think about what is going on categorically...

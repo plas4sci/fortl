@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 
 module Lang.TypeHelpers where
 
@@ -13,29 +14,18 @@ reciprocalType t = ExponentTy t (-1.0)
 
 -- # Smart destructors
 
--- | Check if a type is an indexed type and extract the index
-isGradableNumericType :: Type 0 -> Maybe (Identifier, Type 0)
+-- | Check if a type is a graded type and extract the grading type and the grade
+isGradableNumericType :: Type 0 -> Maybe (Identifier, Type 1, Type 0)
 isGradableNumericType ty =
   case ty of
-    TyCon conId -> 
+    TyCon _ conId -> 
       case isDescConstructor conId of
-        Just _  -> Just (conId, TyCon "1") -- Default index for base type
+        Just _  -> Just (conId, base, tyCon0 "1") -- Default index for base type
         Nothing -> Nothing
-    TyApp (TyCon conId) t ->
+    TyApp (ImplicitTyApp (TyCon _ conId) gType) grade ->
       case isDescConstructor conId of
-        Just _  -> Just (conId, t)
+        Just _  -> Just (conId, gType, grade)
         Nothing -> Nothing
-    _ -> Nothing
-
-
--- | Check if a type is an indexed type and extract the index
-isGradedType :: Identifier -> Type 0 -> Maybe (Type 0)
-isGradedType conId ty =
-  case ty of
-    TyApp (TyCon c) t | c == conId ->
-      Just t
-    TyCon "Float" -> Just (TyCon "1") -- TODO generalise so that this isn't a special case
-    TyCon "Integer" -> Just (TyCon "1") -- TODO as above
     _ -> Nothing
 
 -- # Equality helpers
