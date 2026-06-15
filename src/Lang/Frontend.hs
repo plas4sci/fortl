@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ImplicitParams #-}
 module Lang.Frontend where
 
 import Lang.Options
@@ -55,6 +56,7 @@ run report fname = do
           -- Typing
           case typeInference options ast of
               Left err -> do
+                let ?srcFile = fname
                 putStrLn $ ansi_bold <> ansi_red
                         <> "Not well-typed.\n" <> errorToString err <> ansi_reset
                 return $ Left (errorToString err)

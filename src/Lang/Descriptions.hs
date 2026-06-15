@@ -144,11 +144,11 @@ instance Representation DescriptionRepr where
     -- | Equality on description representations
     reprEquality :: DescriptionRepr -> Specificational DescriptionRepr -> Either TypeError ()
     reprEquality (FreeAGroup a1) (IsSpec (FreeAGroup a2)) =
-        -- if a1 == a2
-        --     then 
+        if assocs a1 == assocs a2
+            then 
                 if all (\((k1, v1), (k2, v2)) -> k1 == k2 && v1 == v2) (zip (assocs a1) (assocs a2)) then Right ()
                 else Left $ AbelianGroupMismatch (reifyToTypeTerm (FreeAGroup a2)) (reifyToTypeTerm (FreeAGroup a1))
-            -- else Left $ AbelianGroupMismatch (reifyToTypeTerm (FreeAGroup a2)) (reifyToTypeTerm (FreeAGroup a1))
+            else Left $ AbelianGroupMismatch (reifyToTypeTerm (FreeAGroup a2)) (reifyToTypeTerm (FreeAGroup a1))
     reprEquality (TypeTree t1) (IsSpec (TypeTree t2)) =
         if t1 == t2
             then Right ()

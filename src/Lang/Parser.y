@@ -129,44 +129,44 @@ ConstructorList
 Expr :: { [Option] -> Expr }
   : let IDENT '=' Expr in Expr
     { \opts ->
-      GenLet (symString $2) ($4 opts) ($6 opts) }
+      MkGenLet (mkPos $1) (symString $2) ($4 opts) ($6 opts) }
 
    -- TODO: probably needs reconciling with lambda syntax
   | Lam IDENT '->' Expr
-    { \opts -> TyAbs (symString $2) ($4 opts) }
+    { \opts -> MkTyAbs (mkPos $1) (symString $2) ($4 opts) }
 
   | Form ':' Type
-    { \opts -> Sig ($1 opts) ($3 opts) }
+    { \opts -> MkSig (mkPos $2) ($1 opts) ($3 opts) }
 
   | Form
     { $1 }
 
   | fix '(' Expr ')'
-     { \opts -> Fix ($3 opts) }
+     { \opts -> MkFix (mkPos $1) ($3 opts) }
 
   | natcase Expr of zero '->' Expr '|' succ IDENT '->' Expr
-     { \opts -> NatCase ($2 opts) ($6 opts) (symString $9, ($11 opts)) }
+     { \opts -> MkNatCase (mkPos $1) ($2 opts) ($6 opts) (symString $9, ($11 opts)) }
 
   | fst '(' Expr ')'
-     { \opts -> Fst ($3 opts) }
+     { \opts -> MkFst (mkPos $1) ($3 opts) }
 
   | snd '(' Expr ')'
-     { \opts -> Snd ($3 opts) }
+     { \opts -> MkSnd (mkPos $1) ($3 opts) }
 
   | inl '(' Expr ')'
-     { \opts -> Inl ($3 opts) }
+     { \opts -> MkInl (mkPos $1) ($3 opts) }
 
   | inr '(' Expr ')'
-     { \opts -> Inr ($3 opts) }
+     { \opts -> MkInr (mkPos $1) ($3 opts) }
 
  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
-     { \opts -> Case ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+     { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
 
 Form :: { [Option] -> Expr }
-  : Form '+' Form  { \opts -> BinOp OpPlus ($1 opts) ($3 opts) }
-  | Form '-' Form  { \opts -> BinOp OpMinus ($1 opts) ($3 opts) }
-  | Form '*' Form  { \opts -> BinOp OpTimes ($1 opts) ($3 opts) }
-  | Form '/' Form  { \opts -> BinOp OpDivide ($1 opts) ($3 opts) }
+  : Form '+' Form  { \opts -> MkBinOp (mkPos $2) OpPlus ($1 opts) ($3 opts) }
+  | Form '-' Form  { \opts -> MkBinOp (mkPos $2) OpMinus ($1 opts) ($3 opts) }
+  | Form '*' Form  { \opts -> MkBinOp (mkPos $2) OpTimes ($1 opts) ($3 opts) }
+  | Form '/' Form  { \opts -> MkBinOp (mkPos $2) OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }
@@ -182,6 +182,7 @@ Type
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
+  | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
   | TypeAtom '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | TypeAtom '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
@@ -202,21 +203,21 @@ TypeAtom
 
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
-  | cast '(' Atom ')'                 { \opts -> Cast ($3 opts) }
+  | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
-  | IDENT                     { \opts -> Var $ symString $1 }
+  | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
   | LAMBDA IDENT ':' Expr
-    { \opts -> Abs (symString $2) Nothing ($4 opts) }
+    { \opts -> MkAbs (mkPos $1) (symString $2) Nothing ($4 opts) }
   | zero
-    { \opts -> Zero }
+    { \opts -> MkZero (mkPos $1) }
   | succ
-    { \opts -> Succ }
+    { \opts -> MkSucc (mkPos $1) }
 
   | '@' TypeAtom
-    { \opts -> TyEmbed ($2 opts) }
+    { \opts -> MkTyEmbed (mkPos $1) ($2 opts) }
 
   | Expr ',' Expr
      { \opts -> Pair ($1 opts) ($3 opts) }
@@ -224,16 +225,19 @@ Atom :: { [Option] -> Expr }
   | FLOAT
      { \opts ->
           let (TokenFloat _ x) = $1
-          in NumFloat $ read x }
+          in MkNumFloat (mkPos $1) (read x) }
 
   | INT
      { \opts ->
           let (TokenInt _ x) = $1
-          in NumInteger $ fromIntegral $ read x }
+          in MkNumInteger (mkPos $1) (fromIntegral $ read x) }
 
   -- For later
   -- | '?' { Hole }
 {
+
+mkPos :: Token -> Maybe SrcPos
+mkPos t = let (l, c) = getPos t in Just (SrcPos l c)
 
 readOption :: Token -> ReaderT String (Either String) Option
 readOption (TokenLang _ x) = lift . Left $ "Unknown language option: " <> x

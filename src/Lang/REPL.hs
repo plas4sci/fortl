@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module Lang.REPL where
 
 import Lang.Frontend    (banner)
@@ -22,7 +23,7 @@ replLoop = do
         Left err   -> putStrLn err
         Right expr -> 
           case synth [] expr of
-            Left err -> putStrLn $ errorToString err
+            Left err -> let ?srcFile = "<repl>" in putStrLn $ errorToString err
             Right ty -> putStrLn $ pprint ty
       replLoop
     ':':'k':' ':rest -> do
@@ -30,7 +31,7 @@ replLoop = do
         Left err -> putStrLn err
         Right ty -> 
           case synthKind ty of
-            Left err -> putStrLn $ errorToString err
+            Left err -> let ?srcFile = "<repl>" in putStrLn $ errorToString err
             Right (ty', kind) -> do
               if ty /= ty'
                 then putStrLn $ "Elaborated type: " ++ pprint ty'

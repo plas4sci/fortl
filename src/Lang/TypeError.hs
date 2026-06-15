@@ -56,7 +56,10 @@ data TypeError
   
   -- Nested/chained errors
   | ChainedError TypeError TypeError
-  
+
+  -- Source location annotation
+  | Located SrcPos TypeError
+
   deriving (Show)
 
 (<|>) :: Either TypeError a -> Either TypeError a -> Either TypeError a
