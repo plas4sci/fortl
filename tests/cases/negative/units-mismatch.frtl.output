@@ -1,1 +1,1 @@
-Expecting abelian group s^-2.0 * m but got s^-1.0 * m
+tests/cases/negative/units-mismatch.frtl:6:38: Expecting descriptor `s^-2.0 * m` but got `s^-1.0 * m`

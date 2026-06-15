@@ -1,2 +1,2 @@
-Expecting Float type.
+tests/cases/negative/with-type.frtl:2:21: Expecting Float type.
 Trying to check at Float[{Base}][1] & Float[{Base}][1] but got type Float[{Base}][1]

@@ -1,2 +1,2 @@
-Expecting Float type.
+tests/cases/negative/unknown-constructor.frtl:1:14: Expecting Float type.
 Trying to check at Floats but got type Float[{Base}][1]

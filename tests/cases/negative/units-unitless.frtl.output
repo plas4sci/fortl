@@ -1,1 +1,1 @@
-Expecting kind Base but got UoM
+tests/cases/negative/units-unitless.frtl:2:24: Expecting kind Base but got UoM
