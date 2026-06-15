@@ -13,7 +13,7 @@
 
 </td></tr></table>
 
-## Example
+## Example and usage
 
 From [examples/quantity.frtl](examples/quantity.frtl):
 
@@ -26,6 +26,39 @@ y : Float[Unit[m] & Quantity[length]] = 1.0
 t : Float[Unit[s] & Quantity[time]] = 4.0
 # End result
 it : Float[Unit[m / s] & Quantity[length / time]] = (x + y) / t
+```
+
+
+### REPL
+
+The interactive REPL (`fortli`) supports line editing and history. Start it with:
+
+```bash
+stack exec fortli
+```
+
+Once running, you can:
+
+- **Evaluate an expression** — type any expression and press Enter
+- **Infer a type** — `:t expr` infers the type of an expression; `:k type` infers the kind of a type
+- **Load a file** — `:l path/to/file.frtl` runs type inference on the file and loads its definitions into the environment
+- **Get help** — `:h` lists all available commands
+- **Quit** — `:q`
+
+**Example session:**
+
+```bash
+% fortli
+...
+[F]> :l examples/units.frtl
+Well-typed as Float[{UoM}][Unit[(M * S^-1.0)]]
+0.25
+units> x
+1.0
+units> :t x
+Float[{UoM}][Unit[M]]
+units> :k Float
+{d : Descriptor} -> d -> Type
 ```
 
 ## Building and Installing
@@ -59,6 +92,8 @@ stack install
 ```
 
 After installing, `fortl` and `fortli` will be available as commands directly.
+
+
 
 ## Contributing
 

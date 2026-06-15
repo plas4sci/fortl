@@ -68,6 +68,25 @@ replLoop state = do
                                   , options = opts
                                   , typingContext = ctxt }
 
+          'r':_ -> do
+            case currentFile state of
+              Nothing -> do
+                liftIO $ putStrLn "No file loaded. Use :l <path> to load a file."
+                replLoop state
+              Just fs -> do
+                runResult <- liftIO $ run False (filename fs)
+                case runResult of
+                  Left err -> do
+                    liftIO $ putStrLn err
+                    replLoop state
+                  Right (ast', opts, env', expr, ctxt) -> do
+                    liftIO $ displayResult expr
+                    let fileState = FileState { filename = filename fs, ast = ast' }
+                    replLoop $ state { currentFile = Just fileState
+                                      , env = env'
+                                      , options = opts
+                                      , typingContext = ctxt }
+
           't':' ':rest' -> do
             liftIO $ case parseExpr rest' of
               Left err  -> putStrLn err
@@ -121,6 +140,6 @@ printHelp = do
   putStrLn "    :t expr - Infer the type of an expression"
   putStrLn "    :k type - Infer the type of a type (its kind)"
   putStrLn "    :l path - Load the file"
-  putStrLn "    :r      - Reload the currenty loaded file"
+  putStrLn "    :r      - Reload the currently loaded file"
   putStrLn "    :q      - Quit"
   putStrLn " Or type an expression to evaluate it"
