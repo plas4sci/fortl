@@ -4,7 +4,7 @@ Simple example showing units and quantities
 x : Float[Unit[m] & Quantity[length]] = 2.0
 y : Float[Unit[m] & Quantity[length]] = 1.0
 t : Float[Unit[s] & Quantity[time]] = 4.0
-# # # End result
+# End result
 it : Float[Unit[m / s] & Quantity[length / time]] = (x + y) / t
 
 # let's think about what is going on categorically...

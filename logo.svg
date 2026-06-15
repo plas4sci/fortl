@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="logo2.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   inkscape:export-filename="logo2.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showguides="true"
+     inkscape:zoom="0.96717249"
+     inkscape:cx="11.373359"
+     inkscape:cy="119.93724"
+     inkscape:window-width="1312"
+     inkscape:window-height="431"
+     inkscape:window-x="0"
+     inkscape:window-y="33"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg4">
+    <sodipodi:guide
+       position="131.25424,182.23729"
+       orientation="0,-1"
+       id="guide4"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="111.85527,114.14718"
+       orientation="0,-1"
+       id="guide5"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="97.40459,199.06792"
+       orientation="0,-1"
+       id="guide6"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="95.488065,190.38719"
+       orientation="0,-1"
+       id="guide7"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="103.03382,146.2648"
+       orientation="1,0"
+       id="guide8"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="155.20626,96.721276"
+       orientation="1,0"
+       id="guide9"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <style
+       id="style1">
+      .mark { fill: #2F3E52; }
+      .word { fill: #2F3E52; font: 600 42px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    </style>
+  </defs>
+  <!-- Left bracket tower -->
+  <path
+     class="mark"
+     d="M 78.508475,58.983051 H 104 L 103.995,67.846339 88,67.880633 87.491567,146.28771 103.81352,146.23246 104,154.98305 H 78.508475 Z"
+     id="path1"
+     sodipodi:nodetypes="ccccccccc" />
+  <!-- Right bracket tower -->
+  <!-- Center keep -->
+  <path
+     class="mark"
+     d="m 110,72 h 40 v 72.13559 h -40 z"
+     id="path3"
+     style="stroke-width:0.86684" />
+  <!-- Battlements cutout -->
+  <rect
+     x="118"
+     y="72"
+     width="8"
+     height="12"
+     fill="#ffffff"
+     id="rect3" />
+  <rect
+     x="134"
+     y="72"
+     width="8"
+     height="12"
+     fill="#ffffff"
+     id="rect4" />
+  <!-- Gate cutout -->
+  <path
+     fill="#ffffff"
+     d="m 120,168 v -32 c 0,-12 5,-18 10,-18 5,0 10,6 10,18 v 32 z"
+     id="path4" />
+  <!-- fortl wordmark -->
+  <text
+     class="word"
+     x="128.91525"
+     y="195.96609"
+     text-anchor="middle"
+     id="text4"
+     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:42px;line-height:normal;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">fortl</text>
+  <path
+     class="mark"
+     d="m 181.00049,58.983051 h -25.49152 l 0.005,8.863288 15.995,0.03429 0.50843,78.407081 -16.32195,-0.0553 -0.18648,8.75059 h 25.49152 z"
+     id="path7"
+     sodipodi:nodetypes="ccccccccc" />
+</svg>
