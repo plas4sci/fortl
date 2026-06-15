@@ -5,7 +5,7 @@ module Lang.Frontend where
 import Lang.Options
 import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
-import Lang.Semantics   (interpret)
+import Lang.Semantics   (interpret, Env)
 import Lang.Desugar     (desugar)
 import Lang.Syntax
 import Lang.Types
@@ -32,11 +32,11 @@ main = do
       result <- run True fname
       case result of
         Left _   -> exitFailure
-        Right result  -> do
+        Right (_, _, _, result)  -> do
           putStrLn $ pprint result
           exitSuccess
 
-run :: Bool -> String -> IO (Either String Expr)
+run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr))
 run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname
@@ -52,7 +52,7 @@ run report fname = do
         Right (parsetree, options) -> do
           let ast = desugar parsetree
           -- Evaluate
-          let normalForm = interpret options ast
+          let (env, normalForm) = interpret options ast
           -- Typing
           case typeInference options ast of
               Left err -> do
@@ -64,7 +64,7 @@ run report fname = do
                 putStrLn $ ansi_bold <> ansi_green
                         <> "Well-typed " <> ansi_reset
                         <> ansi_bold <> "as " <> ansi_reset <> pprint ty
-                return $ Right normalForm
+                return $ Right (parsetree, options, env, normalForm)
         Left msg -> do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg

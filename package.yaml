@@ -12,6 +12,7 @@ dependencies:
 - containers
 - directory
 - filepath
+- haskeline
 
 ghc-options:
 - -O0

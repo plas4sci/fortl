@@ -11,12 +11,12 @@ import Lang.Substitution
 type Env = [(Identifier, Expr)]
 
 -- Evaluate a program to normal form
-interpret :: [Option] -> Program 'Desugared -> Expr
+interpret :: [Option] -> Program 'Desugared -> (Env, Expr)
 interpret = interpretDefs []
 
 -- Interpret the definitions, including building an environment
 -- for the rest of the program
-interpretDefs :: Env -> [Option] -> Program 'Desugared -> Expr
+interpretDefs :: Env -> [Option] -> Program 'Desugared -> (Env, Expr)
 
 interpretDefs env opts ((ValDef (VarLhs id _) e):defs) = 
   case bigStep env opts e of
@@ -26,7 +26,7 @@ interpretDefs env opts ((ValDef (VarLhs id _) e):defs) =
 -- Return expression
 interpretDefs env opts ((Return e):defs) = 
   case bigStep env opts e of
-    Right v -> v
+    Right v -> (env, v)
     Left err -> error err
 
 interpretDefs env opts (_:defs ) = interpretDefs env opts defs
@@ -35,8 +35,8 @@ interpretDefs env opts [] =
   -- No definition
   -- return the expression fro the last binder if there is one
   case lookup "it" env of
-    Just v  -> v
-    Nothing -> Con "None" []
+    Just v  -> (env, v)
+    Nothing -> (env, Con "None" [])
 
 -- Big step operational model (i.e., expression interpreter)
 bigStep :: Env -> [Option] -> Expr -> Either String Expr
