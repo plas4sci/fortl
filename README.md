@@ -94,7 +94,7 @@ After installing, `fortl` and `fortli` will be available as commands directly.
 
 ## Background
 
-`fortl` is based on ideas around using `graded monoids` appearing, in this paper:
+`fortl` is based on ideas around using 'graded monoids' (due to McBride and Nordvall-Forsberg) appearing in this paper:
 
 * [Type systems for programs respecting dimensions (McBride, Conor, and Fredrik Nordvall-Forsberg); Advanced Mathematical and Computational Tools in Metrology and Testing XII. 2021. 331-345.](https://strathprints.strath.ac.uk/76626/1/McBride_etal_amctmtxii2021_type_systems_for_programs_respecting_dimensions.pdf)
 
