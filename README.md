@@ -32,7 +32,7 @@ Running `fortl examples/quantity.frtl` produces:
 Well-typed as Float[{(UoM & KoQ)}][(Unit[(m * s^-1.0)] & Quantity[(length * time^-1.0)])]
 0.75
 ```
-The type checker verifies the units and quantities are consistent, and evaluates the result `(2.0 + 1.0) / 4.0 = 0.75` with inferred type `Float[Unit[m/s] & Quantity[length/time]]`.with:
+The type checker verifies the units and quantities are consistent, and evaluates the result `(2.0 + 1.0) / 4.0 = 0.75` with inferred type `Float[Unit[m/s] & Quantity[length/time]]`.
 
 ### REPL
 
