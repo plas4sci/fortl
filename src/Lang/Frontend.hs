@@ -32,11 +32,11 @@ main = do
       result <- run True fname
       case result of
         Left _   -> exitFailure
-        Right (_, _, _, result)  -> do
+        Right (_, _, _, result, _)  -> do
           putStrLn $ pprint result
           exitSuccess
 
-run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr))
+run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr, Context))
 run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname
@@ -60,16 +60,16 @@ run report fname = do
                 putStrLn $ ansi_bold <> ansi_red
                         <> "Not well-typed.\n" <> errorToString err <> ansi_reset
                 return $ Left (errorToString err)
-              Right ty -> do
+              Right (ctxt, ty) -> do
                 putStrLn $ ansi_bold <> ansi_green
                         <> "Well-typed " <> ansi_reset
                         <> ansi_bold <> "as " <> ansi_reset <> pprint ty
-                return $ Right (parsetree, options, env, normalForm)
+                return $ Right (parsetree, options, env, normalForm, ctxt)
         Left msg -> do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program 'Desugared -> Either TypeError (Type 0)
+typeInference :: [Option] -> Program 'Desugared -> Either TypeError (Context, Type 0)
 typeInference options program =
     case synthProgram program of
         Right ty -> Right ty

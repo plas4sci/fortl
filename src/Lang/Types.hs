@@ -16,14 +16,14 @@ import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
 
-synthProgram :: Program 'Desugared -> Either TypeError (Type 0)
+synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
 synthProgram = synthProgram' []
   where
-    synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Type 0)
+    synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
     synthProgram' gamma [] = 
       case lookup "it" gamma of
-        Just ty -> return ty
-        Nothing -> Right $ tyCon0 "Unit"  -- Return unit type when no return statement
+        Just ty -> return (gamma, ty)
+        Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind ty of
         Left err -> Left err
@@ -36,7 +36,9 @@ synthProgram = synthProgram' []
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
-    synthProgram' gamma ((Return e):defs) = synth gamma e
+    synthProgram' gamma ((Return e):defs) = do
+      ty <- synth gamma e
+      return (gamma, ty)
     synthProgram' gamma ((DataDef v constrs ty):defs) =
       synthProgram' gamma defs
     synthProgram' gamma (_:defs) = synthProgram' gamma defs

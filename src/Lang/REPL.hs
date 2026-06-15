@@ -6,7 +6,7 @@ import Lang.Syntax
 import Lang.Frontend    (banner, run, ansi_bold, ansi_reset)
 import Lang.Parser      (parseExpr, parseType)
 import Lang.PrettyPrint (pprint)
-import Lang.Types       (synth, errorToString)
+import Lang.Types       (synth, errorToString, Context)
 import Lang.Semantics   (bigStep, Env)
 import Lang.Kinding     (synthKind)
 import Lang.Options     (Option)
@@ -27,6 +27,7 @@ data REPLState =
     , prompt      :: String
     , env         :: Env
     , options     :: [Option]
+    , typingContext :: Context
   }
 
 initialState :: REPLState
@@ -35,6 +36,7 @@ initialState = REPLState {
    , prompt      = "[F]"
    , env         = []
    , options     = []
+   , typingContext = []
   }
 
 -- Main REPL
@@ -57,19 +59,20 @@ replLoop state = do
               Left err -> do
                 liftIO $ putStrLn err
                 replLoop state
-              Right (ast', opts, env', expr) -> do
+              Right (ast', opts, env', expr, ctxt) -> do
                 liftIO $ displayResult expr
                 let fileState = FileState { filename = path, ast = ast' }
                 replLoop $ state { currentFile = Just fileState
                                   , prompt = takeBaseName path
                                   , env = env'
-                                  , options = opts }
+                                  , options = opts
+                                  , typingContext = ctxt }
 
           't':' ':rest' -> do
             liftIO $ case parseExpr rest' of
               Left err  -> putStrLn err
               Right expr ->
-                case synth [] expr of
+                case synth (typingContext state) expr of
                   Left err -> let ?srcFile = "<repl>" in putStrLn $ errorToString err
                   Right ty -> putStrLn $ pprint ty
             replLoop state
