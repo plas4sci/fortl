@@ -15,6 +15,8 @@
 
 ## Example
 
+From [examples/quantity.frtl](examples/quantity.frtl):
+
 ```fortl
 """
 Simple example showing units and quantities
