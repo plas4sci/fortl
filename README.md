@@ -1,6 +1,6 @@
 # Fortl - A language for descriptive and prescriptive scientific code
 
-<table><tr><td valign="top" width="160">
+<table style="border-width:0;"><tr><td valign="top" width="160">
   <img src="logo.png" alt="Fortl logo" width="140"/>
 </td><td valign="top">
 
