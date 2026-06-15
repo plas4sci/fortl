@@ -27,17 +27,16 @@ t : Float[Unit[s] & Quantity[time]] = 4.0
 # End result
 it : Float[Unit[m / s] & Quantity[length / time]] = (x + y) / t
 ```
-
+Running `fortl examples/quantity.frtl` produces:
+```
+Well-typed as Float[{(UoM & KoQ)}][(Unit[(m * s^-1.0)] & Quantity[(length * time^-1.0)])]
+0.75
+```
+The type checker verifies the units and quantities are consistent, and evaluates the result `(2.0 + 1.0) / 4.0 = 0.75` with inferred type `Float[Unit[m/s] & Quantity[length/time]]`.with:
 
 ### REPL
 
-The interactive REPL (`fortli`) supports line editing and history. Start it with:
-
-```bash
-stack exec fortli
-```
-
-Once running, you can:
+The interactive REPL (`fortli`) supports interactive evaluation and type inference. You can:
 
 - **Evaluate an expression** — type any expression and press Enter
 - **Infer a type** — `:t expr` infers the type of an expression; `:k type` infers the kind of a type
