@@ -201,7 +201,7 @@ pattern Con c es <- MkCon _ c es
              Inl, Inr, Case, NumFloat, NumInteger, BinOp, Con #-}
 
 -- Operators
-data Op = OpPlus | OpTimes | OpMinus | OpDivide
+data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
   deriving Show
 
 isValue :: Expr -> Bool

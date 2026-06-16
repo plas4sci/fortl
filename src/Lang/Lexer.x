@@ -23,8 +23,8 @@ $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
 @sym    = ($lower | $upper) ($alphanum | \')*
 @tyvar    = \' @sym
-@float   = \-? $digit+ \. $digit+
-@int    = \-? $digit+
+@float   = \-? $digit+ \. $digit+ ([eE] \-? $digit+)?
+@int    = \-? $digit+ ([eE] \-? $digit+)?
 @charLiteral = \' ([\\.]|[^\']| . ) \'
 @stringLiteral = \"(\\.|[^\"]|\n)*\"
 

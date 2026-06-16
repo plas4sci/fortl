@@ -99,6 +99,7 @@ bigStep env opts (BinOp op e1 e2) = do
   case (v1, v2) of
     (NumFloat n1, NumFloat n2) ->
       case op of
+        OpExp    -> return $ NumFloat $ n1 ** n2
         OpPlus   -> return $ NumFloat $ n1 + n2
         OpTimes  -> return $ NumFloat $ n1 * n2
         OpMinus  -> return $ NumFloat $ n1 - n2
@@ -107,6 +108,7 @@ bigStep env opts (BinOp op e1 e2) = do
                       else Left "Division by zero"
     (NumInteger n1, NumInteger n2) ->
       case op of
+        OpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
         OpPlus   -> return $ NumInteger $ n1 + n2
         OpTimes  -> return $ NumInteger $ n1 * n2
         OpMinus  -> return $ NumInteger $ n1 - n2

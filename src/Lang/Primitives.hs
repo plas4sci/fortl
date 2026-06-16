@@ -31,7 +31,8 @@ typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
      -- Graded float
     ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
-  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0)) -- Graded integer
+     -- Graded integer
+  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
