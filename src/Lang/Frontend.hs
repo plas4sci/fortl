@@ -43,7 +43,7 @@ run report fname = do
   if not exists
     then do
       putStrLn $ "File `" <> fname <> "` cannot be found."
-      return $ Left "File not found."
+      return $ Left "File not found"
     else do
       when report $ putStrLn $ "Checking " <> fname <> "..."
       -- Read the file, parse, and do something...

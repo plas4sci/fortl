@@ -11,6 +11,7 @@ import Lang.TypeHelpers
 import Lang.PrettyPrint
 import Data.Map.Lazy
 import Lang.TypeError
+import Data.List (sort)
 
 unitDescription :: Type 0
 unitDescription = tyCon0 "1"
@@ -144,12 +145,12 @@ instance Representation DescriptionRepr where
     -- | Equality on description representations
     reprEquality :: DescriptionRepr -> Specificational DescriptionRepr -> Either TypeError ()
     reprEquality (FreeAGroup a1) (IsSpec (FreeAGroup a2)) =
-        if nonZeroAssocs a1 == nonZeroAssocs a2
-            then 
-                if all (\((k1, v1), (k2, v2)) -> k1 == k2 && v1 == v2) (zip (assocs a1) (assocs a2)) then Right ()
-                else Left $ AbelianGroupMismatch (reifyToTypeTerm (FreeAGroup a2)) (reifyToTypeTerm (FreeAGroup a1))
+        if a1n == a2n
+            then Right ()
             else Left $ AbelianGroupMismatch (reifyToTypeTerm (FreeAGroup a2)) (reifyToTypeTerm (FreeAGroup a1))
       where
+        a1n = sort $ nonZeroAssocs a1
+        a2n = sort $ nonZeroAssocs a2
         nonZeroAssocs a = Prelude.filter (\(_, v) -> v /= 0) (assocs a)
     reprEquality (TypeTree t1) (IsSpec (TypeTree t2)) =
         if t1 == t2

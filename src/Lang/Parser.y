@@ -166,6 +166,7 @@ Form :: { [Option] -> Expr }
   : Form '+' Form  { \opts -> MkBinOp (mkPos $2) OpPlus ($1 opts) ($3 opts) }
   | Form '-' Form  { \opts -> MkBinOp (mkPos $2) OpMinus ($1 opts) ($3 opts) }
   | Form '*' Form  { \opts -> MkBinOp (mkPos $2) OpTimes ($1 opts) ($3 opts) }
+  | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) OpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
   | Form '/' Form  { \opts -> MkBinOp (mkPos $2) OpDivide ($1 opts) ($3 opts) }
   | Juxt           { $1 }
 

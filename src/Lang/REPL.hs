@@ -11,6 +11,7 @@ import Lang.Semantics   (bigStep, Env)
 import Lang.Kinding     (synthKind)
 import Lang.Options     (Option)
 
+import Data.Char          (isSpace)
 import System.FilePath  (takeBaseName)
 import System.Console.Haskeline
 import Control.Monad.IO.Class (liftIO)
@@ -54,10 +55,9 @@ replLoop state = do
             liftIO printHelp
             replLoop state
           'l':' ':path -> do
-            runResult <- liftIO $ run False path
+            runResult <- liftIO $ run False (trim path)
             case runResult of
-              Left err -> do
-                liftIO $ putStrLn err
+              Left _ -> do -- run already prints the error message
                 replLoop state
               Right (ast', opts, env', expr, ctxt) -> do
                 liftIO $ displayResult expr
@@ -121,6 +121,9 @@ replLoop state = do
               Left err  -> putStrLn err
               Right var -> putStrLn $ pprint var
         replLoop state
+
+trim :: String -> String
+trim = reverse . dropWhile isSpace . reverse
 
 displayResult :: Expr -> IO ()
 displayResult e = do

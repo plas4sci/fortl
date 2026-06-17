@@ -68,6 +68,7 @@ instance PrettyPrint Expr where
 instance PrettyPrint Op where
   pprint op =
     case op of
+      OpExp -> "^"
       OpPlus -> "+"
       OpMinus -> "-"
       OpTimes -> "*"
