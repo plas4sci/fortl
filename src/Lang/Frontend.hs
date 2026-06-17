@@ -18,7 +18,7 @@ import System.Exit
 import Control.Monad (when)
 
 banner :: String
-banner = "fortl v0.2.0 - Programming for science"
+banner = "fortl v0.2.1 - Programming for science"
 
 main :: IO ()
 main = do
