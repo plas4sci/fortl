@@ -122,6 +122,7 @@ bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
 bigStep env opts (TyAbs x e) = Right $ TyAbs x e
 bigStep env opts (NumFloat f) = Right $ NumFloat f
 bigStep env opts (NumInteger n) = Right $ NumInteger n
+bigStep env opts (StringConst s) = Right $ StringConst s
 bigStep env opts Succ = Right Succ
 bigStep env opts Zero = Right Zero
 bigStep env opts (Abs x mt body) = Right $ Abs x mt body

@@ -26,6 +26,10 @@ desc = tyCon1 "Descriptor"
 desc2 :: Type 2
 desc2 = tyCon2 "Descriptor"
 
+dataConstructors :: [(Identifier, Type 0)]
+dataConstructors = [
+    ("None"     , tyCon0 "None")
+ ]
 
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
@@ -33,11 +37,13 @@ typeConstructors = [
     ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
      -- Graded integer
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("String"   , type0)
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("m"        , type0)
   , ("s"        , type0)
+  , ("None"     , type0)
  ]
 
 kindConstructors :: [(Identifier, Type 2)]

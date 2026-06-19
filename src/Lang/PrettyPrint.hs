@@ -21,6 +21,7 @@ bracket_pprint t | isLexicallyAtomic t = pprint t
 instance PrettyPrint Expr where
     isLexicallyAtomic (Var _) = True
     isLexicallyAtomic (NumFloat _) = True
+    isLexicallyAtomic (StringConst _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
@@ -61,6 +62,7 @@ instance PrettyPrint Expr where
         arg1 <> operator <> arg2
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
+    pprint (StringConst s) = show s
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"

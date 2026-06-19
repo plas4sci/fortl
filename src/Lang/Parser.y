@@ -47,6 +47,7 @@ import Lang.Options
     TYVAR   { TokenTyVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
+    STRING  { TokenString _ _ }
     forall  { TokenForall _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
@@ -232,6 +233,11 @@ Atom :: { [Option] -> Expr }
      { \opts ->
           let (TokenInt _ x) = $1
           in MkNumInteger (mkPos $1) (fromIntegral $ read x) }
+
+    | STRING
+       { \opts ->
+      let (TokenString _ x) = $1
+      in MkStringConst (mkPos $1) (read x) }
 
   -- For later
   -- | '?' { Hole }
