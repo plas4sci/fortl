@@ -6,6 +6,7 @@ module Lang.Semantics where
 import Lang.Syntax
 import Lang.Options
 import Lang.Substitution
+import Lang.Primitives (dataConstructors)
 -- import Debug.Trace
 
 type Env = [(Identifier, Expr)]
@@ -57,7 +58,10 @@ bigStep env opts (Sig e _) = bigStep env opts e
 bigStep env opts (Cast e) = bigStep env opts e
 bigStep env opts (Var x) = case lookup x env of
   Just v  -> Right v
-  Nothing -> Left $ "Unbound variable: " ++ x
+  Nothing ->
+    case lookup x dataConstructors of
+      Just _  -> Right (Con x [])
+      Nothing -> Left $ "Unbound variable: " ++ x
 bigStep env opts (GenLet x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep ((x, v1) : env) opts e2
