@@ -112,9 +112,9 @@ check_ gamma (NumInteger n) ty =
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
 
 check_ gamma (StringConst _) ty =
-  case typeEquality ty (IsSpec (tyCon0 "String")) of
+  case typeEquality ty (IsSpec (tyCon0 "str")) of
     Right () -> Right ()
-    Left err -> Left $ TypeCheckFailure (tyCon0 "String") ty (let ?srcFile = "" in errorToString err)
+    Left err -> Left $ TypeCheckFailure (tyCon0 "str") ty (let ?srcFile = "" in errorToString err)
 
 check_ gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -411,7 +411,7 @@ synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
 
 synth_ gamma (StringConst _) =
-  Right (tyCon0 "String")
+  Right (tyCon0 "str")
 
 synth_ gamma (BinOp op e1 e2) =
   case synth gamma e1 of

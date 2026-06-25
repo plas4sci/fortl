@@ -1,1 +1,1 @@
-it = "hello fortl"
+it : str = "hello fortl"

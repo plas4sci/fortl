@@ -37,7 +37,7 @@ typeConstructors = [
     ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
      -- Graded integer
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
-  , ("String"   , type0)
+  , ("str"      , type0)
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
