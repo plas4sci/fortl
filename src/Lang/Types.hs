@@ -92,7 +92,7 @@ check gamma e ty = annotateWith (exprPos e) (check_ gamma e ty)
 check_ :: Context -> Expr -> Type 0 -> Either TypeError ()
 
 check_ gamma (Var x) ty =
-  case lookup x gamma of
+  case lookup x gamma <|> lookup x dataConstructors of
     Nothing -> Left $ VariableNotFound x
     Just t ->
       case typeEquality ty (IsSpec t) of
@@ -110,6 +110,11 @@ check_ gamma (NumInteger n) ty =
     Just (base, _, _) | base == "Integer" ->
         Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
+
+check_ gamma (StringConst _) ty =
+  case typeEquality ty (IsSpec (tyCon0 "str")) of
+    Right () -> Right ()
+    Left err -> Left $ TypeCheckFailure (tyCon0 "str") ty (let ?srcFile = "" in errorToString err)
 
 check_ gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -258,7 +263,11 @@ G |- x => A
 synth_ gamma (Var x) =
  case lookup x gamma of
     Just ty -> Right ty
-    Nothing -> Left $ VariableNotFound x
+    Nothing ->
+        case lookup x dataConstructors of
+          Just ty -> Right ty
+          Nothing -> Left $ VariableNotFound x
+
 
 {-
 
@@ -400,6 +409,9 @@ synth_ gamma (NumFloat n) =
 
 synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
+
+synth_ gamma (StringConst _) =
+  Right (tyCon0 "str")
 
 synth_ gamma (BinOp op e1 e2) =
   case synth gamma e1 of
