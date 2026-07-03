@@ -59,6 +59,7 @@ instance PrettyPrint Expr where
           operator = pprint op
       in
         arg1 <> operator <> arg2
+    pprint (Lift e t) = "lift(" ++ pprint e ++ ", " ++ pprint t ++ ")"
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
     pprint (Con c []) = c

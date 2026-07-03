@@ -74,6 +74,7 @@ data Expr where
     MkNumFloat   :: Maybe SrcPos -> Float        -> Expr
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
     MkBinOp :: Maybe SrcPos -> Op -> Expr -> Expr -> Expr
+    MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
 
@@ -100,6 +101,7 @@ exprPos (MkCase p _ _ _)    = p
 exprPos (MkNumFloat p _)    = p
 exprPos (MkNumInteger p _)  = p
 exprPos (MkBinOp p _ _ _)   = p
+exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
 
 -- | Position-agnostic pattern synonyms.
@@ -189,16 +191,20 @@ pattern BinOp :: Op -> Expr -> Expr -> Expr
 pattern BinOp op e1 e2 <- MkBinOp _ op e1 e2
   where BinOp op e1 e2 = MkBinOp Nothing op e1 e2
 
+pattern Lift :: Expr -> Type 0 -> Expr
+pattern Lift e t <- MkLift _ e t
+  where Lift e t = MkLift Nothing e t
+
 pattern Con :: Identifier -> [Expr] -> Expr
 pattern Con c es <- MkCon _ c es
   where Con c es = MkCon Nothing c es
 
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkBinOp, MkCon #-}
+             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkBinOp, MkLift, MkCon #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, BinOp, Con #-}
+             Inl, Inr, Case, NumFloat, NumInteger, BinOp, Lift, Con #-}
 
 -- Operators
 data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
@@ -317,6 +323,7 @@ instance Term Expr where
   boundVars (Case e (x,e1) (y,e2))       =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
+  boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
   boundVars _                            = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
@@ -338,6 +345,7 @@ instance Term Expr where
   freeVars (Case e (x,e1) (y,e2))        =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
+  freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
   freeVars _                             = Set.empty
 
   mkVar = Var

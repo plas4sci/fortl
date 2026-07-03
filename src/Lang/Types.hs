@@ -401,6 +401,27 @@ synth_ gamma (NumFloat n) =
 synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
 
+synth_ gamma (Lift e d) = do
+  -- Infer the descriptor argument and ensure its kind lives in the Descriptor sort
+  -- (e.g. UoM, KoQ, or a composed descriptor kind).
+  (d', kd) <- synthKind d
+  _ <- checkSort kd desc2
+
+  -- Infer the expression being lifted; lift only applies to Float-indexed values.
+  t <- synth gamma e
+  case isGradableNumericType t of
+    Just (baseType, _, d1)
+      | baseType == "Float" ->
+          -- Lift from Float[D1] to Float[D1 & D], then re-synthesise so we keep
+          -- the elaborated descriptor and its corresponding implicit kind argument.
+          let lifted = normalisationByEvaluation $ WithTy d1 d'
+          in do
+            (lifted', liftedKind) <- synthKind lifted
+            Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
+      | otherwise ->
+          Left $ ContextualError "lift expects a Float[...] expression"
+    _ -> Left $ ContextualError "lift expects a Float[...] expression"
+
 synth_ gamma (BinOp op e1 e2) =
   case synth gamma e1 of
     Left err -> Left $ OperatorTypeError op err

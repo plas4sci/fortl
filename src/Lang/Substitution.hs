@@ -71,6 +71,12 @@ substituteExpr (NumInteger n) s = NumInteger n
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
 
+substituteExpr (Lift e t) (var, TyEmbed t') =
+  Lift (substituteExpr e (var, TyEmbed t')) (substituteType t (var, t'))
+
+substituteExpr (Lift e t) s =
+  Lift (substituteExpr e s) t
+
 -- Poly
 
 -- Substitute inside types

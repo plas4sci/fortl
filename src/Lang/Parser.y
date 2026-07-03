@@ -28,6 +28,8 @@ import Lang.Options
     from    { TokenFrom _ }
     import  { TokenImport _ }
     cast    { TokenCast _ }
+    lift    { TokenLift _ }
+    label   { TokenLabel _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
     natcase { TokenNatCase _ }
@@ -159,8 +161,14 @@ Expr :: { [Option] -> Expr }
   | inr '(' Expr ')'
      { \opts -> MkInr (mkPos $1) ($3 opts) }
 
- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
-     { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+  | lift '(' Expr ',' Type ')'
+    { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
+
+  | label '(' Expr ',' Type ')'
+    { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
+
+  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
+      { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
 
 Form :: { [Option] -> Expr }
   : Form '+' Form  { \opts -> MkBinOp (mkPos $2) OpPlus ($1 opts) ($3 opts) }
