@@ -67,7 +67,7 @@ isLocated _ = False
 
 Bidirectional checking
 *********************************
-G |- e <= A    check
+G |- e <= A    check a term has a type
 **********************************
 -}
 
@@ -86,20 +86,18 @@ check_ gamma (Var x) ty =
 
 check_ gamma (NumFloat n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Float" ->
-        Right ()
+    Just (base, _, _) | base == "Float" -> Right ()
     _ -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
 check_ gamma (NumInteger n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Integer" ->
-        Right ()
+    Just (base, _, _) | base == "Integer" -> Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
 
 check_ gamma (StringConst _) ty =
-  case typeEquality ty (IsSpec (tyCon0 "str")) of
-    Right () -> Right ()
-    Left err -> Left $ TypeCheckFailure (tyCon0 "str") ty (let ?srcFile = "" in errorToString err)
+  case isGradableType ty of
+    Just (base, _, _) | base == "String" -> Right ()
+    _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -138,14 +136,12 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, grade
   -- We have a gradable numeric type
   case op of
     -- Plus and minus must have the same type
-    OpPlus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
-    OpMinus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
+    OpPlus -> do
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    OpMinus -> do
+      () <- check gamma e1 ty
+      check gamma e2 ty
     _ ->
       -- For other operators, first synth the types of the arguments
       -- whose base type must match

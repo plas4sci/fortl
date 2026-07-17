@@ -58,6 +58,9 @@ typeAliases = [
   , ("float", floatTy (tyCon0 "1"))
  ]
 
+numericalTypes :: [Identifier]
+numericalTypes = ["Float", "Integer"]
+
 kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [
     ("UoM"      , desc2)
@@ -66,6 +69,7 @@ kindConstructors = [
   -- Products of descriptors
   , ("&"        , FunTy desc2 (FunTy desc2 desc2))
   ]
+
 
 base :: Type 1
 base = tyCon1 "Base"
