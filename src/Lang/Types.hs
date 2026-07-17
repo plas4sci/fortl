@@ -16,14 +16,17 @@ import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
 
+-- Infer the type of an entire program
 synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
 synthProgram = synthProgram' []
   where
+    -- Build a type environment as we analysis a program
     synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
     synthProgram' gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+    -- Definition with a type signature
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind ty of
         Left err -> Left err
@@ -32,39 +35,21 @@ synthProgram = synthProgram' []
             Right () -> synthProgram' ((v, ty') : gamma) defs
             Left err -> Left err
 
+    -- Definition without a type signature
     synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
+
+
     synthProgram' gamma ((Return e):defs) = do
       ty <- synth gamma e
       return (gamma, ty)
+
     synthProgram' gamma ((DataDef v constrs ty):defs) =
       synthProgram' gamma defs
+
     synthProgram' gamma (_:defs) = synthProgram' gamma defs
-{-
-
-**********************************************************************************
-Declarative specification of the (relational) graded simply-typed lambda calculus
-**********************************************************************************
-Recall contexts are like lists of variable-type assumptions
-
-
-G ::=  G, x : A | .
-
-       (x :_1 A) in G
-var ----------------------
-       G |- x : A
-
-     G1 |- e1 : A -> B      G2 |- e2 : A
-app ---------------------------------------
-    G1 + r * G2 |- e1 e2 : B
-
-      G, x :_r A |- e : B
-abs ------------------------
-      G |- \x -> e : A r -> B
-
--}
 
 -- Represent contexts as lists
 type Context = [(Identifier, Type 0)]
