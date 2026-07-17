@@ -490,22 +490,26 @@ typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
     else
-      -- Investigate type aliases lastly
-      tryComm
+      -- Investigate type aliases
+      -- trying a lookup and type equality, applied in both directions
+      applyPredicateSymmetrically
         (\t1 t2 ->
           case t1 of
             TyCon _ id ->
               case lookup id typeAliases of
                 Just t1' -> typeEquality t1' (IsSpec t2)
                 Nothing ->  Left $ TypeMismatch t1 t2
-            _ -> Left $ TypeMismatch t1 t2) t1 t2
+            _ -> Left $ TypeMismatch t1 t2) t2 t1
 
-tryComm :: (a -> a -> Either e b)
-        -> (a -> a -> Either e b)
-tryComm pred x y =
-  case pred y x of
+-- Given a binary predicate, try to apply to arguments
+-- in both directions
+applyPredicateSymmetrically ::
+       (a -> a -> Either e b)
+    -> (a -> a -> Either e b)
+applyPredicateSymmetrically pred x y =
+  case pred x y of
     Left err ->
-      pred x y
+      pred y x
     Right res -> return res
 
 ---------------------------------
