@@ -41,7 +41,8 @@ typeConstructors = [
     ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
      -- Graded integer
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
-  , ("str"      , type0)
+     -- Graded string
+  , ("String"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
@@ -50,12 +51,12 @@ typeConstructors = [
   , ("None"     , type0)
  ]
 
-typeAliases :: [(Identifier, Type 1)]
+typeAliases :: [(Identifier, Type 0)]
 typeAliases = [
-    ("str", stringTy (tyCon1 "1"))
-  , ("int", integerTy (tyCon1 "1"))
-  , ("float", floatTy (tyCon1 "1"))
-]
+    ("str", stringTy (tyCon0 "1"))
+  , ("int", integerTy (tyCon0 "1"))
+  , ("float", floatTy (tyCon0 "1"))
+ ]
 
 kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [
