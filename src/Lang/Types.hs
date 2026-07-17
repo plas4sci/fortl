@@ -471,6 +471,8 @@ synth_ gamma e =
 -- # Type equality
 ---------------------------------
 
+-- Ask if two types are equal, where the second one is taken as the specification
+-- i.e., it already has some constraints associated with it.
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
 typeEquality (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
@@ -487,7 +489,24 @@ typeEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
 typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
-    else Left $ TypeMismatch t2 t1
+    else
+      -- Investigate type aliases lastly
+      tryComm
+        (\t1 t2 ->
+          case t1 of
+            TyCon _ id ->
+              case lookup id typeAliases of
+                Just t1' -> typeEquality t1' (IsSpec t2)
+                Nothing ->  Left $ TypeMismatch t1 t2
+            _ -> Left $ TypeMismatch t1 t2) t1 t2
+
+tryComm :: (a -> a -> Either e b)
+        -> (a -> a -> Either e b)
+tryComm pred x y =
+  case pred y x of
+    Left err ->
+      pred x y
+    Right res -> return res
 
 ---------------------------------
 
