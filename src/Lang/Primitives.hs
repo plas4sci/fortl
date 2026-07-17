@@ -20,6 +20,10 @@ floatTy t = TyApp (ImplicitTyApp (tyCon0 "Float") (tyCon1 "Base")) t
 integerTy :: Type 0 -> Type 0
 integerTy t = TyApp (ImplicitTyApp (tyCon0 "Integer") (tyCon1 "Base")) t
 
+stringTy :: Type 0 -> Type 0
+stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
+  
+
 desc :: Type 1
 desc = tyCon1 "Descriptor"
 
@@ -45,6 +49,13 @@ typeConstructors = [
   , ("s"        , type0)
   , ("None"     , type0)
  ]
+
+typeAliases :: [(Identifier, Type 1)]
+typeAliases = [
+    ("str", stringTy (tyCon1 "1"))
+  , ("int", integerTy (tyCon1 "1"))
+  , ("float", floatTy (tyCon1 "1"))
+]
 
 kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [
