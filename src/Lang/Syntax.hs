@@ -73,6 +73,7 @@ data Expr where
     MkCase :: Maybe SrcPos -> Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
     MkNumFloat   :: Maybe SrcPos -> Float        -> Expr
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
+    MkStringConst :: Maybe SrcPos -> String      -> Expr
     MkBinOp :: Maybe SrcPos -> Op -> Expr -> Expr -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
@@ -99,6 +100,7 @@ exprPos (MkInr p _)         = p
 exprPos (MkCase p _ _ _)    = p
 exprPos (MkNumFloat p _)    = p
 exprPos (MkNumInteger p _)  = p
+exprPos (MkStringConst p _) = p
 exprPos (MkBinOp p _ _ _)   = p
 exprPos (MkCon p _ _)       = p
 
@@ -185,6 +187,10 @@ pattern NumInteger :: Integer -> Expr
 pattern NumInteger n <- MkNumInteger _ n
   where NumInteger n = MkNumInteger Nothing n
 
+pattern StringConst :: String -> Expr
+pattern StringConst s <- MkStringConst _ s
+  where StringConst s = MkStringConst Nothing s
+
 pattern BinOp :: Op -> Expr -> Expr -> Expr
 pattern BinOp op e1 e2 <- MkBinOp _ op e1 e2
   where BinOp op e1 e2 = MkBinOp Nothing op e1 e2
@@ -195,10 +201,10 @@ pattern Con c es <- MkCon _ c es
 
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkBinOp, MkCon #-}
+             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, MkCon #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, BinOp, Con #-}
+             Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con #-}
 
 -- Operators
 data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
@@ -210,6 +216,7 @@ isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (NumFloat _) = True
 isValue (NumInteger _) = True
+isValue (StringConst _) = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e
