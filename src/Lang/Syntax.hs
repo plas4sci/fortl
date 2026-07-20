@@ -275,6 +275,9 @@ data Type (n :: Nat) where
     -- TODO: make just a type constructor
     ExponentTy :: Type 0 -> Float -> Type 0
 
+    -- Promotion: lift a Type 0 (ground type) to be used as a kind (Type 1)
+    Lift :: Type 0 -> Type 1
+
 tyVar :: Identifier -> Type l
 tyVar = TyVar
 
@@ -378,29 +381,31 @@ instance Term (Type 1) where
   boundVars (ImplicitFunTy i t1 t2) = i `Set.insert` (boundVars t1 `Set.union` boundVars t2)
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
-  boundVars (TyCon _ _)      = Set.empty
+  boundVars (TyCon _ _)    = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
+  boundVars (Lift t)       = boundVars t
 
   freeVars (ImplicitFunTy i t1 t2) = freeVars t1 `Set.union` (Set.delete i (freeVars t2))
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
-  freeVars (TyCon _ _)      = Set.empty
+  freeVars (TyCon _ _)    = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
+  freeVars (Lift t)        = freeVars t
 
   mkVar = TyVar
 
 instance Term (Type 2) where
   boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
-  boundVars (TyCon _ _)      = Set.empty
+  boundVars (TyCon _ _)    = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
   freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
-  freeVars (TyCon _ _)      = Set.empty
+  freeVars (TyCon _ _)    = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
 

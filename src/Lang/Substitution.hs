@@ -162,6 +162,9 @@ instance SubstituteType 1 where
   substituteType (WithTy t1 t2) s =
     WithTy (substituteType t1 s) (substituteType t2 s)
 
+  -- Lift contains a Type 0 value; a Type 1 substitution cannot reach inside it
+  substituteType (Lift t) _ = Lift t
+
 -- The 'type' (kind) of Float is
 -- ImplicitFunTy "d" (FunTy (tyVar "d") type0)
 -- therefore the type of the "d" part has to be also in Type 1

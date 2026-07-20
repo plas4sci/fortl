@@ -43,19 +43,13 @@ typeConstructors = [
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("str"      , type0)
   , ("Nat"      , type0)
-  , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
+  , ("Unit"     , FunTy (tyCon1 "UnitBase") (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
+  , ("UnitBase" , type0)
  ]
-
-typeAliases :: [(Identifier, Type 1)]
-typeAliases = [
-    ("str", stringTy (tyCon1 "1"))
-  , ("int", integerTy (tyCon1 "1"))
-  , ("float", floatTy (tyCon1 "1"))
-]
 
 kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [

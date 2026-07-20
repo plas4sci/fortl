@@ -84,6 +84,7 @@ instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic (TyApp _ _) = True
     isLexicallyAtomic (ExponentTy _ _) = True
+    isLexicallyAtomic (Lift _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon _ c) = c
@@ -107,3 +108,4 @@ instance PrettyPrint (Type i) where
       bracket_pprint t1
     pprint (ExponentTy t1 q) =
       bracket_pprint t1 ++ "^" ++ show q
+    pprint (Lift t) = "lift(" ++ pprint t ++ ")"
