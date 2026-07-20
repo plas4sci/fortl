@@ -16,6 +16,7 @@ import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
 
+
 synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
 synthProgram = synthProgram' []
   where
@@ -25,7 +26,7 @@ synthProgram = synthProgram' []
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
-      case synthKind ty of
+      case synthKind gamma ty of
         Left err -> Left err
         Right (ty', kind) ->
           case check gamma e ty' of
@@ -66,9 +67,6 @@ abs ------------------------
 
 -}
 
--- Represent contexts as lists
-type Context = [(Identifier, Type 0)]
-
 -- | Annotate a type error with a source position if it isn't already annotated
 annotateWith :: Maybe SrcPos -> Either TypeError a -> Either TypeError a
 annotateWith (Just p) (Left err) | not (isLocated err) = Left (Located p err)
@@ -90,6 +88,13 @@ check :: Context -> Expr -> Type 0 -> Either TypeError ()
 check gamma e ty = annotateWith (exprPos e) (check_ gamma e ty)
 
 check_ :: Context -> Expr -> Type 0 -> Either TypeError ()
+
+check_ gamma (App (Var "Constructor") meta) (TyCon _ t) = do
+  check_ gamma meta (tyCon0 "str") -- Check that the meta argument is a string
+  -- Allowed if t is a type constructor
+  case lookup t typeConstructors of
+    Just _ -> Right ()
+    Nothing -> Left $ UnknownTypeConstructor t
 
 check_ gamma (Var x) ty =
   case lookup x gamma <|> lookup x dataConstructors of
@@ -289,7 +294,7 @@ i.e., we know we have a signature for the argument.
 
 -- app (special for form of top-level definitions)
 synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
-  case checkKind tyA type0 of
+  case checkKind gamma tyA type0 of
     Left err -> Left err
     Right tyA ->
       case check gamma e2 tyA of
@@ -299,13 +304,13 @@ synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 
 -- abs-Church (actually rule)
 synth_ gamma (Abs x (Just tyA) e) =
-  case checkKind tyA type0 of
+  case checkKind gamma tyA type0 of
     Left err -> Left err
     Right tyA' -> synth ((x, tyA') : gamma) e
 
 -- Type checking a type speciaisation
 synth_ gamma (App e (TyEmbed tau')) =
-  case checkKind tau' type0 of
+  case checkKind gamma tau' type0 of
     Left err -> Left err
     Right tau' ->
       case synth gamma e of
@@ -455,7 +460,7 @@ synth_ gamma (BinOp op e1 e2) =
 
 -- checkSynth
 synth_ gamma (Sig e ty) =
-  case checkKind ty type0 of
+  case checkKind gamma ty type0 of
     Left err -> Left err
     -- Get elaborated type
     Right ty' ->

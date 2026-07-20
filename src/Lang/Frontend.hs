@@ -9,6 +9,7 @@ import Lang.Semantics   (interpret, Env)
 import Lang.Desugar     (desugar)
 import Lang.Syntax
 import Lang.Types
+import Lang.TypeHelpers (Context)
 import Lang.TypeError
 
 import System.Directory   (doesPathExist)
