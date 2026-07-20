@@ -20,6 +20,10 @@ floatTy t = TyApp (ImplicitTyApp (tyCon0 "Float") (tyCon1 "Base")) t
 integerTy :: Type 0 -> Type 0
 integerTy t = TyApp (ImplicitTyApp (tyCon0 "Integer") (tyCon1 "Base")) t
 
+stringTy :: Type 0 -> Type 0
+stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
+  
+
 desc :: Type 1
 desc = tyCon1 "Descriptor"
 
@@ -37,7 +41,8 @@ typeConstructors = [
     ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
      -- Graded integer
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
-  , ("str"      , type0)
+     -- Graded string
+  , ("String"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
@@ -45,6 +50,16 @@ typeConstructors = [
   , ("s"        , type0)
   , ("None"     , type0)
  ]
+
+typeAliases :: [(Identifier, Type 0)]
+typeAliases = [
+    ("str", stringTy (tyCon0 "1"))
+  , ("int", integerTy (tyCon0 "1"))
+  , ("float", floatTy (tyCon0 "1"))
+ ]
+
+numericalTypes :: [Identifier]
+numericalTypes = ["Float", "Integer"]
 
 kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [
@@ -54,6 +69,7 @@ kindConstructors = [
   -- Products of descriptors
   , ("&"        , FunTy desc2 (FunTy desc2 desc2))
   ]
+
 
 base :: Type 1
 base = tyCon1 "Base"

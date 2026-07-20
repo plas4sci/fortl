@@ -14,14 +14,21 @@ reciprocalType t = ExponentTy t (-1.0)
 
 -- # Smart destructors
 
--- | Check if a type is a graded type and extract the grading type and the grade
 isGradableNumericType :: Type 0 -> Maybe (Identifier, Type 1, Type 0)
-isGradableNumericType ty =
+isGradableNumericType ty = 
+  case isGradableType ty of
+    res@(Just (base, descriptionTy, grade)) | base `elem` numericalTypes -> res
+    _ -> Nothing
+
+-- | Check if a type is a graded type and extract the grading type and the grade
+isGradableType :: Type 0 -> Maybe (Identifier, Type 1, Type 0)
+isGradableType ty =
   case ty of
-    TyCon _ conId -> 
-      case isDescConstructor conId of
-        Just _  -> Just (conId, base, tyCon0 "1") -- Default index for base type
+    TyCon _ conId ->
+      case lookup conId typeAliases of
+        Just ty -> isGradableType ty
         Nothing -> Nothing
+
     TyApp (ImplicitTyApp (TyCon _ conId) gType) grade ->
       case isDescConstructor conId of
         Just _  -> Just (conId, gType, grade)
