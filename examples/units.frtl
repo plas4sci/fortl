@@ -1,4 +1,8 @@
 # data unit : type = m | s
+
+M : UnitBase = Constructor("metres")
+S : UnitBase = Constructor("seconds")
+
 y : Float[Unit[M]] = 2.0
 x : Float[Unit[M]] = 1.0
 t : Float[Unit[S]] = 4.0
