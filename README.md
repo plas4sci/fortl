@@ -6,13 +6,11 @@
 
 **Fortl** is a programming language for scientific and numerical computing.
 
-**System principles/values**:
+**System principles/values**. Code should enable:
 
-Code should enable:
-
-- __Codifying human scientific knowledge__;
-- __Expressing meaning, inntent, and limitations of scientific models__;
-- __Computation of predictions in a way that is repeatable, reusable, and reproducable__
+- _Codifying human scientific knowledge_;
+- _Expressing meaning, inntent, and limitations of scientific models_;
+- _Computation of predictions in a way that is repeatable, reusable, and reproducable_
 
 How does this work out technically?
 
