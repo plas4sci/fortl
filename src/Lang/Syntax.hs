@@ -207,17 +207,10 @@ pattern Con c es <- MkCon _ c es
 
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-<<<<<<< HEAD
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkBinOp, MkLift, MkCon #-}
-{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
-             Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, BinOp, Lift, Con #-}
-=======
              MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, MkCon #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
              Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con #-}
->>>>>>> main
 
 -- Operators
 data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
