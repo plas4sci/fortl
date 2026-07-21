@@ -409,6 +409,7 @@ synth_ gamma (Lift e d) = do
             Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
     _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
 
+
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 
