@@ -49,6 +49,7 @@ import Lang.Options
     TYVAR   { TokenTyVar _ _ }
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
+    STRING  { TokenString _ _ }
     forall  { TokenForall _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
@@ -192,8 +193,8 @@ Type
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
   | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
-  | TypeAtom '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
-  | TypeAtom '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
+  | Type '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 
@@ -240,6 +241,11 @@ Atom :: { [Option] -> Expr }
      { \opts ->
           let (TokenInt _ x) = $1
           in MkNumInteger (mkPos $1) (fromIntegral $ read x) }
+
+    | STRING
+       { \opts ->
+      let (TokenString _ x) = $1
+      in MkStringConst (mkPos $1) (read x) }
 
   -- For later
   -- | '?' { Hole }

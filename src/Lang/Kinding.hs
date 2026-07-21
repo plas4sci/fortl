@@ -71,6 +71,10 @@ checkKind t@(ImplicitTyApp t1 t2) k = do
 checkKind t@(TyCon _ c) k | k == agroup =
   return t
 
+-- Allow 1 to be an element of "Base"
+checkKind t@(TyCon _ "1") (TyCon _ "Base") =
+  return t
+
 checkKind t k = do
   (t', k') <- synthKind t
   if k == k'

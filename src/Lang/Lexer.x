@@ -61,6 +61,7 @@ tokens :-
   lambda                        { \p s -> TokenLambda p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
+  @stringLiteral                { \p s -> TokenString p s }
   @float                        { \p s -> TokenFloat p s }
   @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
@@ -130,6 +131,7 @@ data Token
   | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
+  | TokenString   AlexPosn String
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn

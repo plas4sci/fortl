@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Lang.TypeError where
 
@@ -62,7 +63,15 @@ data TypeError
 
   deriving (Show)
 
-(<|>) :: Either TypeError a -> Either TypeError a -> Either TypeError a
-(Left err) <|> (Left err') = Left err
-(Right x) <|> _ = Right x
-_ <|> (Right x) = Right x
+class MonadAlt m where
+  (<|>) :: m a -> m a -> m a
+
+instance MonadAlt (Either TypeError) where
+  Left err <|> Left err' = Left err
+  Right x <|> _ = Right x
+  _ <|> Right x = Right x
+
+instance MonadAlt Maybe where
+  Nothing <|> Nothing = Nothing
+  Just x <|> _ = Just x
+  _ <|> Just x = Just x

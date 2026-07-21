@@ -16,14 +16,17 @@ import Lang.TypeError
 
 import Data.Maybe (mapMaybe)
 
+-- Infer the type of an entire program
 synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
 synthProgram = synthProgram' []
   where
+    -- Build a type environment as we analysis a program
     synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
     synthProgram' gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+    -- Definition with a type signature
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind ty of
         Left err -> Left err
@@ -32,39 +35,21 @@ synthProgram = synthProgram' []
             Right () -> synthProgram' ((v, ty') : gamma) defs
             Left err -> Left err
 
+    -- Definition without a type signature
     synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
+
+
     synthProgram' gamma ((Return e):defs) = do
       ty <- synth gamma e
       return (gamma, ty)
+
     synthProgram' gamma ((DataDef v constrs ty):defs) =
       synthProgram' gamma defs
+
     synthProgram' gamma (_:defs) = synthProgram' gamma defs
-{-
-
-**********************************************************************************
-Declarative specification of the (relational) graded simply-typed lambda calculus
-**********************************************************************************
-Recall contexts are like lists of variable-type assumptions
-
-
-G ::=  G, x : A | .
-
-       (x :_1 A) in G
-var ----------------------
-       G |- x : A
-
-     G1 |- e1 : A -> B      G2 |- e2 : A
-app ---------------------------------------
-    G1 + r * G2 |- e1 e2 : B
-
-      G, x :_r A |- e : B
-abs ------------------------
-      G |- \x -> e : A r -> B
-
--}
 
 -- Represent contexts as lists
 type Context = [(Identifier, Type 0)]
@@ -82,7 +67,7 @@ isLocated _ = False
 
 Bidirectional checking
 *********************************
-G |- e <= A    check
+G |- e <= A    check a term has a type
 **********************************
 -}
 
@@ -92,7 +77,7 @@ check gamma e ty = annotateWith (exprPos e) (check_ gamma e ty)
 check_ :: Context -> Expr -> Type 0 -> Either TypeError ()
 
 check_ gamma (Var x) ty =
-  case lookup x gamma of
+  case lookup x gamma <|> lookup x dataConstructors of
     Nothing -> Left $ VariableNotFound x
     Just t ->
       case typeEquality ty (IsSpec t) of
@@ -101,15 +86,18 @@ check_ gamma (Var x) ty =
 
 check_ gamma (NumFloat n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Float" ->
-        Right ()
+    Just (base, _, _) | base == "Float" -> Right ()
     _ -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
 check_ gamma (NumInteger n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Integer" ->
-        Right ()
+    Just (base, _, _) | base == "Integer" -> Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
+
+check_ gamma (StringConst _) ty =
+  case isGradableType ty of
+    Just (base, _, _) | base == "String" -> Right ()
+    _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -148,14 +136,12 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, grade
   -- We have a gradable numeric type
   case op of
     -- Plus and minus must have the same type
-    OpPlus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
-    OpMinus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
+    OpPlus -> do
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    OpMinus -> do
+      () <- check gamma e1 ty
+      check gamma e2 ty
     _ ->
       -- For other operators, first synth the types of the arguments
       -- whose base type must match
@@ -258,7 +244,11 @@ G |- x => A
 synth_ gamma (Var x) =
  case lookup x gamma of
     Just ty -> Right ty
-    Nothing -> Left $ VariableNotFound x
+    Nothing ->
+        case lookup x dataConstructors of
+          Just ty -> Right ty
+          Nothing -> Left $ VariableNotFound x
+
 
 {-
 
@@ -419,6 +409,9 @@ synth_ gamma (Lift e d) = do
             Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
     _ -> Left $ ContextualError "lift expects a gradable type but got " <> pprint t
 
+synth_ gamma (StringConst _) =
+  Right (tyCon0 "str")
+
 synth_ gamma (BinOp op e1 e2) =
   case synth gamma e1 of
     Left err -> Left $ OperatorTypeError op err
@@ -477,6 +470,8 @@ synth_ gamma e =
 -- # Type equality
 ---------------------------------
 
+-- Ask if two types are equal, where the second one is taken as the specification
+-- i.e., it already has some constraints associated with it.
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
 typeEquality (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
@@ -493,7 +488,28 @@ typeEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
 typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
-    else Left $ TypeMismatch t2 t1
+    else
+      -- Investigate type aliases
+      -- trying a lookup and type equality, applied in both directions
+      applyPredicateSymmetrically
+        (\t1 t2 ->
+          case t1 of
+            TyCon _ id ->
+              case lookup id typeAliases of
+                Just t1' -> typeEquality t1' (IsSpec t2)
+                Nothing ->  Left $ TypeMismatch t1 t2
+            _ -> Left $ TypeMismatch t1 t2) t2 t1
+
+-- Given a binary predicate, try to apply to arguments
+-- in both directions
+applyPredicateSymmetrically ::
+       (a -> a -> Either e b)
+    -> (a -> a -> Either e b)
+applyPredicateSymmetrically pred x y =
+  case pred x y of
+    Left err ->
+      pred y x
+    Right res -> return res
 
 ---------------------------------
 

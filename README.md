@@ -102,6 +102,9 @@ and early ideas we had about building languages for science, in this paper:
 
 * [A computational science agenda for programming language research (Orchard, Dominic, and Andrew Rice); Procedia Computer Science 29 (2014): 713-727.](https://www.cs.kent.ac.uk/people/staff/dao7/publ/iccs14-orchard-rice.pdf)
 
+There are some similarities to [F#](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/units-of-measure) but fortl's aim is to be much more general and flexible, going beyond units-of-measure.
+
+
 ## Contributing
 
 This project is in its early stages, but we would welcome
