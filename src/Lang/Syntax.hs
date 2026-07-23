@@ -75,6 +75,7 @@ data Expr where
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
     MkStringConst :: Maybe SrcPos -> String      -> Expr
     MkBinOp :: Maybe SrcPos -> Op -> Expr -> Expr -> Expr
+    MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
 
@@ -102,6 +103,7 @@ exprPos (MkNumFloat p _)    = p
 exprPos (MkNumInteger p _)  = p
 exprPos (MkStringConst p _) = p
 exprPos (MkBinOp p _ _ _)   = p
+exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
 
 -- | Position-agnostic pattern synonyms.
@@ -194,6 +196,10 @@ pattern StringConst s <- MkStringConst _ s
 pattern BinOp :: Op -> Expr -> Expr -> Expr
 pattern BinOp op e1 e2 <- MkBinOp _ op e1 e2
   where BinOp op e1 e2 = MkBinOp Nothing op e1 e2
+
+pattern Lift :: Expr -> Type 0 -> Expr
+pattern Lift e t <- MkLift _ e t
+  where Lift e t = MkLift Nothing e t
 
 pattern Con :: Identifier -> [Expr] -> Expr
 pattern Con c es <- MkCon _ c es
@@ -324,6 +330,7 @@ instance Term Expr where
   boundVars (Case e (x,e1) (y,e2))       =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
+  boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
   boundVars _                            = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
@@ -345,6 +352,7 @@ instance Term Expr where
   freeVars (Case e (x,e1) (y,e2))        =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
+  freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
   freeVars _                             = Set.empty
 
   mkVar = Var

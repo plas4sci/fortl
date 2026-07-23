@@ -53,6 +53,8 @@ tokens :-
   inl                           { \p s -> TokenInl p }
   inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
+  lift                          { \p s -> TokenLift p }
+  label                         { \p s -> TokenLabel p }
   return                        { \p s -> TokenReturn p }
   from                          { \p s -> TokenFrom p }
   import                        { \p s -> TokenImport p }
@@ -133,6 +135,8 @@ data Token
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
+  | TokenLift     AlexPosn
+  | TokenLabel    AlexPosn
   | TokenReturn   AlexPosn
   | TokenFrom     AlexPosn
   | TokenImport   AlexPosn

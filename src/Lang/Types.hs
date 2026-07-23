@@ -391,6 +391,25 @@ synth_ gamma (NumFloat n) =
 synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
 
+synth_ gamma (Lift e d) = do
+  -- Infer the descriptor argument and ensure its kind lives in the Descriptor sort
+  -- (e.g. UoM, KoQ, or a composed descriptor kind).
+  (d', kd) <- synthKind d
+  _ <- checkSort kd desc2
+
+  -- Infer the expression being lifted; lift only applies to Float-indexed values.
+  t <- synth gamma e
+  case isGradableType t of
+    Just (baseType, _, d1) ->
+          -- Lift from T[D1] to T[D1 & D], then re-synthesise so we keep
+          -- the elaborated descriptor and its corresponding implicit kind argument.
+          let lifted = normalisationByEvaluation $ WithTy d1 d'
+          in do
+            (lifted', liftedKind) <- synthKind lifted
+            Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
+    _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
+
+
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 

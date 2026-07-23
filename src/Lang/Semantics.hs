@@ -97,6 +97,7 @@ bigStep env opts (Pair e1 e2) = do
   return $ Pair v1 v2
 bigStep env opts (Inl e) = Inl <$> bigStep env opts e
 bigStep env opts (Inr e) = Inr <$> bigStep env opts e
+bigStep env opts (Lift e _) = bigStep env opts e
 bigStep env opts (BinOp op e1 e2) = do
   v1 <- bigStep env opts e1
   v2 <- bigStep env opts e2
