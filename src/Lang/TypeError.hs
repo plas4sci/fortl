@@ -29,6 +29,8 @@ data TypeError
   
   -- Description/grading errors  
   | DescriptionEqualityFailure (Type 0) (Type 0)
+  | CannotComputeDescriptionRepresentation (Type 0)
+  | OverlappingDescriptionConflict Identifier (Type 0) (Type 0)
   | DescriptionKeyMismatch [Identifier] [Identifier]
   | AbelianGroupMismatch (Type 0) (Type 0)
   | TypeTreeMismatch (Type 0) (Type 0)
