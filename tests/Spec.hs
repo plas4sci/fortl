@@ -19,8 +19,12 @@ import Control.Monad (unless)
 import qualified Lang.Frontend as Lang
 import Lang.Syntax
 import Lang.PrettyPrint (pprint)
+import Lang.Descriptions (normalisationByEvaluation, descriptionEquality)
+import Lang.TypeHelpers (Specificational(..))
 import Data.List (sort)
+import Data.Either (isLeft, isRight)
 import Control.Exception (catch, throwIO)
+import Test.Tasty.HUnit (testCase, (@?=), assertBool)
 
 import Debug.Trace
 
@@ -36,7 +40,7 @@ main = do
   positive  <- goldenTestsPositive
 
   catch
-    (defaultMain $ testGroup "Golden tests" [negative, positive])
+    (defaultMain $ testGroup "All tests" [negative, positive, speciesUnitTests])
     (\(e :: ExitCode) -> do
       throwIO e
     )
@@ -122,3 +126,44 @@ failOnOrphanOutfiles files outfiles
 
 fortlFileExtensions :: [String]
 fortlFileExtensions = [".frtl"]
+
+-- Unit tests for species indexing semantics
+speciesUnitTests :: TestTree
+speciesUnitTests = testGroup "Species indexing unit tests"
+  [ testGroup "normalisation-by-evaluation"
+    [ testCase "S * S = S (idempotent)" $
+        normalisationByEvaluation (ProdTy (sp "Fox") (sp "Fox"))
+        @?= sp "Fox"
+    , testCase "1 * S = S (left identity)" $
+        normalisationByEvaluation (ProdTy (sp "1") (sp "Fox"))
+        @?= sp "Fox"
+    , testCase "S * 1 = S (right identity)" $
+        normalisationByEvaluation (ProdTy (sp "Fox") (sp "1"))
+        @?= sp "Fox"
+    , testCase "1 * 1 = 1" $
+        normalisationByEvaluation (ProdTy (sp "1") (sp "1"))
+        @?= sp "1"
+    , testCase "exponentiation is no-op for species" $
+        normalisationByEvaluation (ExponentTy (sp "Fox") 2.0)
+        @?= sp "Fox"
+    , testCase "S * T normalises to distinct value (mismatch preserved)" $
+        assertBool "Fox * Rabbit should not normalise to Fox" $
+          normalisationByEvaluation (ProdTy (sp "Fox") (sp "Rabbit")) /= sp "Fox"
+    ]
+  , testGroup "description-equality"
+    [ testCase "Species[S] == Species[S]" $
+        assertBool "same species should be equal" $ isRight $
+          descriptionEquality (sp "Fox") (IsSpec (sp "Fox"))
+    , testCase "Species[1] == Species[1]" $
+        assertBool "identity species should equal itself" $ isRight $
+          descriptionEquality (sp "1") (IsSpec (sp "1"))
+    , testCase "Species[Fox] /= Species[Rabbit]" $
+        assertBool "different species should be unequal" $ isLeft $
+          descriptionEquality (sp "Fox") (IsSpec (sp "Rabbit"))
+    , testCase "Species[1] /= Species[Fox]" $
+        assertBool "identity species should not equal a named species" $ isLeft $
+          descriptionEquality (sp "1") (IsSpec (sp "Fox"))
+    ]
+  ]
+  where
+    sp s = TyApp (tyCon0 "Species") (tyCon0 s)

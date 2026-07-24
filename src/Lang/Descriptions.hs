@@ -89,8 +89,10 @@ instance Representation DescriptionsRepr where
           combineRepr (FreeAGroup a1) (FreeAGroup a2) = FreeAGroup $ unionWith (+) a1 a2
           combineRepr (TypeTree t1) (TypeTree t2)     = TypeTree $ ProdTy t1 t2
           combineRepr (IndexType t1) (IndexType t2)
-            | t1 == t2  = IndexType t1
-            | otherwise = IndexType (ProdTy t1 t2)  -- mismatch: preserved for later equality check
+            | t1 == tyCon0 "1" = IndexType t2        -- 1 * S = S
+            | t2 == tyCon0 "1" = IndexType t1        -- S * 1 = S
+            | t1 == t2         = IndexType t1        -- S * S = S
+            | otherwise        = IndexType (ProdTy t1 t2)  -- mismatch: preserved for later equality check
           combineRepr _ _                             = error "Mismatched description representation types in product"
     computeRepresentation _ = Nothing
 
