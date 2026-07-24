@@ -79,6 +79,7 @@ import Lang.Options
 %nonassoc LAMBDA
 %left ','
 %left '+' '-'
+%left '/'
 %left '*'
 %%
 
