@@ -12,5 +12,5 @@ kernel : Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] ->
     lambda l: lambda c: lambda r:
       # Kernel
           c
-        + D * (dt * (l - (label(2.0, Unit[1] & Species[1]))*c + r) / (dx*dx))
+        + D * dt * (l - (label(2.0, Unit[1] & Species[1]))*c + r) / (dx*dx)
   )

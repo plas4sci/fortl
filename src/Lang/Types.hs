@@ -442,7 +442,7 @@ synth_ gamma (BinOp op e1 e2) =
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               OpDivide -> do
-                                d <- normalisationByEvaluation (ProdTy d1 d2)
+                                d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               _        ->
                                 case descriptionEquality d1 (IsSpec d2) of
