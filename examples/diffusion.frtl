@@ -1,0 +1,16 @@
+# 1D discrete diffusion example for some species X
+
+"""Diffusion coefficient of X"""
+D  : Float[Unit[m^2 / s] & Species[X]] = 0.1
+
+"""Space and time delta"""
+dt : Float[Unit[s] & Species[X]] = 0.1
+dx : Float[Unit[m] & Species[X]] = 0.1
+
+"""Diffusion kernel (for mass concentration)"""
+kernel : Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] = (
+    lambda l: lambda c: lambda r:
+      # Kernel
+          c
+        + D * (dt * (l - (label(2.0, Unit[1] & Species[X]))*c + r) / (dx*dx))
+  )
