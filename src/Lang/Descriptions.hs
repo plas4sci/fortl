@@ -169,7 +169,7 @@ instance Representation DescriptionRepr where
     reprEquality (IndexType t1) (IsSpec (IndexType t2)) =
         if t1 == t2
             then Right ()
-            else Left $ TypeTreeMismatch t2 t1  -- reuse error: shows expected vs actual species
+            else Left $ DescriptionEqualityFailure t2 t1  -- reuse error: shows expected vs actual species
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
     

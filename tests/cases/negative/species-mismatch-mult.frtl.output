@@ -1,1 +1,1 @@
-tests/cases/negative/species-mismatch-mult.frtl:3:30: Expecting type tree Fox but got Fox * Rabbit
+tests/cases/negative/species-mismatch-mult.frtl:3:30: Description equality failed between Fox and Fox * Rabbit
