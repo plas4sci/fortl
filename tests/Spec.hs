@@ -1,6 +1,7 @@
 -- {-# OPTIONS_GHC -F -pgmF hspec-discover #-}
 
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Test.Tasty (defaultMain, TestTree, testGroup)
@@ -24,7 +25,7 @@ import Lang.TypeHelpers (Specificational(..))
 import Data.List (sort)
 import Data.Either (isLeft, isRight)
 import Control.Exception (catch, throwIO)
-import Test.Tasty.HUnit (testCase, (@?=), assertBool)
+import Test.Tasty.HUnit (testCase, (@?=), assertBool, assertFailure)
 
 import Debug.Trace
 
@@ -131,24 +132,20 @@ fortlFileExtensions = [".frtl"]
 speciesUnitTests :: TestTree
 speciesUnitTests = testGroup "Species indexing unit tests"
   [ testGroup "normalisation-by-evaluation"
-    [ testCase "S * S = S (idempotent)" $
-        normalisationByEvaluation (ProdTy (sp "Fox") (sp "Fox"))
-        @?= sp "Fox"
-    , testCase "1 * S = S (left identity)" $
-        normalisationByEvaluation (ProdTy (sp "1") (sp "Fox"))
-        @?= sp "Fox"
-    , testCase "S * 1 = S (right identity)" $
-        normalisationByEvaluation (ProdTy (sp "Fox") (sp "1"))
-        @?= sp "Fox"
-    , testCase "1 * 1 = 1" $
-        normalisationByEvaluation (ProdTy (sp "1") (sp "1"))
-        @?= sp "1"
-    , testCase "exponentiation is no-op for species" $
-        normalisationByEvaluation (ExponentTy (sp "Fox") 2.0)
-        @?= sp "Fox"
+  [ testCase "S * S = S (idempotent)" $
+    assertNormalisesTo (ProdTy (sp "Fox") (sp "Fox")) (sp "Fox")
+  , testCase "1 * S = S (left identity)" $
+    assertNormalisesTo (ProdTy (sp "1") (sp "Fox")) (sp "Fox")
+  , testCase "S * 1 = S (right identity)" $
+    assertNormalisesTo (ProdTy (sp "Fox") (sp "1")) (sp "Fox")
+  , testCase "1 * 1 = 1" $
+    assertNormalisesTo (ProdTy (sp "1") (sp "1")) (sp "1")
+  , testCase "exponentiation is no-op for species" $
+    assertNormalisesTo (ExponentTy (sp "Fox") 2.0) (sp "Fox")
     , testCase "S * T normalises to distinct value (mismatch preserved)" $
-        assertBool "Fox * Rabbit should not normalise to Fox" $
-          normalisationByEvaluation (ProdTy (sp "Fox") (sp "Rabbit")) /= sp "Fox"
+    case normalisationByEvaluation (ProdTy (sp "Fox") (sp "Rabbit")) of
+      Right t  -> assertBool "Fox * Rabbit should not normalise to Fox" (t /= sp "Fox")
+      Left err -> assertFailure ("Unexpected normalisation failure: " <> show err)
     ]
   , testGroup "description-equality"
     [ testCase "Species[S] == Species[S]" $
@@ -167,3 +164,9 @@ speciesUnitTests = testGroup "Species indexing unit tests"
   ]
   where
     sp s = TyApp (tyCon0 "Species") (tyCon0 s)
+
+    assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
+    assertNormalisesTo input expected =
+      case normalisationByEvaluation input of
+        Right actual -> actual @?= expected
+        Left err -> assertFailure ("Unexpected normalisation failure: " <> show err)
