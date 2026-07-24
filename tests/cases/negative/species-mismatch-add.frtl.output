@@ -1,0 +1,2 @@
+tests/cases/negative/species-mismatch-add.frtl:3:32: Expecting type tree Rabbit but got Fox
+Trying to check at Float[{SpeciesType}][Species[Fox]] but got type Float[{SpeciesType}][Species[Rabbit]]
