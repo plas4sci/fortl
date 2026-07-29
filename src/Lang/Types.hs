@@ -391,6 +391,26 @@ synth_ gamma (NumFloat n) =
 synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
 
+synth_ gamma (Lift e d) = do
+  -- Infer the descriptor argument and ensure its kind lives in the Descriptor sort
+  -- (e.g. UoM, KoQ, or a composed descriptor kind).
+  (d', kd) <- synthKind d
+  _ <- checkSort kd desc2
+
+  -- Infer the expression being lifted; lift only applies to Float-indexed values.
+  t <- synth gamma e
+  case isGradableType t of
+    Just (baseType, _, d1) ->
+          -- Lift from T[D1] to T[D1 & D]. If descriptor normalisation fails,
+          -- treat that as an invalid lift (e.g. conflicting overlapping keys).
+          case normalisationByEvaluation (WithTy d1 d') of
+            Left err -> Left err
+            Right lifted -> do
+              (lifted', liftedKind) <- synthKind lifted
+              Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
+    _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
+
+
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 
@@ -418,12 +438,18 @@ synth_ gamma (BinOp op e1 e2) =
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
                             case op of
-                              OpTimes -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 d2)
-                              OpDivide -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
+                              OpTimes -> do
+                                d <- normalisationByEvaluation (ProdTy d1 d2)
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                              OpDivide -> do
+                                d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               _        ->
                                 case descriptionEquality d1 (IsSpec d2) of
-                                  Right () -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation d1)
-                                  Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
+                                  Right () -> do
+                                    d1 <- normalisationByEvaluation d1
+                                    Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
+                                  Left err -> Left $ OperatorDescriptionMismatch op d1 d2
 
 
 {-
@@ -547,6 +573,13 @@ errorToString (CannotProjectFromType t reason) =
 errorToString (DescriptionEqualityFailure t1 t2) =
   "Description equality failed between " ++ pprint (normalise t1) ++ " and " ++ pprint (normalise t2)
 
+errorToString (CannotComputeDescriptionRepresentation t) =
+  "Cannot compute a descriptor representation for " ++ pprint (normalise t)
+
+errorToString (OverlappingDescriptionConflict key left right) =
+  "Overlapping descriptor key `" <> key <> "` conflicts: "
+  <> pprint (normalise left) <> " vs " <> pprint (normalise right)
+
 errorToString (DescriptionKeyMismatch expected actual) =
   "Expecting description keys " <> show expected <> " but got " <> show actual
 
@@ -624,7 +657,7 @@ normalise t =
 normalise' :: Type 0 -> Type 0
 normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
 normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
-  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (normalisationByEvaluation desc)
+  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (either (const desc) id (normalisationByEvaluation desc))
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
 normalise' (Forall x t) = Forall x (normalise' t)
 normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)

@@ -11,36 +11,30 @@ import Lang.TypeHelpers
 import Lang.PrettyPrint
 import Data.Map.Lazy
 import Lang.TypeError
-import Data.List (sort)
+import Data.List (sort, intersect)
 
 unitDescription :: Type 0
 unitDescription = tyCon0 "1"
 
 -- | Equality on descriptions
 descriptionEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
-descriptionEquality t1 (IsSpec t2) =
-    case eq of
-        Nothing  -> Left $ DescriptionEqualityFailure (normalisationByEvaluation t1) (normalisationByEvaluation t2)
-        Just x   -> x
-    where
-        eq = do
-            d1 <- computeRepresentation t1 :: Maybe DescriptionsRepr
-            d2 <- computeRepresentation t2 :: Maybe DescriptionsRepr
-            return $ d1 `reprEquality` (IsSpec d2)
+descriptionEquality t1 (IsSpec t2) = do
+    d1 <- computeRepresentation t1 :: Either TypeError DescriptionsRepr
+    d2 <- computeRepresentation t2 :: Either TypeError DescriptionsRepr
+    d1 `reprEquality` (IsSpec d2)
 
 -- # Representations class
 
 class Representation a where
-    computeRepresentation :: Type 0 -> Maybe a
+    computeRepresentation :: Type 0 -> Either TypeError a
     reifyToTypeTerm       :: a -> Type 0
     reprEquality          :: a -> Specificational a -> Either TypeError ()
 
 -- | Normalize a description type by computing its representation the reifying
-normalisationByEvaluation :: Type 0 -> Type 0
-normalisationByEvaluation t = 
-    case computeRepresentation t :: Maybe DescriptionsRepr of
-        Just repr -> reifyToTypeTerm repr
-        Nothing   -> t
+normalisationByEvaluation :: Type 0 -> Either TypeError (Type 0)
+normalisationByEvaluation t = do
+        repr <- computeRepresentation t :: Either TypeError DescriptionsRepr
+        return (reifyToTypeTerm repr)
 
 -- | Internal representation of groups of descriptions
 type DescriptionsRepr = Map Identifier DescriptionRepr
@@ -49,7 +43,7 @@ type DescriptionsRepr = Map Identifier DescriptionRepr
 data DescriptionRepr = 
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
-   deriving Show
+   deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
 type AGroupRepr = Map Identifier Float
@@ -57,35 +51,40 @@ type AGroupRepr = Map Identifier Float
 -- | Internal representation of groups of descriptions
 instance Representation DescriptionsRepr where
     -- | Compute the representation of a description type
-    computeRepresentation :: Type 0 -> Maybe DescriptionsRepr
+    computeRepresentation :: Type 0 -> Either TypeError DescriptionsRepr
     computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
         d <- computeRepresentation t
-        Just $ singleton "Unit" d
+        return $ singleton "Unit" d
     computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
         d <- computeRepresentation t
-        Just $ singleton "Quantity" d
+        return $ singleton "Quantity" d
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
-        Just $ union d1 d2
+        -- Check for any overlapping keys
+        let overlapping = intersect (keys d1) (keys d2)
+        if all (\k -> (d1 ! k) == (d2 ! k)) overlapping
+          then return $ union d1 d2
+          else Left $ OverlappingDescriptionConflict (head overlapping) t1 t2
+            
     computeRepresentation (ExponentTy t n) = do
         d <- computeRepresentation t
-        Just $ fmap (exp n) d
+        return $ fmap (exp n) d
         where
           exp :: Float -> DescriptionRepr -> DescriptionRepr
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
-    computeRepresentation (TyCon ZeroP "1") = Just empty
+    computeRepresentation (TyCon ZeroP "1") = return empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
-        Just $ unionWith combineRepr d1 d2
+        return $ unionWith combineRepr d1 d2
         where
           combineRepr :: DescriptionRepr -> DescriptionRepr -> DescriptionRepr
           combineRepr (FreeAGroup a1) (FreeAGroup a2) = FreeAGroup $ unionWith (+) a1 a2
           combineRepr (TypeTree t1) (TypeTree t2)     = TypeTree $ ProdTy t1 t2
           combineRepr _ _                             = error "Mismatched description representation types in product"
-    computeRepresentation _ = Nothing
+    computeRepresentation t = Left $ CannotComputeDescriptionRepresentation t
 
     -- | Reify a description representation back to a type term
     reifyToTypeTerm :: DescriptionsRepr -> Type 0
@@ -112,9 +111,9 @@ instance Representation DescriptionsRepr where
 -- | Representation of a single description
 instance Representation DescriptionRepr where
     -- | Compute the representation of a description type
-    computeRepresentation :: Type 0 -> Maybe DescriptionRepr
+    computeRepresentation :: Type 0 -> Either TypeError DescriptionRepr
     computeRepresentation t =
-            Just $ FreeAGroup $ Data.Map.Lazy.filter (/= 0) (computeFreeAGroupRepr' t)
+            return $ FreeAGroup $ Data.Map.Lazy.filter (/= 0) (computeFreeAGroupRepr' t)
         where
             computeFreeAGroupRepr' :: Type 0 -> AGroupRepr
             computeFreeAGroupRepr' (TyCon ZeroP "1") = empty
