@@ -1,0 +1,56 @@
+# On atmospheric convection
+
+"""[Specific heat capacity] of dry air"""
+c_p : Float[Unit[J/(kg * K)] & Species[DryAir]] = 1005.0 #   & Species[DryAir]
+
+
+"""Gravitational acceleration"""
+g_v : Float[Unit[m / s^2] & Species[1]] = 9.80665
+
+"""Temperature"""
+T : Float[Unit[K] & Species[DryAir]] = 273.15
+
+"""Geopotential height"""
+# Dimension is length
+# Work involved in lifting one unit mass over one unit of length
+# assuming constant gravitational acceleration
+# Where J = kg * m^2 / s^2  therefore the unit here is = m
+z : Float[Unit[(J * s^2) / (m * kg)] & Species[1]] = 0.0
+
+# Recall phase change ideas:
+"""Latent heat absorption of sublimation (ice -> vapor)"""
+# Internal energy of ice = internal energy of vapor - latent heat of sublimation
+# therefore
+# Internal energy of vapor = internal energy of ice + latent heat of sublimation
+L_s : Float[Unit[J / kg]] = 2.834e6
+
+"""Latent heat release of condensation (vapor -> liquid)"""
+# Internal energy of vapour = internal energy of liquid + latent heat of condensation
+L_c : Float[Unit[J / kg] & Species[Liquid]] = 2.501e6
+
+"""Mixing rations of water vapor, liquid water, and ice"""
+# These are kg/kg mass ratios of water species to dry air
+q_v : Float[Unit[1] & Species[Vapor]] = 0.0
+q_c : Float[Unit[1] & Species[Liquid]] = 0.0
+q_i : Float[Unit[1] & Species[Ice]] = 0.0
+
+# Specific non-precipitating ice/liquid static energy comprises
+# 1. heat (energy) content of dry air 
+enthalpy : Float[Unit[J / kg]] = c_p * T 
+
+# 2. Gravitational potential energy (how much work is gravity doing if a kilogram
+# of air fell to this level z)
+geopotential : Float[Unit[J / kg]] = g_v * z
+
+# 3. Minus the chemical/internal energy associated with the phase change of 
+# water species (latent heat release of condensation and sublimation)
+# i.e., we are assuming a bookeeping system where we assume all 
+# __water species are in the form of vapor__, and we are subtracting the 
+# energy associated with the phase change of water species to liquid or ice
+internal_energy_ice_liquid : Float[Unit[J / kg]] = L_c * q_c + L_s * q_i
+
+# Specific non-precipitating ice/liquid static energy:
+h_l : Float[Unit[J / kg]] = enthalpy + geopotential - internal_energy_ice_liquid
+
+"""[[Total water mixing ratio]]"""
+q_t : Float[Unit[1] & Species[1]] = q_v + q_c + q_i
