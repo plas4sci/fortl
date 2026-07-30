@@ -18,15 +18,33 @@ T : Float[Unit[K] & Species[DryAir]] = 273.15
 z : Float[Unit[(J * s^2) / (m * kg)] & Species[1]] = 0.0
 
 # Recall phase change ideas:
-"""Latent heat absorption of sublimation (ice -> vapor)"""
+"""Latent heat absorption of sublimation (energy difference from ice -> vapor)"""
 # Internal energy of ice = internal energy of vapor - latent heat of sublimation
 # therefore
 # Internal energy of vapor = internal energy of ice + latent heat of sublimation
+# Magnitude of the enthalpy difference between the two phases
 L_s : Float[Unit[J / kg]] = 2.834e6
 
-"""Latent heat release of condensation (vapor -> liquid)"""
+"""Latent heat release of condensation (energy difference from vapor -> liquid)"""
 # Internal energy of vapour = internal energy of liquid + latent heat of condensation
-L_c : Float[Unit[J / kg] & Species[Liquid]] = 2.501e6
+L_c : Float[Unit[J / kg]] = 2.501e6
+
+"""
+Key idea: in a phase transition from A -> B then the latent 
+heat L is describing the magnitude of the energy difference between 
+the phases.
+
+For a phase B, the contribution to the mixture energy is the mass
+fraction times the enthalpy of phase B *relative to the reference phase*
+
+Here we are keeping track of how much condensed water and ice there is.
+So, if we take the reference phase to be vapor, then the contribution
+of *liquid* is
+ = q_c * L_c 
+and of *ice* is
+ = q_i * L_s
+
+"""
 
 """Mixing rations of water vapor, liquid water, and ice"""
 # These are kg/kg mass ratios of water species to dry air
@@ -35,21 +53,27 @@ q_c : Float[Unit[1] & Species[Liquid]] = 0.0
 q_i : Float[Unit[1] & Species[Ice]] = 0.0
 
 # Specific non-precipitating ice/liquid static energy comprises
-# 1. heat (energy) content of dry air 
+# 1. Thermodynamic: heat (energy) content of dry air 
 enthalpy : Float[Unit[J / kg]] = c_p * T 
 
-# 2. Gravitational potential energy (how much work is gravity doing if a kilogram
-# of air fell to this level z)
+# 2. Gravitational potential energy: how much work is gravity doing if a kilogram
+# of air fell to this level z
 geopotential : Float[Unit[J / kg]] = g_v * z
 
+# <THE FOLLOWING MIGHT BE WRONG SCIENCE>
 # 3. Minus the chemical/internal energy associated with the phase change of 
 # water species (latent heat release of condensation and sublimation)
 # i.e., we are assuming a bookeeping system where we assume all 
 # __water species are in the form of vapor__, and we are subtracting the 
 # energy associated with the phase change of water species to liquid or ice
+
+# Energy deficit of ice and liquid water relative to water vapour (reference phase)
 internal_energy_ice_liquid : Float[Unit[J / kg]] = L_c * q_c + L_s * q_i
 
-# Specific non-precipitating ice/liquid static energy:
+"""[[Specific non-precipitating ice/liquid static energy]] of unit mass of air"""
+# The idea is that this stays (nearly) constant for adiabatic processes,
+# with energy transferred between the terms, i.e., 
+# d(h_l) / dt ~= 0
 h_l : Float[Unit[J / kg]] = enthalpy + geopotential - internal_energy_ice_liquid
 
 """[[Total water mixing ratio]]"""
