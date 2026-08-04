@@ -63,6 +63,9 @@ tokens :-
   else                          { \p s -> TokenElse p } 
   True                          { \p s -> TokenBool p True }
   False                         { \p s -> TokenBool p False }
+  and                           { \p s -> TokenAnd p }
+  or                            { \p s -> TokenOr p }
+  not                           { \p s -> TokenNot p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @stringLiteral                { \p s -> TokenString p s }
@@ -86,9 +89,6 @@ tokens :-
   "]"                           { \p s -> TokenRBrack p }
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
-  and                           { \p s -> TokenAnd p }
-  or                            { \p s -> TokenOr p }
-  not                           { \p s -> TokenNot p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }
 
