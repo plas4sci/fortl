@@ -14,7 +14,7 @@ import Lang.Descriptions
 import Lang.TypeHelpers
 import Lang.TypeError
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isJust)
 
 -- Infer the type of an entire program
 synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
@@ -132,37 +132,57 @@ check_ gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check_ gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, gradeType, desc)) =
+check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
+  case op of
+    UnOpNegate -> do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      check gamma e ty
+    UnOpNot -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
+      check gamma e ty
+
+check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
   -- We have a gradable numeric type
   case op of
     -- Plus and minus must have the same type
-    OpPlus -> do
+    BinOpPlus -> do
+      -- can only add or subtract numeric types
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
       () <- check gamma e1 ty
       check gamma e2 ty
-    OpMinus -> do
+    BinOpMinus -> do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    BinOpAnd -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    BinOpOr -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
       () <- check gamma e1 ty
       check gamma e2 ty
     _ ->
       -- For other operators, first synth the types of the arguments
       -- whose base type must match
       case synth gamma e1 of
-        Left err -> Left $ OperatorTypeError op err
+        Left err -> Left $ BinaryOperatorTypeError op err
         Right (isGradableNumericType -> Just (baseType', gradeType1, d1)) -> do
-          assert (baseType == baseType') (OperatorTypeError op (BaseTypeMismatch baseType baseType'))
+          assert (baseType == baseType') (BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType'))
           case synth gamma e2 of
-            Left err -> Left $ OperatorTypeError op err
+            Left err -> Left $ BinaryOperatorTypeError op err
             Right (isGradableNumericType -> Just (baseType'', gradeType2, d2)) -> do
-              assert (baseType == baseType'') (OperatorTypeError op (BaseTypeMismatch baseType baseType''))
+              assert (baseType == baseType'') (BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType''))
               case op of
-                OpExp    ->
+                BinOpExp    ->
                   case e2 of
                     NumFloat n -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
                   kindEquality gradeType1 (IsSpec gradeType2)
                   case op of
-                    OpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
-                    OpDivide ->
+                    BinOpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                    BinOpDivide ->
                       typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
@@ -191,6 +211,14 @@ check_ gamma (Case e (x,e1) (y,e2)) t =
       check ([(x,t1)] ++ gamma) e1 t
       check ([(y,t2)] ++ gamma) e2 t
     Right _ -> Left $ ExpectingSumType e
+    Left err -> Left err
+
+check_ gamma (Cond e1 e2 e3) t = do
+  case synth gamma e2 of
+    Right (isGradableBooleanType -> Just _) -> do
+      check gamma e1 t
+      check gamma e3 t
+    Right ty -> Left $ ExpectingBooleanType ty
     Left err -> Left err
 
 -- Polymorphic lambda calculus
@@ -414,34 +442,71 @@ synth_ gamma (Lift e d) = do
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 
-synth_ gamma (BinOp op e1 e2) =
+synth_ gamma (BoolConst _) =
+  Right (boolTy unitDescription)
+
+synth_ gamma (UnOp op e) =
+  case op of
+    UnOpNegate -> do
+      t <- synth gamma e
+      assert (isJust $ isGradableNumericType t) (ExpectingNumericType t)
+      Right t
+    UnOpNot -> do
+      t <- synth gamma e
+      assert (isJust $ isGradableBooleanType t) (ExpectingBooleanType t)
+      Right t
+
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
   case synth gamma e1 of
-    Left err -> Left $ OperatorTypeError op err
+    Left err -> Left $ BinaryOperatorTypeError op err
+    Right t1 ->
+      case isGradableBooleanType t1 of
+        Nothing -> Left $ ExpectingBooleanType t1
+        Just (baseType, gradeType1, d1) ->
+          case synth gamma e2 of
+            Left err -> Left $ BinaryOperatorTypeError op err
+            Right t2 ->
+              case isGradableBooleanType t2 of
+                Nothing -> Left $ ExpectingBooleanType t2
+                Just (baseType', gradeType2, d2) ->
+                  if baseType /= baseType'
+                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
+                    else do
+                      () <- kindEquality gradeType1 (IsSpec gradeType2)
+                      case descriptionEquality d1 (IsSpec d2) of
+                        Right () -> do
+                          d1 <- normalisationByEvaluation d1
+                          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
+                        Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
+
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide] =
+  case synth gamma e1 of
+    Left err -> Left $ BinaryOperatorTypeError op err
     Right t1 ->
       case isGradableNumericType t1 of
         Nothing -> Left $ ExpectingNumericType t1
         Just (baseType, gradeType1, d1) ->
           case synth gamma e2 of
-            Left err -> Left $ OperatorTypeError op err
+            Left err -> Left $ BinaryOperatorTypeError op err
             Right t2 ->
               case isGradableNumericType t2 of
                 Nothing -> Left $ ExpectingNumericType t2
                 Just (baseType', gradeType2, d2) ->
                   if baseType /= baseType'
-                    then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
+                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
                     else do
                       case op of
-                          OpExp    ->
+                          BinOpExp ->
                             case e2 of
                               NumFloat n -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
                               _ -> error "Bug"
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
                             case op of
-                              OpTimes -> do
+                              BinOpTimes -> do
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
-                              OpDivide -> do
+                              BinOpDivide -> do
                                 d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               _        ->
@@ -449,7 +514,7 @@ synth_ gamma (BinOp op e1 e2) =
                                   Right () -> do
                                     d1 <- normalisationByEvaluation d1
                                     Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
-                                  Left err -> Left $ OperatorDescriptionMismatch op d1 d2
+                                  Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
 
 
 {-
@@ -538,6 +603,9 @@ errorToString (CannotSynthType e) =
 errorToString (ExpectingNumericType t) =
   "Expecting numeric type but got " ++ pprint (normalise t)
 
+errorToString (ExpectingBooleanType t) =
+  "Expecting boolean type but got " ++ pprint (normalise t)
+
 errorToString (ExpectingFunctionType e t) =
   "Expecting (" ++ pprint e ++ ") to have function type but got " ++ pprint (normalise t)
 
@@ -621,12 +689,15 @@ errorToString (ExpectingFunctionSort k) =
 errorToString (CannotInferKind t) =
   "Cannot infer kind for " <> pprint (normalise t)
 
-errorToString (OperatorTypeError op err) =
+errorToString (BinaryOperatorTypeError op err) =
   errorToString err <> "\nError infering type for operator " ++ pprint op
 
-errorToString (OperatorDescriptionMismatch op t1 t2) =
+errorToString (BinaryOperatorDescriptionMismatch op t1 t2) =
   "Expecting descriptions to be the same but got " <> pprint (normalise t1)
   <> " and " <> pprint (normalise t2) <> " for operator " ++ pprint op
+
+errorToString (UnaryOperatorTypeError op err) =
+  errorToString err <> "\nError infering type for operator " ++ pprint op
 
 errorToString (FreeVariablesInAbstraction vars) =
   "Free variables " <> unwords (map show vars)

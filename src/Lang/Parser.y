@@ -34,6 +34,8 @@ import Lang.Options
     case    { TokenCase _ }
     natcase { TokenNatCase _ }
     of      { TokenOf _ }
+    if      { TokenIf _ }
+    else    { TokenElse _ }
     '|'     { TokenSep _ }
     fix     { TokenFix _ }
     fst     { TokenFst _ }
@@ -50,6 +52,7 @@ import Lang.Options
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     STRING  { TokenString _ _ }
+    BOOL    { TokenBool _ _ }
     forall  { TokenForall _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
@@ -62,6 +65,9 @@ import Lang.Options
     '-'     { TokenMinus _ }
     '/'     { TokenDivide _ }
     '+'     { TokenSum _ }
+    and     { TokenAnd _ }
+    or      { TokenOr _ }
+    not     { TokenNot _ }
     '^'     { TokenExponent _ }
     '&'     { TokenAmpersand _ }
     '['     { TokenLBrack _ }
@@ -77,10 +83,13 @@ import Lang.Options
 %right '->'
 %left ':'
 %nonassoc LAMBDA
+%left or
+%left and
 %left ','
 %left '+' '-'
 %left '/'
 %left '*'
+%right not
 %%
 
 Program :: { (Program 'Parsed, [Option]) }
@@ -172,12 +181,19 @@ Expr :: { [Option] -> Expr }
   | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
       { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
 
+  | Expr if Expr else Expr
+      { \opts -> MkCond (mkPos $2) ($1 opts) ($3 opts) ($5 opts) }
+
 Form :: { [Option] -> Expr }
-  : Form '+' Form  { \opts -> MkBinOp (mkPos $2) OpPlus ($1 opts) ($3 opts) }
-  | Form '-' Form  { \opts -> MkBinOp (mkPos $2) OpMinus ($1 opts) ($3 opts) }
-  | Form '*' Form  { \opts -> MkBinOp (mkPos $2) OpTimes ($1 opts) ($3 opts) }
-  | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) OpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
-  | Form '/' Form  { \opts -> MkBinOp (mkPos $2) OpDivide ($1 opts) ($3 opts) }
+  : Form '+' Form  { \opts -> MkBinOp (mkPos $2) BinOpPlus ($1 opts) ($3 opts) }
+  | Form '-' Form  { \opts -> MkBinOp (mkPos $2) BinOpMinus ($1 opts) ($3 opts) }
+  | Form '*' Form  { \opts -> MkBinOp (mkPos $2) BinOpTimes ($1 opts) ($3 opts) }
+  | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
+  | Form '/' Form  { \opts -> MkBinOp (mkPos $2) BinOpDivide ($1 opts) ($3 opts) }
+  | Form and Form  { \opts -> MkBinOp (mkPos $2) BinOpAnd ($1 opts) ($3 opts) }
+  | Form or Form   { \opts -> MkBinOp (mkPos $2) BinOpOr ($1 opts) ($3 opts) }
+  | not Form       { \opts -> MkUnOp (mkPos $1) UnOpNot ($2 opts) }
+  | '-' Form       { \opts -> MkUnOp (mkPos $1) UnOpNegate ($2 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }

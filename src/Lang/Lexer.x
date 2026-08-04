@@ -59,6 +59,10 @@ tokens :-
   from                          { \p s -> TokenFrom p }
   import                        { \p s -> TokenImport p }
   lambda                        { \p s -> TokenLambda p }
+  if                            { \p s -> TokenIf p }
+  else                          { \p s -> TokenElse p } 
+  True                          { \p s -> TokenBool p True }
+  False                         { \p s -> TokenBool p False }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @stringLiteral                { \p s -> TokenString p s }
@@ -82,6 +86,9 @@ tokens :-
   "]"                           { \p s -> TokenRBrack p }
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
+  and                           { \p s -> TokenAnd p }
+  or                            { \p s -> TokenOr p }
+  not                           { \p s -> TokenNot p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }
 
@@ -99,6 +106,8 @@ data Token
   | TokenIn       AlexPosn
   | TokenTyLambda  AlexPosn
   | TokenLambda   AlexPosn
+  | TokenIf       AlexPosn
+  | TokenElse     AlexPosn
   | TokenSym      AlexPosn String
   | TokenTyVar    AlexPosn String
   | TokenZero     AlexPosn
@@ -115,6 +124,9 @@ data Token
   | TokenSum      AlexPosn
   | TokenMinus    AlexPosn
   | TokenDivide   AlexPosn
+  | TokenAnd      AlexPosn
+  | TokenOr       AlexPosn
+  | TokenNot      AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
   | TokenLBrack    AlexPosn
@@ -131,6 +143,7 @@ data Token
   | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
+  | TokenBool     AlexPosn Bool
   | TokenString   AlexPosn String
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn

@@ -22,6 +22,8 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (Var _) = True
     isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic (StringConst _) = True
+    isLexicallyAtomic (NumInteger _) = True
+    isLexicallyAtomic (BoolConst _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
@@ -60,22 +62,38 @@ instance PrettyPrint Expr where
           operator = pprint op
       in
         arg1 <> operator <> arg2
+    pprint (UnOp op e) =
+      let arg = bracket_pprint e
+          operator = pprint op
+      in
+        operator <> arg
     pprint (Lift e t) = "lift(" ++ pprint e ++ ", " ++ pprint t ++ ")"
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
     pprint (StringConst s) = show s
+    pprint (BoolConst b) = show b
+    pprint (Cond e1 e2 e3) =
+      pprint e1 ++ " if " ++ pprint e2 ++ " else " ++ pprint e3
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
 
-instance PrettyPrint Op where
+instance PrettyPrint BinOp where
   pprint op =
     case op of
-      OpExp -> "^"
-      OpPlus -> "+"
-      OpMinus -> "-"
-      OpTimes -> "*"
-      OpDivide -> "/"
+      BinOpExp -> "^"
+      BinOpPlus -> "+"
+      BinOpMinus -> "-"
+      BinOpTimes -> "*"
+      BinOpDivide -> "/"
+      BinOpAnd -> "and"
+      BinOpOr -> "or"
+
+instance PrettyPrint UnOp where
+  pprint op =
+    case op of
+      UnOpNegate -> "-"
+      UnOpNot -> "not"
 
 instance PrettyPrint () where
     pprint () = "()"
