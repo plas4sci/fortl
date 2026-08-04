@@ -263,6 +263,11 @@ Atom :: { [Option] -> Expr }
        { \opts ->
       let (TokenString _ x) = $1
       in MkStringConst (mkPos $1) (read x) }
+    
+    | BOOL
+       { \opts ->
+      let (TokenBool _ x) = $1
+      in MkBoolConst (mkPos $1) x }
 
   -- For later
   -- | '?' { Hole }
