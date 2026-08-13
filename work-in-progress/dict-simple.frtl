@@ -1,0 +1,9 @@
+"""
+Basic dictionary example: string keys, integer values
+"""
+counts : dict[str, int] = {"apples": 3; "oranges": 5}
+
+apples : int = counts["apples"]
+oranges : int = counts["oranges"]
+
+it : int = apples + oranges

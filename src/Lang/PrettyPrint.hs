@@ -4,6 +4,8 @@
 
 module Lang.PrettyPrint where
 
+import Data.List (intercalate)
+
 import Lang.Syntax
 
 -- Pretty print terms
@@ -67,6 +69,10 @@ instance PrettyPrint Expr where
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
+    pprint (Dict entries) =
+      "{" ++ intercalate ", " (map (\(k, v) -> pprint k ++ ": " ++ pprint v) entries) ++ "}"
+    pprint (DictLookup e1 e2) =
+      bracket_pprint e1 ++ "[" ++ pprint e2 ++ "]"
 
 instance PrettyPrint Op where
   pprint op =

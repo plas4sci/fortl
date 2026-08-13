@@ -93,6 +93,12 @@ substituteExpr (TyAbs y e) s =
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
 
+substituteExpr (Dict entries) s =
+  Dict [(substituteExpr k s, substituteExpr v s) | (k, v) <- entries]
+
+substituteExpr (DictLookup e1 e2) s =
+  DictLookup (substituteExpr e1 s) (substituteExpr e2 s)
+
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced
 substitute_binding :: (Term t, Substitutable t) => Identifier -> t -> (Identifier, t) -> (Identifier, t)

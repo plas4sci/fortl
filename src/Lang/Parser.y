@@ -69,6 +69,7 @@ import Lang.Options
     '{'     { TokenLBrace _ }
     '}'     { TokenRBrace _ }
     ','     { TokenMPair _ }
+    ';'     { TokenSemi _ }
     '.'     { TokenDot _ }
     '@'     { TokenAt _ }
     LAMBDA  { TokenLambda _ }
@@ -196,6 +197,7 @@ Type
   | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
   | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | Type '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | Type '[' Type ',' Type ']' { \opts -> TyApp (TyApp ($1 opts) ($3 opts)) ($5 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 
@@ -248,8 +250,20 @@ Atom :: { [Option] -> Expr }
       let (TokenString _ x) = $1
       in MkStringConst (mkPos $1) (read x) }
 
+  | '{' '}'
+     { \opts -> MkDict (mkPos $1) [] }
+
+  | '{' DictEntries '}'
+     { \opts -> MkDict (mkPos $1) ($2 opts) }
+
   -- For later
   -- | '?' { Hole }
+
+DictEntries :: { [Option] -> [(Expr, Expr)] }
+DictEntries
+  : Form ':' Form ';' DictEntries { \opts -> ($1 opts, $3 opts) : ($5 opts) }
+  | Form ':' Form                 { \opts -> [($1 opts, $3 opts)] }
+
 {
 
 mkPos :: Token -> Maybe SrcPos

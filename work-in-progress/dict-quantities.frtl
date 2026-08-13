@@ -1,0 +1,9 @@
+"""
+Dictionary whose values are graded (unit-carrying) floats, showing
+Dict[K, V] composing with fortl's existing Unit/Quantity grading.
+"""
+speeds : dict[str, Float[Unit[m / s]]] = {"walking": 1.4; "cycling": 6.0}
+
+walking_speed : Float[Unit[m / s]] = speeds["walking"]
+
+it : Float[Unit[m / s]] = walking_speed

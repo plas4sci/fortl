@@ -81,6 +81,7 @@ tokens :-
   "["                           { \p s -> TokenLBrack p }
   "]"                           { \p s -> TokenRBrack p }
   ","                           { \p s -> TokenMPair p }
+  ";"                           { \p s -> TokenSemi p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
   \@                            { \p _ -> TokenAt p }
@@ -122,6 +123,7 @@ data Token
   | TokenLBrace    AlexPosn
   | TokenRBrace    AlexPosn
   | TokenMPair    AlexPosn
+  | TokenSemi     AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
   | TokenInl      AlexPosn

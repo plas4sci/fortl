@@ -1,0 +1,6 @@
+"""
+Dictionary mapping unit names to a plain scaling factor
+"""
+conversions : dict[str, float] = {"m": 1.0; "km": 1000.0; "cm": 0.01}
+
+it : float = conversions["km"]
