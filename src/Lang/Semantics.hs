@@ -6,6 +6,7 @@ module Lang.Semantics where
 import Lang.Syntax
 import Lang.Options
 import Lang.Substitution
+import Lang.PrettyPrint
 import Lang.Primitives (dataConstructors)
 -- import Debug.Trace
 
@@ -134,3 +135,23 @@ bigStep env opts (Abs x mt body) = Right $ Abs x mt body
 bigStep env opts (Con c es) = do
   vs <- mapM (bigStep env opts) es
   return $ Con c vs
+
+-- Evaluation of dictionary literals and lookup
+bigStep env opts (Dict entries) = do
+    entries' <- mapM evalEntry entries
+    Right $ Dict entries'
+  where
+    evalEntry (k, v) = do
+      k' <- bigStep env opts k
+      v' <- bigStep env opts v
+      return (k', v')
+
+bigStep env opts (DictLookup e1 e2) = do
+  v1 <- bigStep env opts e1
+  v2 <- bigStep env opts e2
+  case v1 of
+    Dict entries ->
+      case lookup v2 entries of
+        Just e -> bigStep env opts e
+        Nothing -> Left $ "Entry " <> pprint v2 <> " not found in the dictionary."
+    _ -> Left $ "fortl bug: not a dictionary"

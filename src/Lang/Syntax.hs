@@ -77,7 +77,9 @@ data Expr where
     MkBinOp :: Maybe SrcPos -> Op -> Expr -> Expr -> Expr
     MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
-  deriving Show
+    MkDict  :: Maybe SrcPos -> [(Expr, Expr)] -> Expr
+    MkDictLookup :: Maybe SrcPos -> Expr -> Expr -> Expr
+  deriving (Eq, Show)
 
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos
@@ -105,6 +107,8 @@ exprPos (MkStringConst p _) = p
 exprPos (MkBinOp p _ _ _)   = p
 exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
+exprPos (MkDict p _)        = p
+exprPos (MkDictLookup p _ _) = p
 
 -- | Position-agnostic pattern synonyms.
 -- In a pattern they match regardless of the stored position.
@@ -205,16 +209,26 @@ pattern Con :: Identifier -> [Expr] -> Expr
 pattern Con c es <- MkCon _ c es
   where Con c es = MkCon Nothing c es
 
+pattern Dict :: [(Expr, Expr)] -> Expr
+pattern Dict entries <- MkDict _ entries
+  where Dict entries = MkDict Nothing entries
+
+pattern DictLookup :: Expr -> Expr -> Expr
+pattern DictLookup e1 e2 <- MkDictLookup _ e1 e2
+  where DictLookup e1 e2 = MkDictLookup Nothing e1 e2
+
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, MkCon #-}
+             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, MkCon,
+             MkDict, MkDictLookup #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con #-}
+             Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con,
+             Dict, DictLookup #-}
 
 -- Operators
 data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
-  deriving Show
+  deriving (Eq, Show)
 
 isValue :: Expr -> Bool
 isValue Abs{}   = True
@@ -226,6 +240,7 @@ isValue (StringConst _) = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e
+isValue (Dict entries) = all (\(k, v) -> isValue k && isValue v) entries
 isValue Zero = True
 isValue Succ = True
 isValue e       = isNatVal e
@@ -331,6 +346,8 @@ instance Term Expr where
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
   boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
+  boundVars (Dict entries)               = Set.unions [boundVars k `Set.union` boundVars v | (k, v) <- entries]
+  boundVars (DictLookup e1 e2)           = boundVars e1 `Set.union` boundVars e2
   boundVars _                            = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
@@ -353,6 +370,8 @@ instance Term Expr where
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
   freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
+  freeVars (Dict entries)                = Set.unions [freeVars k `Set.union` freeVars v | (k, v) <- entries]
+  freeVars (DictLookup e1 e2)            = freeVars e1 `Set.union` freeVars e2
   freeVars _                             = Set.empty
 
   mkVar = Var
