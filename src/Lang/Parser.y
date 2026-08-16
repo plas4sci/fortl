@@ -52,7 +52,6 @@ import Lang.Options
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     STRING  { TokenString _ _ }
-    BOOL    { TokenBool _ _ }
     forall  { TokenForall _ }
     Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
@@ -263,11 +262,6 @@ Atom :: { [Option] -> Expr }
        { \opts ->
       let (TokenString _ x) = $1
       in MkStringConst (mkPos $1) (read x) }
-    
-    | BOOL
-       { \opts ->
-      let (TokenBool _ x) = $1
-      in MkBoolConst (mkPos $1) x }
 
   -- For later
   -- | '?' { Hole }

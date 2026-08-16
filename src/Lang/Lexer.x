@@ -60,9 +60,7 @@ tokens :-
   import                        { \p s -> TokenImport p }
   lambda                        { \p s -> TokenLambda p }
   if                            { \p s -> TokenIf p }
-  else                          { \p s -> TokenElse p } 
-  True                          { \p s -> TokenBool p True }
-  False                         { \p s -> TokenBool p False }
+  else                          { \p s -> TokenElse p }
   and                           { \p s -> TokenAnd p }
   or                            { \p s -> TokenOr p }
   not                           { \p s -> TokenNot p }

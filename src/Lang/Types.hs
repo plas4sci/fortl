@@ -213,8 +213,8 @@ check_ gamma (Case e (x,e1) (y,e2)) t =
     Right _ -> Left $ ExpectingSumType e
     Left err -> Left err
 
-check_ gamma (Cond e1 e2 e3) t = do
-  case synth gamma e2 of
+check_ gamma (Cond e1 e2_guard e3) t = do
+  case synth gamma e2_guard of
     Right (isGradableBooleanType -> Just _) -> do
       check gamma e1 t
       check gamma e3 t
@@ -441,9 +441,6 @@ synth_ gamma (Lift e d) = do
 
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
-
-synth_ gamma (BoolConst _) =
-  Right (boolTy unitDescription)
 
 synth_ gamma (UnOp op e) =
   case op of

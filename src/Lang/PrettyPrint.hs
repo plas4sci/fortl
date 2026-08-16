@@ -23,7 +23,6 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic (StringConst _) = True
     isLexicallyAtomic (NumInteger _) = True
-    isLexicallyAtomic (BoolConst _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
@@ -71,7 +70,6 @@ instance PrettyPrint Expr where
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
     pprint (StringConst s) = show s
-    pprint (BoolConst b) = show b
     pprint (Cond e1 e2 e3) =
       pprint e1 ++ " if " ++ pprint e2 ++ " else " ++ pprint e3
     pprint (Con c []) = c

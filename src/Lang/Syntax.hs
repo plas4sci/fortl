@@ -73,7 +73,6 @@ data Expr where
     MkCase :: Maybe SrcPos -> Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
     MkNumFloat   :: Maybe SrcPos -> Float        -> Expr
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
-    MkBoolConst      :: Maybe SrcPos -> Bool     -> Expr
     MkCond :: Maybe SrcPos -> Expr -> Expr -> Expr -> Expr
     MkStringConst :: Maybe SrcPos -> String      -> Expr
     MkBinOp :: Maybe SrcPos -> BinOp -> Expr -> Expr -> Expr
@@ -109,7 +108,6 @@ exprPos (MkBinOp p _ _ _)   = p
 exprPos (MkUnOp p _ _)      = p
 exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
-exprPos (MkBoolConst p _)   = p
 exprPos (MkCond p _ _ _)    = p
 
 -- | Position-agnostic pattern synonyms.
@@ -215,10 +213,6 @@ pattern Con :: Identifier -> [Expr] -> Expr
 pattern Con c es <- MkCon _ c es
   where Con c es = MkCon Nothing c es
 
-pattern BoolConst :: Bool -> Expr
-pattern BoolConst b <- MkBoolConst _ b
-  where BoolConst b = MkBoolConst Nothing b
-
 pattern Cond :: Expr -> Expr -> Expr -> Expr
 pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
   where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
@@ -226,11 +220,11 @@ pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
              MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
-             MkCon, MkBoolConst, MkCond #-}
+             MkCon, MkCond #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
              Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
-             BoolConst, Cond #-}
+             Cond #-}
 
 -- Operators
 data BinOp = BinOpPlus | BinOpTimes | BinOpMinus | BinOpDivide | BinOpExp | BinOpAnd | BinOpOr
@@ -245,7 +239,6 @@ isValue Var{}   = True
 isValue (NumFloat _) = True
 isValue (NumInteger _) = True
 isValue (StringConst _) = True
-isValue (BoolConst _) = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
 isValue (Inl e) = isValue e
 isValue (Inr e) = isValue e

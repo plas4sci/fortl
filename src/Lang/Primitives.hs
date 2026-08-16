@@ -36,8 +36,8 @@ desc2 = tyCon2 "Descriptor"
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
-  , ("True"     , tyCon0 "Bool")
-  , ("False"    , tyCon0 "Bool")
+  , ("True"     , boolTy (tyCon0 "1"))
+  , ("False"    , boolTy (tyCon0 "1"))
  ]
 
 typeConstructors :: [(Identifier, Type 1)]

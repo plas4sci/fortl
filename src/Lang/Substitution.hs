@@ -68,7 +68,6 @@ substituteExpr (Inr e) s = Inr $ substituteExpr e s
 substituteExpr (NumFloat n) s = NumFloat n
 substituteExpr (NumInteger n) s = NumInteger n
 substituteExpr (StringConst str) s = StringConst str
-substituteExpr (BoolConst b) s = BoolConst b
 
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)

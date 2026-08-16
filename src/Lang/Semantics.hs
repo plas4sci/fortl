@@ -124,12 +124,24 @@ bigStep env opts (BinOp op e1 e2) = do
                       else Left "Division by zero"
         BinOpAnd    -> Left "Logical AND is not defined for integers"
         BinOpOr     -> Left "Logical OR is not defined for integers"
-    (BoolConst b1, BoolConst b2) ->
+    (Con b1 [], Con b2 []) ->
       case op of
-        BinOpAnd -> return $ BoolConst $ b1 && b2
-        BinOpOr  -> return $ BoolConst $ b1 || b2
-        _        -> Left "Binary operation expects two booleans"
-    _ -> Left "Binary operation expects two numbers"
+        BinOpAnd -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "False" []
+            ("False", "True")  -> return $ Con "False" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical AND operation expects two booleans"
+        BinOpOr  -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "True" []
+            ("False", "True")  -> return $ Con "True" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical OR operation expects two booleans"
+        _ -> Left "Binary operation undefined for given inputs"
+    _ -> Left "Error in binary operation evaluation"
 bigStep env opts (UnOp op e) = do
   v <- bigStep env opts e
   case v of
@@ -141,17 +153,21 @@ bigStep env opts (UnOp op e) = do
       case op of
         UnOpNegate -> return $ NumInteger $ -n
         UnOpNot    -> Left "Logical NOT is not defined for integers"
-    (BoolConst b) ->
+    (Con b []) ->
       case op of
-        UnOpNot -> return $ BoolConst $ not b
+        UnOpNot -> 
+          case b of
+            "True" -> return $ Con "False" []
+            "False" -> return $ Con "True" []
+            _ -> Left "Logical NOT operation expects a boolean"
         UnOpNegate -> Left "Negation is not defined for booleans"
-    _ -> Left "Unary operation expects a number"
+    _ -> Left "Error in unary operation evaluation"
 bigStep env opts (Cond e1 e2 e3) = do
   v2 <- bigStep env opts e2
   case v2 of
-    BoolConst True  -> bigStep env opts e1
-    BoolConst False -> bigStep env opts e3
-    _               -> Left "Condition expects a boolean"
+    Con "True" []  -> bigStep env opts e1
+    Con "False" [] -> bigStep env opts e3
+    _              -> Left "Condition expects a boolean"
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
@@ -159,7 +175,6 @@ bigStep env opts (TyAbs x e) = Right $ TyAbs x e
 bigStep env opts (NumFloat f) = Right $ NumFloat f
 bigStep env opts (NumInteger n) = Right $ NumInteger n
 bigStep env opts (StringConst s) = Right $ StringConst s
-bigStep env opts (BoolConst b) = Right $ BoolConst b
 bigStep env opts Succ = Right Succ
 bigStep env opts Zero = Right Zero
 bigStep env opts (Abs x mt body) = Right $ Abs x mt body
