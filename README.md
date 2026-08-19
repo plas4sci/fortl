@@ -4,11 +4,18 @@
   <img src="logo.png" alt="Fortl logo" width="140"/>
 </td><td valign="top">
 
-**Fortl** is a programming language for scientific and numerical computing with rich, graded types.
+**Fortl** is a programming language for scientific and numerical computing.
+
+**System principles/values**. Code should enable:
+
+- _Articulation of human scientific knowledge_;
+- _Expressing meaning, inntent, and limitations of scientific models_;
+- _Computation of predictions in a way that is repeatable, reusable, and reproducable and connected to more abstract descriptions_.
+
+How does this work out technically?
 
 - **Statically-typed**: say what you mean, enforce what you need
 - **Graded numerical types**: types are indexed and carry structure, allowing for domain-specific properties to be expressed (and enforced) in the type system;
-
 - **Python-like syntax**: lower barrier to entry
 
 </td></tr></table>

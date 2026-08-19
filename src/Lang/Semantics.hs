@@ -104,23 +104,70 @@ bigStep env opts (BinOp op e1 e2) = do
   case (v1, v2) of
     (NumFloat n1, NumFloat n2) ->
       case op of
-        OpExp    -> return $ NumFloat $ n1 ** n2
-        OpPlus   -> return $ NumFloat $ n1 + n2
-        OpTimes  -> return $ NumFloat $ n1 * n2
-        OpMinus  -> return $ NumFloat $ n1 - n2
-        OpDivide -> if n2 /= 0
+        BinOpExp    -> return $ NumFloat $ n1 ** n2
+        BinOpPlus   -> return $ NumFloat $ n1 + n2
+        BinOpTimes  -> return $ NumFloat $ n1 * n2
+        BinOpMinus  -> return $ NumFloat $ n1 - n2
+        BinOpDivide -> if n2 /= 0
                       then return $ NumFloat $ n1 / n2
                       else Left "Division by zero"
+        BinOpAnd    -> Left "Logical AND is not defined for floats"
+        BinOpOr     -> Left "Logical OR is not defined for floats"
     (NumInteger n1, NumInteger n2) ->
       case op of
-        OpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
-        OpPlus   -> return $ NumInteger $ n1 + n2
-        OpTimes  -> return $ NumInteger $ n1 * n2
-        OpMinus  -> return $ NumInteger $ n1 - n2
-        OpDivide -> if n2 /= 0
+        BinOpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
+        BinOpPlus   -> return $ NumInteger $ n1 + n2
+        BinOpTimes  -> return $ NumInteger $ n1 * n2
+        BinOpMinus  -> return $ NumInteger $ n1 - n2
+        BinOpDivide -> if n2 /= 0
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
-    _ -> Left "Binary operation expects two numbers"
+        BinOpAnd    -> Left "Logical AND is not defined for integers"
+        BinOpOr     -> Left "Logical OR is not defined for integers"
+    (Con b1 [], Con b2 []) ->
+      case op of
+        BinOpAnd -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "False" []
+            ("False", "True")  -> return $ Con "False" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical AND operation expects two booleans"
+        BinOpOr  -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "True" []
+            ("False", "True")  -> return $ Con "True" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical OR operation expects two booleans"
+        _ -> Left "Binary operation undefined for given inputs"
+    _ -> Left "Error in binary operation evaluation"
+bigStep env opts (UnOp op e) = do
+  v <- bigStep env opts e
+  case v of
+    (NumFloat n) ->
+      case op of
+        UnOpNegate -> return $ NumFloat $ -n
+        UnOpNot    -> Left "Logical NOT is not defined for floats"
+    (NumInteger n) ->
+      case op of
+        UnOpNegate -> return $ NumInteger $ -n
+        UnOpNot    -> Left "Logical NOT is not defined for integers"
+    (Con b []) ->
+      case op of
+        UnOpNot -> 
+          case b of
+            "True" -> return $ Con "False" []
+            "False" -> return $ Con "True" []
+            _ -> Left "Logical NOT operation expects a boolean"
+        UnOpNegate -> Left "Negation is not defined for booleans"
+    _ -> Left "Error in unary operation evaluation"
+bigStep env opts (Cond e1 e2 e3) = do
+  v2 <- bigStep env opts e2
+  case v2 of
+    Con "True" []  -> bigStep env opts e1
+    Con "False" [] -> bigStep env opts e3
+    _              -> Left "Condition expects a boolean"
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this
