@@ -72,6 +72,8 @@ substituteExpr (StringConst str) s = StringConst str
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
 
+substituteExpr (UnOp op e) s = UnOp op (substituteExpr e s)
+
 substituteExpr (Lift e t) (var, TyEmbed t') =
   Lift (substituteExpr e (var, TyEmbed t')) (substituteType t (var, t'))
 
@@ -92,6 +94,9 @@ substituteExpr (TyAbs y e) s =
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
+
+substituteExpr (Cond e1 e2 e3) s =
+  Cond (substituteExpr e1 s) (substituteExpr e2 s) (substituteExpr e3 s)
 
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced

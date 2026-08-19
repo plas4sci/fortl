@@ -20,6 +20,12 @@ isGradableNumericType ty =
     res@(Just (base, descriptionTy, grade)) | base `elem` numericalTypes -> res
     _ -> Nothing
 
+isGradableBooleanType :: Type 0 -> Maybe (Identifier, Type 1, Type 0)
+isGradableBooleanType ty =
+  case isGradableType ty of
+    res@(Just (base, descriptionTy, grade)) | base == "Bool" -> res
+    _ -> Nothing
+
 -- | Check if a type is a graded type and extract the grading type and the grade
 isGradableType :: Type 0 -> Maybe (Identifier, Type 1, Type 0)
 isGradableType ty =
