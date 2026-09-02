@@ -22,6 +22,9 @@ integerTy t = TyApp (ImplicitTyApp (tyCon0 "Integer") (tyCon1 "Base")) t
 
 stringTy :: Type 0 -> Type 0
 stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
+
+boolTy :: Type 0 -> Type 0
+boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) t
   
 
 desc :: Type 1
@@ -33,6 +36,8 @@ desc2 = tyCon2 "Descriptor"
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
+  , ("True"     , boolTy (tyCon0 "1"))
+  , ("False"    , boolTy (tyCon0 "1"))
  ]
 
 typeConstructors :: [(Identifier, Type 1)]
@@ -43,9 +48,12 @@ typeConstructors = [
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
      -- Graded string
   , ("String"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+    -- Graded boolean
+  , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
+  , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
@@ -56,6 +64,7 @@ typeAliases = [
     ("str", stringTy (tyCon0 "1"))
   , ("int", integerTy (tyCon0 "1"))
   , ("float", floatTy (tyCon0 "1"))
+  , ("bool", boolTy (tyCon0 "1"))
  ]
 
 numericalTypes :: [Identifier]
@@ -65,6 +74,7 @@ kindConstructors :: [(Identifier, Type 2)]
 kindConstructors = [
     ("UoM"      , desc2)
   , ("KoQ"      , desc2)
+  , ("SpeciesType", desc2)
   , ("Base"     , desc2) -- The base Descriptor (bottom)
   -- Products of descriptors
   , ("&"        , FunTy desc2 (FunTy desc2 desc2))

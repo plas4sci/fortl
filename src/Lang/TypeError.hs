@@ -16,6 +16,7 @@ data TypeError
   | TypeCheckFailure { inferredType :: Type 0, checkType :: Type 0, reason :: String }
   | CannotSynthType Expr
   | ExpectingNumericType (Type 0)
+  | ExpectingBooleanType (Type 0)
   | ExpectingFunctionType Expr (Type 0)
   | ExpectingProductType Expr (Type 0)
   | ExpectingSumType Expr
@@ -46,8 +47,9 @@ data TypeError
   | SortMismatch { expectedSort :: Type 2, actualSort :: Type 2, kindInQuestion :: Type 1 }
   
   -- Operator errors
-  | OperatorTypeError Op TypeError
-  | OperatorDescriptionMismatch Op (Type 0) (Type 0)
+  | BinaryOperatorTypeError BinOp TypeError
+  | BinaryOperatorDescriptionMismatch BinOp (Type 0) (Type 0)
+  | UnaryOperatorTypeError UnOp TypeError
   
   -- Abstraction and polymorphism errors
   | FreeVariablesInAbstraction [Identifier]

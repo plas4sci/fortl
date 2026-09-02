@@ -55,6 +55,8 @@ library:
   - Lang.Parser
   - Lang.PrettyPrint
   - Lang.Frontend
+  - Lang.Descriptions
+  - Lang.TypeHelpers
 
 tests:
   fortl-golden:
@@ -66,3 +68,4 @@ tests:
     - Diff
     - tasty
     - tasty-golden
+    - tasty-hunit

@@ -43,6 +43,7 @@ type DescriptionsRepr = Map Identifier DescriptionRepr
 data DescriptionRepr = 
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
+   | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
    deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
@@ -58,6 +59,8 @@ instance Representation DescriptionsRepr where
     computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
         d <- computeRepresentation t
         return $ singleton "Quantity" d
+    computeRepresentation (TyApp (TyCon ZeroP "Species") t) =
+        return $ singleton "Species" (IndexType t)
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -74,6 +77,7 @@ instance Representation DescriptionsRepr where
           exp :: Float -> DescriptionRepr -> DescriptionRepr
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
+          exp _ (IndexType t)  = IndexType t  -- exponentiation is no-op for indexed types
     computeRepresentation (TyCon ZeroP "1") = return empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -83,6 +87,11 @@ instance Representation DescriptionsRepr where
           combineRepr :: DescriptionRepr -> DescriptionRepr -> DescriptionRepr
           combineRepr (FreeAGroup a1) (FreeAGroup a2) = FreeAGroup $ unionWith (+) a1 a2
           combineRepr (TypeTree t1) (TypeTree t2)     = TypeTree $ ProdTy t1 t2
+          combineRepr (IndexType t1) (IndexType t2)
+            | t1 == tyCon0 "1" = IndexType t2        -- 1 * S = S
+            | t2 == tyCon0 "1" = IndexType t1        -- S * 1 = S
+            | t1 == t2         = IndexType t1        -- S * S = S
+            | otherwise        = IndexType (ProdTy t1 t2)  -- mismatch: preserved for later equality check
           combineRepr _ _                             = error "Mismatched description representation types in product"
     computeRepresentation t = Left $ CannotComputeDescriptionRepresentation t
 
@@ -128,6 +137,7 @@ instance Representation DescriptionRepr where
 
     -- | Reify a description representation back to a type term
     reifyToTypeTerm :: DescriptionRepr -> Type 0
+    reifyToTypeTerm (IndexType t) = t
     reifyToTypeTerm (FreeAGroup a) =
       if length (assocs a) == 0
         then tyCon0 "1"
@@ -155,6 +165,10 @@ instance Representation DescriptionRepr where
         if t1 == t2
             then Right ()
             else Left $ TypeTreeMismatch t2 t1
+    reprEquality (IndexType t1) (IsSpec (IndexType t2)) =
+        if t1 == t2
+            then Right ()
+            else Left $ DescriptionEqualityFailure t2 t1  -- reuse error: shows expected vs actual species
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
     
