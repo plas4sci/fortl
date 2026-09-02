@@ -9,8 +9,8 @@
 **System principles/values**. Code should enable:
 
 - _Articulation of human scientific knowledge_;
-- _Expressing meaning, inntent, and limitations of scientific models_;
-- _Computation of predictions in a way that is repeatable, reusable, and reproducable and connected to more abstract descriptions_.
+- _Expressing meaning, intent, and limitations of scientific models_;
+- _Computation of predictions in a way that is repeatable, reusable, and reproducible and connected to more abstract descriptions_.
 
 How does this work out technically?
 
