@@ -16,7 +16,7 @@ How does this work out technically?
 
 - **Statically-typed**: say what you mean, enforce what you need
 - **Graded numerical types**: types are indexed and carry structure, allowing for domain-specific properties to be expressed (and enforced) in the type system;
-- **Python-like syntax**: lower barrier to entry
+- **Python-like syntax**: To lower barrier to entry, fortl's syntax is based on [PurePy](https://pure-py.github.io/), a pure (side-effect free) subset of Python.  
 
 </td></tr></table>
 
