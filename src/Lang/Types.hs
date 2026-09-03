@@ -330,6 +330,17 @@ synth_ gamma (App e (TyEmbed tau')) =
 
 -}
 
+-- sqrt is not a keyword, just a name special-cased in application position:
+-- infer the argument's description and halve every exponent in it,
+-- e.g. an argument described by [M^2] yields a result described by [M]
+synth_ gamma (App (Var "sqrt") e) = do
+  t <- synth gamma e
+  case isGradableNumericType t of
+    Just ("Float", gradeType, d) -> do
+      d' <- normalisationByEvaluation (ExponentTy d 0.5)
+      Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
+    _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+
 synth_ gamma (App e1 e2) =
   -- Synth the left-hand side
   case synth gamma e1 of
