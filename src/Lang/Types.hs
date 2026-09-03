@@ -330,7 +330,7 @@ synth_ gamma (App e (TyEmbed tau')) =
 
 -}
 
--- sqrt is not a keyword, just a name special-cased in application position:
+-- special case primitive: sqrt
 -- infer the argument's description and halve every exponent in it,
 -- e.g. an argument described by [M^2] yields a result described by [M]
 synth_ gamma (App (Var "sqrt") e) = do
