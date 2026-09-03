@@ -54,6 +54,7 @@ typeConstructors = [
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
+  , ("Basis"    , FunTy type0 (tyCon1 "BasisType"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
@@ -75,6 +76,7 @@ kindConstructors = [
     ("UoM"      , desc2)
   , ("KoQ"      , desc2)
   , ("SpeciesType", desc2)
+  , ("BasisType" , desc2)
   , ("Base"     , desc2) -- The base Descriptor (bottom)
   -- Products of descriptors
   , ("&"        , FunTy desc2 (FunTy desc2 desc2))

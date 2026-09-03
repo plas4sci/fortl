@@ -61,6 +61,8 @@ instance Representation DescriptionsRepr where
         return $ singleton "Quantity" d
     computeRepresentation (TyApp (TyCon ZeroP "Species") t) =
         return $ singleton "Species" (IndexType t)
+    computeRepresentation (TyApp (TyCon ZeroP "Basis") t) =
+        return $ singleton "Basis" (IndexType t)
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
