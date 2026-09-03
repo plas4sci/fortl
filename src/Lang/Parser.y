@@ -228,7 +228,7 @@ TypeAtom
   | '?'              { \opts -> tyCon0 "?" }
 
 Juxt :: { [Option] -> Expr }
-  : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  : Juxt '(' Expr ')'                 { \opts -> App ($1 opts) ($3 opts) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 

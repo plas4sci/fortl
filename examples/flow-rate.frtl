@@ -13,4 +13,4 @@ h : Float[Unit[m]] = 0.0
 discharge_coefficient : Float[Unit[1]] = 0.61
 
 q : Float[Unit[m ^ 3 / s]] = (discharge_coefficient
-                               * area * sqrt((2 : Float[Unit[1]]) * gravity * h))
+                               * area * sqrt((2.0 : Float[Unit[1]]) * gravity * h))
