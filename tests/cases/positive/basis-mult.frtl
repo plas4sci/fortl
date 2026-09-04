@@ -1,3 +1,3 @@
-x : Float[Basis[DryAir]] = 3.0
-y : Float[Basis[DryAir]] = 4.0
-it : Float[Basis[DryAir]] = x * y
+x : Float[Basis[Fox]] = 3.0
+y : Float[Basis[Fox]] = 4.0
+it : Float[Basis[Fox]] = x * y
