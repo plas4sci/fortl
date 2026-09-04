@@ -41,6 +41,12 @@ interpretDefs env opts [] =
 
 -- Big step operational model (i.e., expression interpreter)
 bigStep :: Env -> [Option] -> Expr -> Either String Expr
+-- Special-cased primitive: sqrt
+bigStep env opts (App (Var "sqrt") e2) =
+  case bigStep env opts e2 of
+    Right (NumFloat n) -> return $ NumFloat $ sqrt n
+    Right _            -> Left "sqrt expects a number"
+    Left err           -> Left err
 bigStep env opts (App e1 e2) =
   case bigStep env opts e1 of
     Left err -> Left err
