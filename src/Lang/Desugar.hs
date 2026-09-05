@@ -40,13 +40,32 @@ desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
 desugarDef (DataDef id cs ty)   = emitDefs [DataDef id cs ty]
 desugarDef (ImportDef spec)     = emitDefs [ImportDef spec]
 desugarDef (Return e)           = emitDefs [Return e]
+desugarDef (AnnDef _ _)         = return ()
 desugarDef (FunDef id args body) = do
     bodyExpr <- desugarBody body
-    let argType = functionArgType args
-        bindArgs = bindFunctionArgs args (Var "_args") bodyExpr
+    let typedArgs = functionArguments args body
+        argType = functionArgType typedArgs
+        bindArgs = bindFunctionArgs typedArgs (Var "_args") bodyExpr
         functionExpr = Abs "_args" (Just argType) bindArgs
     emitDefs [ValDef (VarLhs id Nothing) functionExpr]
 desugarDef (ValDef lhs e)       = do desugarVal lhs e
+
+-- | Resolve the declared types of a function's parameters before lowering its
+-- body to a lambda expression. Parameters can carry an optional legacy header
+-- annotation, while standalone annotations in the body support Python-style
+-- declarations such as @def f(x): x : T@. A body annotation takes precedence,
+-- keeping the parameter name next to its documentation and unit information.
+-- Every parameter must resolve to a type because the generated lambda is
+-- explicitly typed.
+functionArguments :: [(Identifier, Maybe (Type 0))] -> [Def 'Parsed] -> [(Identifier, Type 0)]
+functionArguments args body = map argumentType args
+    where
+        argumentType (arg, headerType) =
+            case [ty | AnnDef name ty <- body, name == arg] of
+                ty:_ -> (arg, ty)
+                [] -> case headerType of
+                    Just ty -> (arg, ty)
+                    Nothing -> error $ "Missing type annotation for function parameter " ++ arg
 
 functionArgType :: [(Identifier, Type 0)] -> Type 0
 functionArgType [( _, ty)] = ty
@@ -55,6 +74,7 @@ functionArgType args = foldr1 ProdTy (map snd args)
 desugarBody :: [Def 'Parsed] -> Desugar Expr
 desugarBody [] = return (Con "None" [])
 desugarBody (Return e : _) = return e
+desugarBody (AnnDef _ _ : defs) = desugarBody defs
 desugarBody (ValDef lhs e : defs) = do
     rest <- desugarBody defs
     bindLhs lhs e rest

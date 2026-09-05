@@ -32,7 +32,8 @@ type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
     ValDef  :: Lhs p -> Expr -> Def p
-    FunDef  :: Identifier -> [(Identifier, Type 0)] -> [Def p] -> Def p
+    AnnDef  :: Identifier -> Type 0 -> Def p
+    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def p] -> Def p
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
     ImportDef :: ImportSpec -> Def p

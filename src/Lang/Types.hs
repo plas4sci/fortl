@@ -100,9 +100,12 @@ check_ gamma (StringConst _) ty =
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
-  case typeEquality ty (IsSpec tyA) of
-    Right () -> check_ gamma e tyA
-    Left err -> Left $ TypeCheckFailure tyA ty (let ?srcFile = "" in errorToString err)
+  case checkKind tyA type0 of
+    Left err -> Left err
+    Right tyA' ->
+      case typeEquality ty (IsSpec tyA') of
+        Right () -> check_ gamma e tyA'
+        Left err -> Left $ TypeCheckFailure tyA' ty (let ?srcFile = "" in errorToString err)
 
 {--
 
