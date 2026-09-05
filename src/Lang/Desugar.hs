@@ -43,10 +43,11 @@ desugarDef (Return e)           = emitDefs [Return e]
 desugarDef (AnnDef _ _)         = return ()
 desugarDef (FunDef id args body) = do
     bodyExpr <- desugarBody body
+    argVar <- freshVar
     let typedArgs = functionArguments args body
         argType = functionArgType typedArgs
-        bindArgs = bindFunctionArgs typedArgs (Var "_args") bodyExpr
-        functionExpr = Abs "_args" (Just argType) bindArgs
+        bindArgs = bindFunctionArgs typedArgs (Var argVar) bodyExpr
+        functionExpr = Abs argVar (Just argType) bindArgs
     emitDefs [ValDef (VarLhs id Nothing) functionExpr]
 desugarDef (ValDef lhs e)       = do desugarVal lhs e
 
