@@ -16,3 +16,8 @@ def small_orifice_flow(area, h):
     * area * sqrt((2.0 : Float[Unit[1]]) * gravity * h))
 
   return q
+
+# Example
+area : Float[Unit[m^2]] = 10.0
+h    : Float[Unit[m]]   = 5.0
+it = small_orifice_flow(area, h)
