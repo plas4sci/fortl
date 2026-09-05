@@ -726,6 +726,13 @@ errorToString (TermLevelTypeAbstraction alpha) =
 errorToString TypeApplicationExpectsType =
   "Type application expects a type"
 
+errorToString (WellFormednessError err) =
+  "Malformed program: " <> case err of
+    MissingParameterAnnotation parameter ->
+      "function parameter `" <> parameter <> "` has no type annotation"
+    DuplicateParameterAnnotation parameter ->
+      "function parameter `" <> parameter <> "` is annotated in both the header and body"
+
 errorToString (ContextualError msg) =
   msg
 

@@ -50,21 +50,27 @@ run report fname = do
       input <- readFile fname
       case parseProgram fname input of
         Right (parsetree, options) -> do
-          let ast = desugar parsetree
-          -- Evaluate
-          let (env, normalForm) = interpret options ast
-          -- Typing
-          case typeInference options ast of
-              Left err -> do
-                let ?srcFile = fname
-                putStrLn $ ansi_bold <> ansi_red
-                        <> "Not well-typed.\n" <> errorToString err <> ansi_reset
-                return $ Left (errorToString err)
-              Right (ctxt, ty) -> do
-                putStrLn $ ansi_bold <> ansi_green
-                        <> "Well-typed " <> ansi_reset
-                        <> ansi_bold <> "as " <> ansi_reset <> pprint ty
-                return $ Right (parsetree, options, env, normalForm, ctxt)
+          case desugar parsetree of
+            Left err -> do
+              let ?srcFile = fname
+              putStrLn $ ansi_bold <> ansi_red
+                      <> "Not well-formed.\n" <> errorToString err <> ansi_reset
+              return $ Left (errorToString err)
+            Right ast -> do
+              -- Evaluate
+              let (env, normalForm) = interpret options ast
+              -- Typing
+              case typeInference options ast of
+                Left err -> do
+                  let ?srcFile = fname
+                  putStrLn $ ansi_bold <> ansi_red
+                    <> "Not well-typed.\n" <> errorToString err <> ansi_reset
+                  return $ Left (errorToString err)
+                Right (ctxt, ty) -> do
+                  putStrLn $ ansi_bold <> ansi_green
+                    <> "Well-typed " <> ansi_reset
+                    <> ansi_bold <> "as " <> ansi_reset <> pprint ty
+                  return $ Right (parsetree, options, env, normalForm, ctxt)
         Left msg -> do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg

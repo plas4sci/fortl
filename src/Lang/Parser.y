@@ -242,7 +242,8 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : IDENT            { \opts -> tyCon0 $ symString $1 }
+  : '(' ')'          { \_ -> tyCon0 "()" }
+  | IDENT            { \opts -> tyCon0 $ symString $1 }
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> tyCon0 $ let (TokenInt _ x) = $1 in x }
@@ -250,6 +251,7 @@ TypeAtom
 
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Expr ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  | Juxt '(' ')'                      { \opts -> App ($1 opts) (Con "()" []) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 

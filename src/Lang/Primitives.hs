@@ -36,6 +36,7 @@ desc2 = tyCon2 "Descriptor"
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
+  , ("()"       , tyCon0 "()")
   , ("True"     , boolTy (tyCon0 "1"))
   , ("False"    , boolTy (tyCon0 "1"))
  ]
@@ -51,6 +52,7 @@ typeConstructors = [
     -- Graded boolean
   , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
+  , ("()"       , type0)
   , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
