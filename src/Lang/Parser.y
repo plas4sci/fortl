@@ -256,7 +256,8 @@ Juxt :: { [Option] -> Expr }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
-  : '(' Expr ')'              { $2 }
+  : '(' ')'                   { \_ -> Con "()" [] }
+  | '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
   | LAMBDA IDENT ':' Expr
     { \opts -> MkAbs (mkPos $1) (symString $2) Nothing ($4 opts) }
