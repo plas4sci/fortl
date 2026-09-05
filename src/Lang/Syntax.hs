@@ -32,6 +32,7 @@ type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
     ValDef  :: Lhs p -> Expr -> Def p
+    FunDef  :: Identifier -> [(Identifier, Type 0)] -> [Def p] -> Def p
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
     ImportDef :: ImportSpec -> Def p
@@ -59,7 +60,7 @@ data Expr where
     MkSig :: Maybe SrcPos -> Expr -> Type 0  -> Expr
     MkTyAbs   :: Maybe SrcPos -> Identifier -> Expr -> Expr
     MkTyEmbed :: Maybe SrcPos -> Type 0             -> Expr
-    MkGenLet :: Maybe SrcPos -> Identifier -> Expr -> Expr -> Expr
+    MkLet :: Maybe SrcPos -> Identifier -> Expr -> Expr -> Expr
     MkCast :: Maybe SrcPos -> Expr -> Expr
     MkZero :: Maybe SrcPos -> Expr
     MkSucc :: Maybe SrcPos -> Expr
@@ -89,7 +90,7 @@ exprPos (MkVar p _)         = p
 exprPos (MkSig p _ _)       = p
 exprPos (MkTyAbs p _ _)     = p
 exprPos (MkTyEmbed p _)     = p
-exprPos (MkGenLet p _ _ _)  = p
+exprPos (MkLet p _ _ _)     = p
 exprPos (MkCast p _)        = p
 exprPos (MkZero p)          = p
 exprPos (MkSucc p)          = p
@@ -137,9 +138,9 @@ pattern TyEmbed :: Type 0 -> Expr
 pattern TyEmbed t <- MkTyEmbed _ t
   where TyEmbed t = MkTyEmbed Nothing t
 
-pattern GenLet :: Identifier -> Expr -> Expr -> Expr
-pattern GenLet x e1 e2 <- MkGenLet _ x e1 e2
-  where GenLet x e1 e2 = MkGenLet Nothing x e1 e2
+pattern Let :: Identifier -> Expr -> Expr -> Expr
+pattern Let x e1 e2 <- MkLet _ x e1 e2
+  where Let x e1 e2 = MkLet Nothing x e1 e2
 
 pattern Cast :: Expr -> Expr
 pattern Cast e <- MkCast _ e
@@ -217,11 +218,11 @@ pattern Cond :: Expr -> Expr -> Expr -> Expr
 pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
   where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
 
-{-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
+{-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkLet, MkCast,
              MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
              MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
              MkCon, MkCond #-}
-{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
+{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, Let, Cast,
              Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
              Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
              Cond #-}
@@ -333,7 +334,7 @@ instance Term Expr where
   boundVars (App e1 e2)                  = boundVars e1 `Set.union` boundVars e2
   boundVars (Var var)                    = Set.empty
   boundVars (Sig e _)                    = boundVars e
-  boundVars (GenLet var e1 e2)           = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
+  boundVars (Let var e1 e2)              = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
   boundVars (Cast e)                     = boundVars e
   boundVars (NatCase e e1 (x,e2))        =
     x `Set.insert` (boundVars e `Set.union` boundVars e1 `Set.union` boundVars e2)
@@ -356,7 +357,7 @@ instance Term Expr where
   freeVars (App e1 e2)                   = freeVars e1 `Set.union` freeVars e2
   freeVars (Var var)                     = Set.singleton var
   freeVars (Sig e _)                     = freeVars e
-  freeVars (GenLet var e1 e2)            = Set.delete var (freeVars e1 `Set.union` freeVars e2)
+  freeVars (Let var e1 e2)               = Set.delete var (freeVars e1 `Set.union` freeVars e2)
   freeVars (Cast e)                      = freeVars e
   freeVars (NatCase e e1 (x,e2))         =
     freeVars e `Set.union` freeVars e1 `Set.union` (Set.delete x (freeVars e2))

@@ -277,6 +277,10 @@ synth_ gamma (Var x) =
           Just ty -> Right ty
           Nothing -> Left $ VariableNotFound x
 
+synth_ gamma (Let x e1 e2) = do
+  ty1 <- synth gamma e1
+  synth ((x, ty1) : gamma) e2
+
 
 {-
 
@@ -310,7 +314,9 @@ synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 synth_ gamma (Abs x (Just tyA) e) =
   case checkKind tyA type0 of
     Left err -> Left err
-    Right tyA' -> synth ((x, tyA') : gamma) e
+    Right tyA' -> do
+      tyB <- synth ((x, tyA') : gamma) e
+      Right (FunTy tyA' tyB)
 
 -- Type checking a type speciaisation
 synth_ gamma (App e (TyEmbed tau')) =

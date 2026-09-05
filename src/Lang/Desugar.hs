@@ -40,7 +40,48 @@ desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
 desugarDef (DataDef id cs ty)   = emitDefs [DataDef id cs ty]
 desugarDef (ImportDef spec)     = emitDefs [ImportDef spec]
 desugarDef (Return e)           = emitDefs [Return e]
+desugarDef (FunDef id args body) = do
+    bodyExpr <- desugarBody body
+    let argType = functionArgType args
+        bindArgs = bindFunctionArgs args (Var "_args") bodyExpr
+        functionExpr = Abs "_args" (Just argType) bindArgs
+    emitDefs [ValDef (VarLhs id Nothing) functionExpr]
 desugarDef (ValDef lhs e)       = do desugarVal lhs e
+
+functionArgType :: [(Identifier, Type 0)] -> Type 0
+functionArgType [( _, ty)] = ty
+functionArgType args = foldr1 ProdTy (map snd args)
+
+desugarBody :: [Def 'Parsed] -> Desugar Expr
+desugarBody [] = return (Con "None" [])
+desugarBody (Return e : _) = return e
+desugarBody (ValDef lhs e : defs) = do
+    rest <- desugarBody defs
+    bindLhs lhs e rest
+desugarBody (_ : defs) = desugarBody defs
+
+bindLhs :: Lhs 'Parsed -> Expr -> Expr -> Desugar Expr
+bindLhs (VarLhs x (Just ty)) e rest = return (Let x (Sig e ty) rest)
+bindLhs (VarLhs x Nothing) e rest = return (Let x e rest)
+bindLhs (PairLhs l1 l2) e rest = do
+    tmp <- freshVar
+    rest' <- bindLhs l1 (Fst (Var tmp)) rest
+    bindLhs l2 (Snd (Var tmp)) (Let tmp e rest')
+
+bindFunctionArgs :: [(Identifier, Type 0)] -> Expr -> Expr -> Expr
+bindFunctionArgs [] _ body = body
+bindFunctionArgs [(x, _)] arg body = Let x arg body
+bindFunctionArgs args arg body =
+    foldr bind body (zip args (pairProjections (length args) arg))
+  where
+    bind ((x, _), projection) rest = Let x projection rest
+
+pairProjections :: Int -> Expr -> [Expr]
+pairProjections count arg =
+    [ projection index | index <- [0 .. count - 1] ]
+  where
+    projection 0 = Fst arg
+    projection index = Snd (iterate Snd arg !! (index - 1))
 
 -- (a, (b1, b2)) = c
 -- _0 = c

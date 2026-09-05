@@ -31,8 +31,8 @@ substituteExpr (Sig e t) s = Sig (substituteExpr e s) t
 
 -- ML
 
-substituteExpr (GenLet x e1 e2) s =
-  let (x' , e2') = substitute_binding x e2 s in GenLet x' (substituteExpr e1 s) e2'
+substituteExpr (Let x e1 e2) s =
+  let (x' , e2') = substitute_binding x e2 s in Let x' (substituteExpr e1 s) e2'
 
 -- Casts
 substituteExpr (Cast e) s =

@@ -25,6 +25,9 @@ import Lang.Options
 %token
     nl      { TokenNL _ }
     data    { TokenData _ }
+    def     { TokenDef _ }
+    indent  { TokenIndent _ }
+    dedent  { TokenDedent _ }
     from    { TokenFrom _ }
     import  { TokenImport _ }
     cast    { TokenCast _ }
@@ -115,6 +118,7 @@ ImportList :: { [Identifier] }
 
 Defs :: { [Option] -> Program 'Parsed }
   : Def NL Defs           { \opts -> ($1 opts) : ($3 opts) }
+  | Def Defs              { \opts -> ($1 opts) : ($2 opts) }
   | return Expr           { \opts -> [Return ($2 opts)] }
   | Def                   { \opts -> [$1 opts] }
 
@@ -124,7 +128,22 @@ NL :: { () }
 
 Def :: { [Option] -> Def 'Parsed}
   : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
+  | def IDENT '(' Parameters ')' ':' nl indent BlockDefs dedent
+                           { \opts -> FunDef (symString $2) ($4 opts) ($9 opts) }
   | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+
+Parameters :: { [Option] -> [(Identifier, Type 0)] }
+  : IDENT ':' Type ',' Parameters
+                           { \opts -> (symString $1, $3 opts) : ($5 opts) }
+  | IDENT ':' Type         { \opts -> [(symString $1, $3 opts)] }
+  | {- empty -}            { \_ -> [] }
+
+BlockDefs :: { [Option] -> [Def 'Parsed] }
+  : nl BlockDefs           { $2 }
+  | Def nl BlockDefs       { \opts -> ($1 opts) : ($3 opts) }
+  | return Expr nl         { \opts -> [Return ($2 opts)] }
+  | Def                     { \opts -> [$1 opts] }
+  | return Expr             { \opts -> [Return ($2 opts)] }
 
 Lhs :: { [Option] -> Lhs 'Parsed }
   : IDENT { \opts -> VarLhs (symString $1) Nothing }
@@ -140,10 +159,9 @@ ConstructorList
 
 Expr :: { [Option] -> Expr }
   : let IDENT '=' Expr in Expr
-    { \opts ->
-      MkGenLet (mkPos $1) (symString $2) ($4 opts) ($6 opts) }
+    { \opts -> MkLet (mkPos $1) (symString $2) ($4 opts) ($6 opts) }
 
-   -- TODO: probably needs reconciling with lambda syntax
+  -- TODO: probably needs reconciling with lambda syntax
   | Lam IDENT '->' Expr
     { \opts -> MkTyAbs (mkPos $1) (symString $2) ($4 opts) }
 
@@ -200,7 +218,7 @@ Kind
   : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
   | IDENT            { \opts -> case symString $1 of
                                   k -> tyCon1 k }
-  
+
 Type :: { [Option] -> Type 0 }
 Type
   : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }

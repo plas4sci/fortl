@@ -68,7 +68,7 @@ bigStep env opts (Var x) = case lookup x env of
     case lookup x dataConstructors of
       Just _  -> Right (Con x [])
       Nothing -> Left $ "Unbound variable: " ++ x
-bigStep env opts (GenLet x e1 e2) = do
+bigStep env opts (Let x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep ((x, v1) : env) opts e2
 

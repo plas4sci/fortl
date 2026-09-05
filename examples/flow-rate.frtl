@@ -1,16 +1,17 @@
 ## Small-orifice flow problem (Torricelli's law)
+def small_orifice_flow(area : Float[Unit[m^2]], h : Float[Unit[m]]):
+  """
+  area : Area of the orifice
+  h    : Distance from water surface to orifice
+  """
 
-# Area of the orifice
-area : Float[Unit[m^2]] = 0.0
+  # Acceleration of gravity
+  gravity : Float[Unit[m / s^2]] = 9.8065
 
-# Acceleration of gravity
-gravity : Float[Unit[m / s^2]] = 9.8065
+  # Ratio of actual flow to ideal flow
+  discharge_coefficient : Float[Unit[1]] = 0.61
 
-#  Distance from water surface to orifice
-h : Float[Unit[m]] = 0.0
+  q : Float[Unit[m ^ 3 / s]] = (discharge_coefficient
+    * area * sqrt((2.0 : Float[Unit[1]]) * gravity * h))
 
-# Ratio of actual flow to ideal flow
-discharge_coefficient : Float[Unit[1]] = 0.61
-
-q : Float[Unit[m ^ 3 / s]] = (discharge_coefficient
-                               * area * sqrt((2.0 : Float[Unit[1]]) * gravity * h))
+  return q
