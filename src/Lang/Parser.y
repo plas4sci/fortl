@@ -156,7 +156,7 @@ Expr :: { [Option] -> Expr }
   | lift '(' Expr ',' Type ')'
     { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
 
-  | label '(' Expr ',' Type ')'
+  | label '(' Form ',' Type ')'
     { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
 
   -- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
