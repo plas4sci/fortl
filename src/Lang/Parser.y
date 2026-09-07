@@ -32,16 +32,11 @@ import Lang.Options
     label   { TokenLabel _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
-    natcase { TokenNatCase _ }
-    of      { TokenOf _ }
     if      { TokenIf _ }
     else    { TokenElse _ }
     '|'     { TokenSep _ }
-    fix     { TokenFix _ }
     fst     { TokenFst _ }
     snd     { TokenSnd _ }
-    inl     { TokenInl _ }
-    inr     { TokenInr _ }
     in      { TokenIn  _  }
     zero    { TokenZero _ }
     succ    { TokenSucc _ }
@@ -124,7 +119,7 @@ NL :: { () }
 
 Def :: { [Option] -> Def 'Parsed}
   : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
-  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+--  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
 Lhs :: { [Option] -> Lhs 'Parsed }
   : IDENT { \opts -> VarLhs (symString $1) Nothing }
@@ -153,23 +148,11 @@ Expr :: { [Option] -> Expr }
   | Form
     { $1 }
 
-  | fix '(' Expr ')'
-     { \opts -> MkFix (mkPos $1) ($3 opts) }
-
-  | natcase Expr of zero '->' Expr '|' succ IDENT '->' Expr
-     { \opts -> MkNatCase (mkPos $1) ($2 opts) ($6 opts) (symString $9, ($11 opts)) }
-
   | fst '(' Expr ')'
      { \opts -> MkFst (mkPos $1) ($3 opts) }
 
   | snd '(' Expr ')'
      { \opts -> MkSnd (mkPos $1) ($3 opts) }
-
-  | inl '(' Expr ')'
-     { \opts -> MkInl (mkPos $1) ($3 opts) }
-
-  | inr '(' Expr ')'
-     { \opts -> MkInr (mkPos $1) ($3 opts) }
 
   | lift '(' Expr ',' Type ')'
     { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
@@ -177,8 +160,8 @@ Expr :: { [Option] -> Expr }
   | label '(' Expr ',' Type ')'
     { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
 
-  | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
-      { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+  -- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
+  --     { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
 
   | Expr if Expr else Expr
       { \opts -> MkCond (mkPos $2) ($1 opts) ($3 opts) ($5 opts) }
