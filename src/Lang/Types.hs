@@ -297,7 +297,9 @@ synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 synth_ gamma (Abs x (Just tyA) e) =
   case checkKind tyA type0 of
     Left err -> Left err
-    Right tyA' -> synth ((x, tyA') : gamma) e
+    Right tyA' -> do
+      tyB <- synth ((x, tyA') : gamma) e
+      Right (FunTy tyA' tyB)
 
 -- Type checking a type speciaisation
 synth_ gamma (App e (TyEmbed tau')) =

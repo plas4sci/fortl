@@ -1,4 +1,2 @@
-
-id = (/\ a -> (\(x : a) -> x)) : forall a . a -> a
-
-(id @(Nat -> Nat) (id @Nat)) zero
+id : forall a . 'a -> 'a = /\ a -> (lambda (x : 'a): x)
+it = id[Nat](zero)

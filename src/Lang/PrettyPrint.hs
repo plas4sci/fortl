@@ -31,13 +31,14 @@ instance PrettyPrint Expr where
       bracket_pprint (Abs var mt e1) ++ " " ++ bracket_pprint e2
     pprint (App (Sig e1 t) e2) =
       bracket_pprint (Sig e1 t) ++ " " ++ bracket_pprint e2
+    pprint (App e1 (TyEmbed t)) = pprint e1 ++ "[" ++ pprint t ++ "]"
     pprint (App e1 e2) = pprint e1 ++ " " ++ bracket_pprint e2
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
     pprint (Cast t)  = "cast " ++ pprint t
     -- Poly
     pprint (TyAbs var e) = "/\\" ++ var ++ " -> " ++ pprint e
-    pprint (TyEmbed t) = "@" ++ bracket_pprint t
+    pprint (TyEmbed t) = "[" ++ pprint t ++ "]"
     -- ML
     pprint (GenLet x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
     -- PCF expressions

@@ -70,7 +70,6 @@ import Lang.Options
     '}'     { TokenRBrace _ }
     ','     { TokenMPair _ }
     '.'     { TokenDot _ }
-    '@'     { TokenAt _ }
     LAMBDA  { TokenLambda _ }
 
 %right in
@@ -212,21 +211,21 @@ TypeAtom
 
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Expr ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  | Juxt '[' Type ']'                 { \opts -> App ($1 opts) (TyEmbed ($3 opts)) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
+  | LAMBDA '(' IDENT ':' Type ')' ':' Expr
+    { \opts -> MkAbs (mkPos $1) (symString $3) (Just ($5 opts)) ($8 opts) }
   | LAMBDA IDENT ':' Expr
     { \opts -> MkAbs (mkPos $1) (symString $2) Nothing ($4 opts) }
   | zero
     { \opts -> MkZero (mkPos $1) }
   | succ
     { \opts -> MkSucc (mkPos $1) }
-
-  | '@' TypeAtom
-    { \opts -> MkTyEmbed (mkPos $1) ($2 opts) }
 
   | Expr ',' Expr
      { \opts -> Pair ($1 opts) ($3 opts) }

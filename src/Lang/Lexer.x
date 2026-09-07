@@ -83,7 +83,6 @@ tokens :-
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
-  \@                            { \p _ -> TokenAt p }
 
 {
 
@@ -128,7 +127,6 @@ data Token
   | TokenSnd      AlexPosn
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
-  | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
   | TokenBool     AlexPosn Bool
