@@ -60,6 +60,7 @@ desugarDef (FunDef id args body) = do
   -- Rewrite the body expression to have the right type annotations
   argVar <- freshVar
   let bindArgs = bindFunctionArgs typedArgs (Var argVar) bodyExpr
+  emitDefs [FunDef id ]
   -- Build the lambda
   let functionExpr = Abs argVar (Just argType) bindArgs
   emitDefs [ValDef (VarLhs id Nothing) functionExpr]
