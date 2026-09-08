@@ -32,9 +32,9 @@ type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
     ValDef  :: Lhs p -> Expr -> Def p
-    AnnDef  :: Identifier -> Type 0 -> Def Parsed
-    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def Parsed] -> Def Parsed
-    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> [Def Desugared] -> Def Desugared
+    AnnDef  :: Identifier -> Type 0 -> Def 'Parsed
+    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def 'Parsed] -> Def 'Parsed
+    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> [Def 'Desugared] -> Def 'Desugared
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
     ImportDef :: ImportSpec -> Def p
@@ -56,8 +56,8 @@ type HasPairLhsC p = (HasPairLhs p ~ 'True)
 -- and construction. Use the Mk* constructors directly when you need to supply or
 -- inspect source positions.
 data Expr where
-    MkAbs :: Maybe SrcPos -> Identifier -> Maybe (Type 0) -> Expr -> Expr
-    MkApp :: Maybe SrcPos -> Expr ->  Expr   -> Expr
+    MkAbs :: Maybe SrcPos -> [(Identifier, Maybe (Type 0))] -> Expr -> Expr
+    MkApp :: Maybe SrcPos -> Expr -> [Expr]  -> Expr
     MkVar :: Maybe SrcPos -> Identifier      -> Expr
     MkSig :: Maybe SrcPos -> Expr -> Type 0  -> Expr
     MkTyAbs   :: Maybe SrcPos -> Identifier -> Expr -> Expr
@@ -66,13 +66,9 @@ data Expr where
     MkCast :: Maybe SrcPos -> Expr -> Expr
     MkZero :: Maybe SrcPos -> Expr
     MkSucc :: Maybe SrcPos -> Expr
-    MkNatCase :: Maybe SrcPos -> Expr -> Expr -> (Identifier, Expr) -> Expr
-    MkFix :: Maybe SrcPos -> Expr              -> Expr
     MkPair :: Maybe SrcPos -> Expr -> Expr     -> Expr
     MkFst :: Maybe SrcPos -> Expr              -> Expr
     MkSnd :: Maybe SrcPos -> Expr              -> Expr
-    MkInl :: Maybe SrcPos -> Expr              -> Expr
-    MkInr :: Maybe SrcPos -> Expr              -> Expr
     MkCase :: Maybe SrcPos -> Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
     MkNumFloat   :: Maybe SrcPos -> Float        -> Expr
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
@@ -86,7 +82,7 @@ data Expr where
 
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos
-exprPos (MkAbs p _ _ _)     = p
+exprPos (MkAbs p _ _)       = p
 exprPos (MkApp p _ _)       = p
 exprPos (MkVar p _)         = p
 exprPos (MkSig p _ _)       = p
@@ -96,13 +92,9 @@ exprPos (MkLet p _ _ _)     = p
 exprPos (MkCast p _)        = p
 exprPos (MkZero p)          = p
 exprPos (MkSucc p)          = p
-exprPos (MkNatCase p _ _ _) = p
-exprPos (MkFix p _)         = p
 exprPos (MkPair p _ _)      = p
 exprPos (MkFst p _)         = p
 exprPos (MkSnd p _)         = p
-exprPos (MkInl p _)         = p
-exprPos (MkInr p _)         = p
 exprPos (MkCase p _ _ _)    = p
 exprPos (MkNumFloat p _)    = p
 exprPos (MkNumInteger p _)  = p
@@ -116,13 +108,13 @@ exprPos (MkCond p _ _ _)    = p
 -- | Position-agnostic pattern synonyms.
 -- In a pattern they match regardless of the stored position.
 -- As expressions they construct with Nothing as the position.
-pattern Abs :: Identifier -> Maybe (Type 0) -> Expr -> Expr
-pattern Abs x mt e <- MkAbs _ x mt e
-  where Abs x mt e = MkAbs Nothing x mt e
+pattern Abs :: [(Identifier, Maybe (Type 0))] -> Expr -> Expr
+pattern Abs params e <- MkAbs _ params e
+  where Abs params e = MkAbs Nothing params e
 
-pattern App :: Expr -> Expr -> Expr
-pattern App e1 e2 <- MkApp _ e1 e2
-  where App e1 e2 = MkApp Nothing e1 e2
+pattern App :: Expr -> [Expr] -> Expr
+pattern App e1 es <- MkApp _ e1 es
+  where App e1 es = MkApp Nothing e1 es
 
 pattern Var :: Identifier -> Expr
 pattern Var x <- MkVar _ x
@@ -156,14 +148,6 @@ pattern Succ :: Expr
 pattern Succ <- MkSucc _
   where Succ = MkSucc Nothing
 
-pattern NatCase :: Expr -> Expr -> (Identifier, Expr) -> Expr
-pattern NatCase e e1 b <- MkNatCase _ e e1 b
-  where NatCase e e1 b = MkNatCase Nothing e e1 b
-
-pattern Fix :: Expr -> Expr
-pattern Fix e <- MkFix _ e
-  where Fix e = MkFix Nothing e
-
 pattern Pair :: Expr -> Expr -> Expr
 pattern Pair e1 e2 <- MkPair _ e1 e2
   where Pair e1 e2 = MkPair Nothing e1 e2
@@ -175,14 +159,6 @@ pattern Fst e <- MkFst _ e
 pattern Snd :: Expr -> Expr
 pattern Snd e <- MkSnd _ e
   where Snd e = MkSnd Nothing e
-
-pattern Inl :: Expr -> Expr
-pattern Inl e <- MkInl _ e
-  where Inl e = MkInl Nothing e
-
-pattern Inr :: Expr -> Expr
-pattern Inr e <- MkInr _ e
-  where Inr e = MkInr Nothing e
 
 pattern Case :: Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
 pattern Case e bl br <- MkCase _ e bl br
@@ -221,12 +197,12 @@ pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
   where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
 
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkLet, MkCast,
-             MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
+             MkZero, MkSucc, MkPair, MkFst, MkSnd,
+            MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
              MkCon, MkCond #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, Let, Cast,
-             Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
+             Zero, Succ, Pair, Fst, Snd,
+             Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
              Cond #-}
 
 -- Operators
@@ -243,8 +219,6 @@ isValue (NumFloat _) = True
 isValue (NumInteger _) = True
 isValue (StringConst _) = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
-isValue (Inl e) = isValue e
-isValue (Inr e) = isValue e
 isValue Zero = True
 isValue Succ = True
 isValue e       = isNatVal e
@@ -252,7 +226,7 @@ isValue e       = isNatVal e
 isNatVal :: Expr -> Bool
 isNatVal Zero = True
 isNatVal Succ = True
-isNatVal (App e1 e2) = isNatVal e1 && isNatVal e2
+isNatVal (App e1 es) = isNatVal e1 && all isNatVal es
 isNatVal _           = False
 
 ------------------------------
@@ -278,7 +252,7 @@ instance Ord (ProxyN n) where
 data Type (n :: Nat) where
     -- {id : arg1} -> arg2
     ImplicitFunTy :: Identifier -> Type 2 -> Type 1 -> Type 1
-    FunTy :: Type l -> Type l -> Type l  -- A -> B
+    FunTy :: [Type l] -> Type l -> Type l  -- A -> B
 
     TyCon :: ProxyN l -> Identifier -> Type l        -- K
 
@@ -330,22 +304,17 @@ class Term t where
   mkVar     :: Identifier -> t
 
 instance Term Expr where
-  boundVars (Abs var _ e)                = var `Set.insert` boundVars e
+  boundVars (Abs params e)               = Set.fromList (map fst params) `Set.union` boundVars e
   boundVars (TyAbs var e)                = var `Set.insert` boundVars e
   boundVars (TyEmbed t)                  = boundVars t
-  boundVars (App e1 e2)                  = boundVars e1 `Set.union` boundVars e2
+  boundVars (App e1 es)                  = boundVars e1 `Set.union` Set.unions (map boundVars es)
   boundVars (Var var)                    = Set.empty
   boundVars (Sig e _)                    = boundVars e
   boundVars (Let var e1 e2)              = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
   boundVars (Cast e)                     = boundVars e
-  boundVars (NatCase e e1 (x,e2))        =
-    x `Set.insert` (boundVars e `Set.union` boundVars e1 `Set.union` boundVars e2)
-  boundVars (Fix e)                      = boundVars e
   boundVars (Pair e1 e2)                 = boundVars e1 `Set.union` boundVars e2
   boundVars (Fst e)                      = boundVars e
   boundVars (Snd e)                      = boundVars e
-  boundVars (Inl e)                      = boundVars e
-  boundVars (Inr e)                      = boundVars e
   boundVars (Case e (x,e1) (y,e2))       =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
@@ -353,22 +322,17 @@ instance Term Expr where
   boundVars (Cond e1 e2 e3)              = boundVars e1 `Set.union` boundVars e2 `Set.union` boundVars e3
   boundVars _                            = Set.empty
 
-  freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
+  freeVars (Abs params e)                = foldr Set.delete (freeVars e) (map fst params)
   freeVars (TyAbs var e)                 = Set.delete var (freeVars e)
   freeVars (TyEmbed t)                   = freeVars t
-  freeVars (App e1 e2)                   = freeVars e1 `Set.union` freeVars e2
+  freeVars (App e1 es)                   = freeVars e1 `Set.union` Set.unions (map freeVars es)
   freeVars (Var var)                     = Set.singleton var
   freeVars (Sig e _)                     = freeVars e
   freeVars (Let var e1 e2)               = Set.delete var (freeVars e1 `Set.union` freeVars e2)
   freeVars (Cast e)                      = freeVars e
-  freeVars (NatCase e e1 (x,e2))         =
-    freeVars e `Set.union` freeVars e1 `Set.union` (Set.delete x (freeVars e2))
-  freeVars (Fix e)                       = freeVars e
   freeVars (Pair e1 e2)                  = freeVars e1 `Set.union` freeVars e2
   freeVars (Fst e)                       = freeVars e
   freeVars (Snd e)                       = freeVars e
-  freeVars (Inl e)                       = freeVars e
-  freeVars (Inr e)                       = freeVars e
   freeVars (Case e (x,e1) (y,e2))        =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
@@ -379,7 +343,7 @@ instance Term Expr where
   mkVar = Var
 
 instance {-# OVERLAPS #-} Term (Type 0) where
-  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (FunTy ts t2)  = Set.unions (map boundVars ts) `Set.union` boundVars t2
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ImplicitTyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
@@ -390,7 +354,7 @@ instance {-# OVERLAPS #-} Term (Type 0) where
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
 
-  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ImplicitTyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
@@ -405,14 +369,14 @@ instance {-# OVERLAPS #-} Term (Type 0) where
 
 instance Term (Type 1) where
   boundVars (ImplicitFunTy i t1 t2) = i `Set.insert` (boundVars t1 `Set.union` boundVars t2)
-  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (FunTy ts t2)  = Set.unions (map boundVars ts) `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
   freeVars (ImplicitFunTy i t1 t2) = freeVars t1 `Set.union` (Set.delete i (freeVars t2))
-  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
@@ -421,13 +385,13 @@ instance Term (Type 1) where
   mkVar = TyVar
 
 instance Term (Type 2) where
-  boundVars (FunTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (FunTy ts t2)  = Set.unions (map boundVars ts) `Set.union` boundVars t2
   boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
-  freeVars (FunTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
   freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var

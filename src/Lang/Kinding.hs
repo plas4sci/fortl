@@ -17,10 +17,10 @@ import Lang.TypeHelpers
 -- Check if a type is well-kinded against the second argument (kind)
 -- and if so, elaborate any implicit arguments in the type
 checkKind :: Type 0 -> Type 1 -> Either TypeError (Type 0)
-checkKind (FunTy t1 t2) k = do
-  t1' <- checkKind t1 k
+checkKind (FunTy ts t2) k = do
+  ts' <- mapM (`checkKind` k) ts
   t2' <- checkKind t2 k
-  return $ FunTy t1' t2'
+  return $ FunTy ts' t2'
 
 -- e.g. Float[U[m]]
 -- :k Float : {d : Desc} -> d -> Type
@@ -29,7 +29,7 @@ checkKind (FunTy t1 t2) k = do
 checkKind t@(TyApp t1 t2) k = do
   (t1', k1) <- synthKind t1
   case k1 of
-    FunTy k1' k2 ->
+    FunTy [k1'] k2 ->
         case kindEquality k2 (IsSpec k) of
           Left err -> Left err
           Right () -> do
@@ -37,7 +37,7 @@ checkKind t@(TyApp t1 t2) k = do
                return $ TyApp t1' t2'
     -- Since ImplictTys must come with an ImplicitTyApp
     -- then this means we have an implicit application here
-    ImplicitFunTy var k1' (FunTy (TyVar var') k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var' -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
@@ -83,15 +83,15 @@ checkKind t k = do
 
 
 checkSort :: Type 1 -> Type 2 -> Either TypeError (Type 1)
-checkSort (FunTy t1 t2) k = do
-  t1' <- checkSort t1 k
+checkSort (FunTy ts t2) k = do
+  ts' <- mapM (`checkSort` k) ts
   t2' <- checkSort t2 k
-  return $ FunTy t1' t2'
+  return $ FunTy ts' t2'
 
 checkSort t@(TyApp t1 t2) k = do
   (t1', k1) <- synthSort t1
   case k1 of
-    FunTy k1' k2 ->
+    FunTy [k1'] k2 ->
         if k == k2
             then do
                t2' <- checkSort t2 k1'
@@ -117,15 +117,15 @@ synthSort (TyCon (SuccP (SuccP _)) c) =
 synthSort (TyApp t1 t2) = do
   (t1', k) <- synthSort t1
   case k of
-    FunTy k1 k2 -> do
+    FunTy [k1] k2 -> do
         t2' <- checkSort t2 k1
         return (TyApp t1' t2', k2)
     _ -> Left $ ExpectingFunctionSort k
 
-synthSort (FunTy t1 t2) = do
-  (t1', k) <- synthSort t1
+synthSort (FunTy ts t2) = do
+  (ts', k) <- synthSortFunctionArguments ts
   t2'      <- checkSort t2 k
-  return (FunTy t1' t2', k)
+  return (FunTy ts' t2', k)
 
 synthSort (ImplicitFunTy var t1 t2) = do
   -- TODO: need synthOrder?
@@ -159,11 +159,11 @@ synthKind t@(TyCon ZeroP c) =
 synthKind (TyApp t1 t2) = do
   (t1', k) <- synthKind t1
   case k of
-    FunTy k1 k2 -> do
+    FunTy [k1] k2 -> do
         t2' <- checkKind t2 k1
         return (TyApp t1' t2', k2)
 
-    ImplicitFunTy var k1' (FunTy (TyVar var') k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var' -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
@@ -181,10 +181,10 @@ synthKind (ImplicitTyApp t1 t2) = do
     _ -> Left $ ExpectingFunctionKind k
 
 
-synthKind (FunTy t1 t2) = do
-  (t1', k) <- synthKind t1
+synthKind (FunTy ts t2) = do
+  (ts', k) <- synthKindFunctionArguments ts
   t2'      <- checkKind t2 k
-  return (FunTy t1' t2', k)
+  return (FunTy ts' t2', k)
 
 synthKind (ProdTy t1 t2) = do
   (t1', t2', k) <- synthCheckPair t1 t2
@@ -227,6 +227,20 @@ synthCheckPair t1 t2 =
     Right (t1', k) -> do
       t2' <- checkKind t2 k
       return (t1', t2', k)
+
+synthKindFunctionArguments :: [Type 0] -> Either TypeError ([Type 0], Type 1)
+synthKindFunctionArguments [] = Left $ ContextualError "Function types must have at least one argument"
+synthKindFunctionArguments (t:ts) = do
+  (t', k) <- synthKind t
+  ts' <- mapM (`checkKind` k) ts
+  return (t' : ts', k)
+
+synthSortFunctionArguments :: [Type 1] -> Either TypeError ([Type 1], Type 2)
+synthSortFunctionArguments [] = Left $ ContextualError "Function kinds must have at least one argument"
+synthSortFunctionArguments (t:ts) = do
+  (t', k) <- synthSort t
+  ts' <- mapM (`checkSort` k) ts
+  return (t' : ts', k)
 
 indent :: String -> String
 indent = unlines . map ("  " <>) . lines

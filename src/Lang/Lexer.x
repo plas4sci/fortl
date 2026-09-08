@@ -46,14 +46,9 @@ tokens :-
   in                            { \p s -> TokenIn p }
   succ                          { \p s -> TokenSucc p }
   zero                          { \p s -> TokenZero p }
-  natcase                       { \p s -> TokenNatCase p }
   case                          { \p s -> TokenCase p }
-  of                            { \p s -> TokenOf p }
-  fix                           { \p s -> TokenFix p }
   fst                           { \p s -> TokenFst p }
   snd                           { \p s -> TokenSnd p }
-  inl                           { \p s -> TokenInl p }
-  inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
   lift                          { \p s -> TokenLift p }
   label                         { \p s -> TokenLabel p }
@@ -90,7 +85,6 @@ tokens :-
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
-  \@                            { \p _ -> TokenAt p }
 
 {
 
@@ -99,10 +93,7 @@ data Token
   | TokenData     AlexPosn
   | TokenDef      AlexPosn
   | TokenCase     AlexPosn
-  | TokenNatCase  AlexPosn
-  | TokenOf       AlexPosn
   | TokenSep      AlexPosn
-  | TokenFix      AlexPosn
   | TokenLet      AlexPosn
   | TokenIn       AlexPosn
   | TokenTyLambda  AlexPosn
@@ -139,11 +130,8 @@ data Token
   | TokenMPair    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
-  | TokenInl      AlexPosn
-  | TokenInr      AlexPosn
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
-  | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
   | TokenBool     AlexPosn Bool
