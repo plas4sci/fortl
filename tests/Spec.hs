@@ -41,7 +41,7 @@ main = do
   positive  <- goldenTestsPositive
 
   catch
-    (defaultMain $ testGroup "All tests" [negative, positive, speciesUnitTests])
+    (defaultMain $ testGroup "All tests" [negative, positive, speciesUnitTests, basisUnitTests])
     (\(e :: ExitCode) -> do
       throwIO e
     )
@@ -164,6 +164,28 @@ speciesUnitTests = testGroup "Species indexing unit tests"
   ]
   where
     sp s = TyApp (tyCon0 "Species") (tyCon0 s)
+
+    assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
+    assertNormalisesTo input expected =
+      case normalisationByEvaluation input of
+        Right actual -> actual @?= expected
+        Left err -> assertFailure ("Unexpected normalisation failure: " <> show err)
+
+basisUnitTests :: TestTree
+basisUnitTests = testGroup "Basis indexing unit tests"
+  [ testCase "Basis[Fox] * Basis[Fox] = Basis[Fox]" $
+      assertNormalisesTo (ProdTy (bs "Fox") (bs "Fox")) (bs "Fox")
+  , testCase "Basis[Fox] ^ 2 = Basis[Fox]" $
+      assertNormalisesTo (ExponentTy (bs "Fox") 2.0) (bs "Fox")
+  , testCase "Basis[Fox] == Basis[Fox]" $
+      assertBool "same basis should be equal" $ isRight $
+        descriptionEquality (bs "Fox") (IsSpec (bs "Fox"))
+  , testCase "Basis[Fox] /= Basis[Rabbit]" $
+      assertBool "different bases should be unequal" $ isLeft $
+        descriptionEquality (bs "Fox") (IsSpec (bs "Rabbit"))
+  ]
+  where
+    bs s = TyApp (tyCon0 "Basis") (tyCon0 s)
 
     assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
     assertNormalisesTo input expected =
