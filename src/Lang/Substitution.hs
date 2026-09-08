@@ -42,14 +42,6 @@ substituteExpr (Cast e) s =
 substituteExpr Zero s = Zero
 substituteExpr Succ s = Succ
 
-substituteExpr (Fix e) s = Fix $ substituteExpr e s
-
-substituteExpr (NatCase e e1 (y,e2)) s =
-  let e'  = substituteExpr e s
-      e1' = substituteExpr e1 s
-      (y', e2') = substitute_binding y e2 s
-  in NatCase e' e1' (y', e2')
-
 substituteExpr (Pair e1 e2) s =
   Pair (substituteExpr e1 s) (substituteExpr e2 s)
 
@@ -61,9 +53,6 @@ substituteExpr (Case e (x,e1) (y,e2)) s =
       (x', e1') = substitute_binding x e1 s
       (y', e2') = substitute_binding y e2 s
   in Case e' (x', e1') (y', e2')
-
-substituteExpr (Inl e) s = Inl $ substituteExpr e s
-substituteExpr (Inr e) s = Inr $ substituteExpr e s
 
 substituteExpr (NumFloat n) s = NumFloat n
 substituteExpr (NumInteger n) s = NumInteger n

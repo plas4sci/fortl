@@ -1,20 +1,20 @@
 # On atmospheric convection
 
 """[Specific heat capacity] of dry air"""
-c_p : Float[Unit[J/(kg * K)] & Species[DryAir]] = 1005.0 #   & Species[DryAir]
+c_p : Float[Unit[J/(kg * K)] & Basis[DryAir]] = 1005.0 #   & Species[DryAir]
 
 
 """Gravitational acceleration"""
-g_v : Float[Unit[m / s^2] & Species[1]] = 9.80665
+g_v : Float[Unit[m / s^2] & Basis[1]] = 9.80665
 
 """Temperature"""
-T : Float[Unit[K] & Species[DryAir]] = 273.15
+T : Float[Unit[K] & Basis[DryAir]] = 273.15
 
 """Geopotential height"""
 # Work involved in lifting one unit mass over one unit of length
 # assuming constant gravitational acceleration
 # Where J = kg * m^2 / s^2  therefore the unit here is = m
-z : Float[Unit[(J * s^2) / (m * kg)] & Species[1]] = 0.0
+z : Float[Unit[(J * s^2) / (m * kg)] & Basis[1]] = 0.0
 
 """Latent heat absorption of sublimation/deposition (energy difference from ice <-> vapor)"""
 # Internal energy of ice = internal energy of vapor - latent heat of sublimation
