@@ -139,14 +139,14 @@ BlockDefs :: { [Option] -> [Def 'Parsed] }
   : nl BlockDefs           { $2 }
   | Def nl BlockDefs       { \opts -> ($1 opts) : ($3 opts) }
   | return Expr nl         { \opts -> [Return ($2 opts)] }
-  | Def                     { \opts -> [$1 opts] }
-  | return Expr             { \opts -> [Return ($2 opts)] }
+  | Def                    { \opts -> [$1 opts] }
+  | return Expr            { \opts -> [Return ($2 opts)] }
 
 Lhs :: { [Option] -> Lhs 'Parsed }
-  : IDENT { \opts -> VarLhs (symString $1) Nothing }
-  | IDENT ':' Type { \opts -> VarLhs (symString $1) (Just $ $3 opts) }
-  | Lhs ',' Lhs { \opts -> PairLhs ($1 opts) ($3 opts) }
-  | '(' Lhs ')' { $2 }
+  : IDENT                  { \opts -> VarLhs (symString $1) Nothing }
+  | IDENT ':' Type         { \opts -> VarLhs (symString $1) (Just ($3 opts)) }
+  | Lhs ',' Lhs            { \opts -> PairLhs ($1 opts) ($3 opts) }
+  | '(' Lhs ')'            { $2 }
 
 ConstructorList :: { [Option] -> [(Identifier, [Type 0])] }
 ConstructorList
@@ -220,9 +220,13 @@ Type
 
 ManyTypes :: { [Option] -> [Type 0] }
 ManyTypes
-  : Type ',' ManyTypes  { \opts -> ($1 opts) : ($3 opts) }
-  | Type                { \opts -> [$1 opts] }
+  : '(' ManyTypesMore ')' { \opts -> $2 opts }
+  | Type                  { \opts -> [$1 opts] }
 
+ManyTypesMore :: { [Option] -> [Type 0] }
+ManyTypesMore
+  : Type ',' ManyTypesMore  { \opts -> ($1 opts) : ($3 opts) }
+  | Type                    { \opts -> [$1 opts] }
 
 NumFloat :: { Float }
 NumFloat
