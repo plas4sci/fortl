@@ -158,52 +158,35 @@ scanTokens = alexScanTokens . stripDocstrings >>= (return . trim . layout)
 
 -- Add layout markers for function bodies. Existing multiline expressions use
 -- indentation for readability, so layout is activated only after a def header.
+-- A stack of block columns supports arbitrarily nested defs.
 layout :: [Token] -> [Token]
-layout tokens = go tokens [] False 0
+layout tokens = go [] tokens [] 0
   where
-    go [] _ True _ = [TokenDedent (AlexPn 0 0 0)]
-    go [] _ False _ = []
-    go (t:ts) stack active parenDepth =
-      case t of
-        TokenNL p ->
-          let (next, _) = nextNonNL ts
-              lineHeader = isDefHeader currentLine
-              nextColumn = maybe 0 (snd . getPos) next
-              (markers, stack', active')
-                | not active && lineHeader && nextColumn > lineColumn currentLine =
-                    ([TokenIndent p], [nextColumn], True)
-                | active && nextColumn < head stack =
-                    ([TokenDedent p], [], False)
-                | otherwise = ([], stack, active)
-              newline = if (active && parenDepth == 0)
-                           || lineHeader || lineStartsImport currentLine
-                        then [t]
-                        else []
-          in newline ++ markers ++ goWithLine [] ts stack' active' parenDepth
-        _ -> t : goWithLine (currentLine ++ [t]) ts stack active (parenDepth + parenthesisDepth t)
-      where
-        currentLine = []
-
-    goWithLine _ [] _ True _ = [TokenDedent (AlexPn 0 0 0)]
-    goWithLine line (t:ts) stack active parenDepth =
+    -- go <tokens of current line so far> <remaining tokens> <block column stack> <paren depth>
+    go _ [] stack _ = map (const (TokenDedent (AlexPn 0 0 0))) stack
+    go line (t:ts) stack parenDepth =
       case t of
         TokenNL p ->
           let (next, _) = nextNonNL ts
               lineHeader = isDefHeader line
               nextColumn = maybe 0 (snd . getPos) next
-              (markers, stack', active')
-                | not active && lineHeader && nextColumn > lineColumn line =
-                    ([TokenIndent p], [nextColumn], True)
-                | active && nextColumn < head stack =
-                    ([TokenDedent p], [], False)
-                | otherwise = ([], stack, active)
-              newline = if (active && parenDepth == 0)
+              newline = if (not (null stack) && parenDepth == 0)
                            || lineHeader || lineStartsImport line
                         then [t]
                         else []
-          in newline ++ markers ++ goWithLine [] ts stack' active' parenDepth
-        _ -> t : goWithLine (line ++ [t]) ts stack active (parenDepth + parenthesisDepth t)
-    goWithLine _ [] _ False _ = []
+              (popped, remaining) = span (> nextColumn) stack
+              (emitted, stack')
+                -- indentation is ignored inside parentheses
+                | parenDepth /= 0 = (newline, stack)
+                -- block opens after a def header: nl before indent
+                | lineHeader && nextColumn > lineColumn line =
+                    (newline ++ [TokenIndent p], nextColumn : stack)
+                -- blocks close: one dedent per level, before the nl so the
+                -- enclosing block still sees a statement separator
+                | otherwise =
+                    (map (const (TokenDedent p)) popped ++ newline, remaining)
+          in emitted ++ go [] ts stack' parenDepth
+        _ -> t : go (line ++ [t]) ts stack (parenDepth + parenthesisDepth t)
 
     nextNonNL [] = (Nothing, [])
     nextNonNL (TokenNL _ : ts) = nextNonNL ts
