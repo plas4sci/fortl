@@ -127,6 +127,7 @@ bigStep env opts (App e1 es) = do
           if null paramsRest
             then Right $ snd $ interpretDefs env' opts body
             else Right $ VClosure paramsRest body env'
+
       -- over-application: apply the arguments this closure takes, then apply
       -- the resulting value to the rest
       | otherwise = do
