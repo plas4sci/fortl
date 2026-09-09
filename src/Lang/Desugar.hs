@@ -91,17 +91,6 @@ resolveFunctionParameterTypes args annotations = mapM fillIn args
           Nothing  -> Right (param_var, ty)
           Just ty' -> Left $ WellFormednessError $ DuplicateParameterAnnotation param_var
 
--- desugarBody :: Map.Map Identifier (Type 0) -> [Def 'Parsed] -> Desugar Expr
--- desugarBody _ [] = return (Con "None" [])
--- desugarBody _ (Return e : _) = return e
--- desugarBody annotations (AnnDef id ty : defs) =
---     desugarBody (Map.insert id ty annotations) defs
--- desugarBody annotations (ValDef lhs e : defs) = do
---     let (lhs', annotations') = applyAnnotation annotations lhs
---     rest <- desugarBody annotations' defs
---     bindLhs lhs' e rest
--- desugarBody annotations (_ : defs) = desugarBody annotations defs
-
 applyPendingAnnotation :: Lhs 'Parsed -> Desugar (Lhs 'Parsed)
 applyPendingAnnotation lhs = do
     st <- get
@@ -117,14 +106,6 @@ applyAnnotation annotations lhs@(VarLhs id Nothing) =
         Just ty -> (VarLhs id (Just ty), Map.delete id annotations)
         Nothing -> (lhs, annotations)
 applyAnnotation annotations lhs = (lhs, annotations)
-
-bindLhs :: Lhs 'Parsed -> Expr -> Expr -> Desugar Expr
-bindLhs (VarLhs x (Just ty)) e rest = return (Let x (Sig e ty) rest)
-bindLhs (VarLhs x Nothing) e rest = return (Let x e rest)
-bindLhs (PairLhs l1 l2) e rest = do
-    tmp <- freshVar
-    rest' <- bindLhs l1 (Fst (Var tmp)) rest
-    bindLhs l2 (Snd (Var tmp)) (Let tmp e rest')
 
 -- (a, (b1, b2)) = c
 -- _0 = c
