@@ -72,7 +72,7 @@ checkKind ctx t@(ImplicitTyApp t1 t2) k = do
 --   return t
 
 -- Allow 1 to be an element of "Base"
-checkKind t@(TyCon _ "1") (TyCon _ "Base") =
+checkKind ctxt t@(TyCon _ "1") (TyCon _ "Base") =
   return t
 
 checkKind ctxt t k = do
@@ -146,9 +146,9 @@ synthSort ctx (WithTy t1 t2) = do
 synthSort ctx (TyVar v) = return (TyVar v, TyCon (SuccP (SuccP ZeroP)) "Type")
 
 -- A lifted Type 0 value used as a kind always has sort Type
-synthSort ctx (Lift t) = do
+synthSort ctx (LiftTy t) = do
   (t', _) <- synthKind ctx t
-  return (Lift t', type1)
+  return (LiftTy t', type1)
 
 
 -- Infer a kind for a type and elaborate the type
@@ -160,8 +160,8 @@ synthKind ctx t@(TyCon ZeroP c) =
       Nothing ->
         -- Perhaps a local definition
         case lookup c ctx of
-          Just t' -> return (t, Lift t')
-          Nothing -> Left $ UnknownTypeConstructor c 
+          Just t' -> return (t, LiftTy t')
+          Nothing -> Left $ UnknownTypeConstructor c
       Just k' -> Right (t, k')
 
 synthKind ctx (TyApp t1 t2) = do
