@@ -18,11 +18,13 @@ import qualified Data.Map.Lazy as Map
 -- Result of evaluating is a value which is either a (normal form) expression
 -- or a function closure
 data Value =
-    VClosure { closureParams :: [Identifier], closureBody :: [Def 'Desugared], closureEnv :: Env }
+    VClosure   { closureParams :: [Identifier], closureBody :: [Def 'Desugared], closureEnv :: Env }
+  | VPrimitive { primitiveName :: String, primitiveFunc :: [Value] -> Either String Value }
   | ValExpr Expr
 
 instance PrettyPrint Value where
   pprint (ValExpr e) = pprint e
+  pprint (VPrimitive name _) = "<primitive:" ++ name ++ ">"
   pprint (VClosure params _ _) = "<function/" ++ show (length params) ++ ">"
 
 -- | Project a normal-form expression out of a value
@@ -30,6 +32,7 @@ instance PrettyPrint Value where
 valueToExpr :: Value -> Either String Expr
 valueToExpr (ValExpr e) = Right e
 valueToExpr VClosure{}  = Left "Cannot use a function value here"
+valueToExpr VPrimitive{} = Left "Cannot use a primitive value here"
 
 -- Environment
 data Env = Env
@@ -37,9 +40,15 @@ data Env = Env
     , parent   :: Maybe Env
     }
 
+primitives :: [(Identifier, Value)]
+primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)]
+  where
+    sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
+    sqrtFunc _ = Left "sqrt expects a single float argument" 
+
 -- Empty env (at top of lexical scope)
 emptyEnv :: Env
-emptyEnv = Env Map.empty Nothing
+emptyEnv = Env (Map.fromList primitives) Nothing
 
 -- Add binding in the current frame
 bindHere :: Identifier -> Value -> Env -> Env
@@ -101,14 +110,6 @@ interpretDefs env opts [] =
 
 bigStep :: Env -> [Option] -> Expr -> Either String Value
 
--- Special-cased primitive: sqrt
-bigStep env opts (App (Var "sqrt") [e2]) =
-  case bigStep env opts e2 of
-    Right (ValExpr (NumFloat n)) ->
-      return $ ValExpr $ NumFloat $ sqrt n
-    Right _            -> Left "sqrt expects a number"
-    Left err           -> Left err
-
 bigStep env opts (App e1 es) = do
   v1 <- bigStep env opts e1
   apply v1 es
@@ -121,10 +122,12 @@ bigStep env opts (App e1 es) = do
           let (paramsHere, paramsRest) = splitAt (length es) params
           -- Evaluate the arguments
           vs <- mapM (bigStep env opts) es
+          -- Make new environment for the closure, binding the parameters to the evaluated arguments
           let env' = Env { bindings = Map.fromList (zip paramsHere vs), parent = Just capturedEnv }
           if null paramsRest
             then Right $ snd $ interpretDefs env' opts body
             else Right $ VClosure paramsRest body env'
+
       -- over-application: apply the arguments this closure takes, then apply
       -- the resulting value to the rest
       | otherwise = do
@@ -132,6 +135,10 @@ bigStep env opts (App e1 es) = do
           vs <- mapM (bigStep env opts) esHere
           let env' = Env { bindings = Map.fromList (zip params vs), parent = Just capturedEnv }
           apply (snd (interpretDefs env' opts body)) esRest
+
+    apply (VPrimitive _ f) es = do
+      vs <- mapM (bigStep env opts) es
+      f vs
 
     -- Type abstraction: uses a substitution (rather than environment) to avoid
     -- having to carry around type environments
