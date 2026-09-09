@@ -165,7 +165,6 @@ bigStep env opts (Var x) =
         Just _  -> Right (ValExpr (Con x []))
         Nothing -> Left $ "Unbound variable: " ++ x
 
-
 bigStep env opts (Let x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep (bindHere x v1 env) opts e2
@@ -189,6 +188,7 @@ bigStep env opts (Snd e) = do
   case v of
     ValExpr (Pair _ e2) -> Right $ ValExpr e2
     _         -> Left "snd expects a pair"
+
 bigStep env opts (Pair e1 e2) = do
   v1 <- bigStep env opts e1 >>= valueToExpr
   v2 <- bigStep env opts e2 >>= valueToExpr
