@@ -71,8 +71,12 @@ checkKind ctx t@(ImplicitTyApp t1 t2) k = do
 -- checkKind ctx t@(TyCon _ c) k | k == agroup =
 --   return t
 
-checkKind ctx t k = do
-  (t', k') <- synthKind ctx t
+-- Allow 1 to be an element of "Base"
+checkKind t@(TyCon _ "1") (TyCon _ "Base") =
+  return t
+
+checkKind ctxt t k = do
+  (t', k') <- synthKind ctxt t
   if k == k'
     then Right t'
     else Left $ KindMismatch k k' (Just t)

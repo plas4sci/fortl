@@ -22,6 +22,7 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (Var _) = True
     isLexicallyAtomic (NumFloat _) = True
     isLexicallyAtomic (StringConst _) = True
+    isLexicallyAtomic (NumInteger _) = True
     isLexicallyAtomic _       = False
 
     pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
@@ -30,27 +31,22 @@ instance PrettyPrint Expr where
       bracket_pprint (Abs var mt e1) ++ " " ++ bracket_pprint e2
     pprint (App (Sig e1 t) e2) =
       bracket_pprint (Sig e1 t) ++ " " ++ bracket_pprint e2
+    pprint (App e1 (TyEmbed t)) = pprint e1 ++ "[" ++ pprint t ++ "]"
     pprint (App e1 e2) = pprint e1 ++ " " ++ bracket_pprint e2
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
     pprint (Cast t)  = "cast " ++ pprint t
     -- Poly
     pprint (TyAbs var e) = "/\\" ++ var ++ " -> " ++ pprint e
-    pprint (TyEmbed t) = "@" ++ bracket_pprint t
+    pprint (TyEmbed t) = "[" ++ pprint t ++ "]"
     -- ML
     pprint (GenLet x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
     -- PCF expressions
     pprint Zero                   = "zero"
     pprint Succ                   = "succ"
-    pprint (Fix e)                = "fix " ++ bracket_pprint e
-    pprint (NatCase e e1 (x,e2))  =
-      "natcase " ++ bracket_pprint e ++ " of zero => " ++
-      bracket_pprint e1 ++ " | succ " ++ x ++ " => " ++ bracket_pprint e2
     pprint (Pair e1 e2)           = "(" ++ pprint e1 ++ ", " ++ pprint e2 ++ ")"
     pprint (Fst e)                = "fst " ++ bracket_pprint e
     pprint (Snd e)                = "snd " ++ bracket_pprint e
-    pprint (Inl e)                = "inl " ++ bracket_pprint e
-    pprint (Inr e)                = "inr " ++ bracket_pprint e
     pprint (Case e (x,e1) (y,e2)) =
       "case " ++ bracket_pprint e ++ " of inl " ++ x ++ " => " ++
       bracket_pprint e1 ++ " | inr " ++ y ++ " => " ++ bracket_pprint e2
@@ -60,21 +56,37 @@ instance PrettyPrint Expr where
           operator = pprint op
       in
         arg1 <> operator <> arg2
+    pprint (UnOp op e) =
+      let arg = bracket_pprint e
+          operator = pprint op
+      in
+        operator <> arg
+    pprint (Lift e t) = "lift(" ++ pprint e ++ ", " ++ pprint t ++ ")"
     pprint (NumFloat f) = show f
     pprint (NumInteger n) = show n
     pprint (StringConst s) = show s
+    pprint (Cond e1 e2 e3) =
+      pprint e1 ++ " if " ++ pprint e2 ++ " else " ++ pprint e3
     pprint (Con c []) = c
     pprint (Con c es) =
       c ++ "(" ++ concat (map (\e -> pprint e ++ ", ") es) ++ ")"
 
-instance PrettyPrint Op where
+instance PrettyPrint BinOp where
   pprint op =
     case op of
-      OpExp -> "^"
-      OpPlus -> "+"
-      OpMinus -> "-"
-      OpTimes -> "*"
-      OpDivide -> "/"
+      BinOpExp -> "^"
+      BinOpPlus -> "+"
+      BinOpMinus -> "-"
+      BinOpTimes -> "*"
+      BinOpDivide -> "/"
+      BinOpAnd -> "and"
+      BinOpOr -> "or"
+
+instance PrettyPrint UnOp where
+  pprint op =
+    case op of
+      UnOpNegate -> "-"
+      UnOpNot -> "not"
 
 instance PrettyPrint () where
     pprint () = "()"

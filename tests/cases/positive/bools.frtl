@@ -1,0 +1,3 @@
+a : bool = True
+b : bool = False
+it : bool = a and b or (not a)

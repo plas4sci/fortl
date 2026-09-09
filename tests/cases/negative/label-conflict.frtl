@@ -1,0 +1,3 @@
+x : Float[Unit[m]] = 1.0
+y = label(x, Unit[s])
+it = y

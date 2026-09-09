@@ -1,0 +1,3 @@
+x : Float[Unit[m] & Species[Fox]] = 2.0
+y : Float[Unit[s] & Species[Fox]] = 3.0
+it : Float[Unit[m * s] & Species[Fox]] = x * y

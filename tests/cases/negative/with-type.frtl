@@ -1,4 +1,4 @@
-x : Float = 1.0
-y : Float & Float = 2.0   # idempotence in constant
-z : Float & Float = x + y # idempotencen in operation
+x : float = 1.0
+y : float & float = 2.0   # idempotence in constant
+z : float & float = x + y
 it = x + y + z

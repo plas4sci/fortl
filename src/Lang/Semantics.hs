@@ -41,6 +41,12 @@ interpretDefs env opts [] =
 
 -- Big step operational model (i.e., expression interpreter)
 bigStep :: Env -> [Option] -> Expr -> Either String Expr
+-- Special-cased primitive: sqrt
+bigStep env opts (App (Var "sqrt") e2) =
+  case bigStep env opts e2 of
+    Right (NumFloat n) -> return $ NumFloat $ sqrt n
+    Right _            -> Left "sqrt expects a number"
+    Left err           -> Left err
 bigStep env opts (App e1 e2) =
   case bigStep env opts e1 of
     Left err -> Left err
@@ -66,23 +72,14 @@ bigStep env opts (GenLet x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep ((x, v1) : env) opts e2
 
-bigStep env opts (NatCase eg ez (bind, es)) =
-  case bigStep env opts eg of
-    Left err -> Left err
-    Right Zero -> bigStep env opts ez
-    Right (App Succ n) -> bigStep ((bind, n):env) opts es
-    Right _ -> Left "natcase expects a natural number"
-bigStep env opts (Fix e) =
-  case bigStep env opts e of
-    Left err -> Left err
-    Right (Abs x _ body) -> bigStep ((x, Fix (Abs x Nothing body)) : env) opts e
-    Right _ -> Left "fix expects a function"
 bigStep env opts (Case eg branchl branchr) = do
-  v <- bigStep env opts eg
-  case v of
-    Inl e1 -> bigStep ((fst branchl, e1) : env) opts (snd branchl)
-    Inr e2 -> bigStep ((fst branchr, e2) : env) opts (snd branchr)
-    _      -> Left "case expects a sum type"
+  error "Not implemented yet"
+--   v <- bigStep env opts eg
+--   case v of
+--     Inl e1 -> bigStep ((fst branchl, e1) : env) opts (snd branchl)
+--     Inr e2 -> bigStep ((fst branchr, e2) : env) opts (snd branchr)
+--     _      -> Left "case expects a sum type"
+
 bigStep env opts (Fst e) =
   case bigStep env opts e of
     Right (Pair e1 _) -> bigStep env opts e1
@@ -95,31 +92,77 @@ bigStep env opts (Pair e1 e2) = do
   v1 <- bigStep env opts e1
   v2 <- bigStep env opts e2
   return $ Pair v1 v2
-bigStep env opts (Inl e) = Inl <$> bigStep env opts e
-bigStep env opts (Inr e) = Inr <$> bigStep env opts e
+bigStep env opts (Lift e _) = bigStep env opts e
 bigStep env opts (BinOp op e1 e2) = do
   v1 <- bigStep env opts e1
   v2 <- bigStep env opts e2
   case (v1, v2) of
     (NumFloat n1, NumFloat n2) ->
       case op of
-        OpExp    -> return $ NumFloat $ n1 ** n2
-        OpPlus   -> return $ NumFloat $ n1 + n2
-        OpTimes  -> return $ NumFloat $ n1 * n2
-        OpMinus  -> return $ NumFloat $ n1 - n2
-        OpDivide -> if n2 /= 0
+        BinOpExp    -> return $ NumFloat $ n1 ** n2
+        BinOpPlus   -> return $ NumFloat $ n1 + n2
+        BinOpTimes  -> return $ NumFloat $ n1 * n2
+        BinOpMinus  -> return $ NumFloat $ n1 - n2
+        BinOpDivide -> if n2 /= 0
                       then return $ NumFloat $ n1 / n2
                       else Left "Division by zero"
+        BinOpAnd    -> Left "Logical AND is not defined for floats"
+        BinOpOr     -> Left "Logical OR is not defined for floats"
     (NumInteger n1, NumInteger n2) ->
       case op of
-        OpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
-        OpPlus   -> return $ NumInteger $ n1 + n2
-        OpTimes  -> return $ NumInteger $ n1 * n2
-        OpMinus  -> return $ NumInteger $ n1 - n2
-        OpDivide -> if n2 /= 0
+        BinOpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
+        BinOpPlus   -> return $ NumInteger $ n1 + n2
+        BinOpTimes  -> return $ NumInteger $ n1 * n2
+        BinOpMinus  -> return $ NumInteger $ n1 - n2
+        BinOpDivide -> if n2 /= 0
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
-    _ -> Left "Binary operation expects two numbers"
+        BinOpAnd    -> Left "Logical AND is not defined for integers"
+        BinOpOr     -> Left "Logical OR is not defined for integers"
+    (Con b1 [], Con b2 []) ->
+      case op of
+        BinOpAnd -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "False" []
+            ("False", "True")  -> return $ Con "False" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical AND operation expects two booleans"
+        BinOpOr  -> 
+          case (b1, b2) of
+            ("True", "True")   -> return $ Con "True" []
+            ("True", "False")  -> return $ Con "True" []
+            ("False", "True")  -> return $ Con "True" []
+            ("False", "False") -> return $ Con "False" []
+            _ -> Left "Logical OR operation expects two booleans"
+        _ -> Left "Binary operation undefined for given inputs"
+    _ -> Left "Error in binary operation evaluation"
+bigStep env opts (UnOp op e) = do
+  v <- bigStep env opts e
+  case v of
+    (NumFloat n) ->
+      case op of
+        UnOpNegate -> return $ NumFloat $ -n
+        UnOpNot    -> Left "Logical NOT is not defined for floats"
+    (NumInteger n) ->
+      case op of
+        UnOpNegate -> return $ NumInteger $ -n
+        UnOpNot    -> Left "Logical NOT is not defined for integers"
+    (Con b []) ->
+      case op of
+        UnOpNot -> 
+          case b of
+            "True" -> return $ Con "False" []
+            "False" -> return $ Con "True" []
+            _ -> Left "Logical NOT operation expects a boolean"
+        UnOpNegate -> Left "Negation is not defined for booleans"
+    _ -> Left "Error in unary operation evaluation"
+bigStep env opts (Cond e1 e2 e3) = do
+  v2 <- bigStep env opts e2
+  case v2 of
+    Con "True" []  -> bigStep env opts e1
+    Con "False" [] -> bigStep env opts e3
+    _              -> Left "Condition expects a boolean"
 
 -- Values
 bigStep env opts (TyEmbed e) = Right $ TyEmbed e -- TODO: remove this

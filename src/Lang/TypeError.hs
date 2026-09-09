@@ -16,19 +16,20 @@ data TypeError
   | TypeCheckFailure { inferredType :: Type 0, checkType :: Type 0, reason :: String }
   | CannotSynthType Expr
   | ExpectingNumericType (Type 0)
+  | ExpectingBooleanType (Type 0)
   | ExpectingFunctionType Expr (Type 0)
   | ExpectingProductType Expr (Type 0)
   | ExpectingSumType Expr
   | ExpectingPolymorphicType (Type 0)
   | NonProductTypeToPair (Type 0)
-  | SumConstructionTypeMismatch (Type 0)
   | FunctionAbstractionTypeMismatch { expectedArg :: Type 0, actualArg :: Type 0 }
-  | FixpointDomainRangeMismatch Expr (Type 0) (Type 0)
   | ExplicitSignatureCheckFailure (Type 0) TypeError
   | CannotProjectFromType (Type 0) String
   
   -- Description/grading errors  
   | DescriptionEqualityFailure (Type 0) (Type 0)
+  | CannotComputeDescriptionRepresentation (Type 0)
+  | OverlappingDescriptionConflict Identifier (Type 0) (Type 0)
   | DescriptionKeyMismatch [Identifier] [Identifier]
   | AbelianGroupMismatch (Type 0) (Type 0)
   | TypeTreeMismatch (Type 0) (Type 0)
@@ -44,8 +45,9 @@ data TypeError
   | SortMismatch { expectedSort :: Type 2, actualSort :: Type 2, kindInQuestion :: Type 1 }
   
   -- Operator errors
-  | OperatorTypeError Op TypeError
-  | OperatorDescriptionMismatch Op (Type 0) (Type 0)
+  | BinaryOperatorTypeError BinOp TypeError
+  | BinaryOperatorDescriptionMismatch BinOp (Type 0) (Type 0)
+  | UnaryOperatorTypeError UnOp TypeError
   
   -- Abstraction and polymorphism errors
   | FreeVariablesInAbstraction [Identifier]

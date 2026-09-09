@@ -1,0 +1,3 @@
+x : Float[Species[1]] = 5.0
+y : Float[Species[Fox]] = 3.0
+it : Float[Species[Fox]] = x * y

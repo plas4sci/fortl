@@ -44,19 +44,21 @@ tokens :-
   in                            { \p s -> TokenIn p }
   succ                          { \p s -> TokenSucc p }
   zero                          { \p s -> TokenZero p }
-  natcase                       { \p s -> TokenNatCase p }
   case                          { \p s -> TokenCase p }
-  of                            { \p s -> TokenOf p }
-  fix                           { \p s -> TokenFix p }
   fst                           { \p s -> TokenFst p }
   snd                           { \p s -> TokenSnd p }
-  inl                           { \p s -> TokenInl p }
-  inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
+  lift                          { \p s -> TokenLift p }
+  label                         { \p s -> TokenLabel p }
   return                        { \p s -> TokenReturn p }
   from                          { \p s -> TokenFrom p }
   import                        { \p s -> TokenImport p }
   lambda                        { \p s -> TokenLambda p }
+  if                            { \p s -> TokenIf p }
+  else                          { \p s -> TokenElse p }
+  and                           { \p s -> TokenAnd p }
+  or                            { \p s -> TokenOr p }
+  not                           { \p s -> TokenNot p }
   "|"                           { \p s -> TokenSep p }
   @sym				                  { \p s -> TokenSym p s }
   @stringLiteral                { \p s -> TokenString p s }
@@ -81,7 +83,6 @@ tokens :-
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
-  \@                            { \p _ -> TokenAt p }
 
 {
 
@@ -89,14 +90,13 @@ data Token
   = TokenLang     AlexPosn String
   | TokenData     AlexPosn
   | TokenCase     AlexPosn
-  | TokenNatCase  AlexPosn
-  | TokenOf       AlexPosn
   | TokenSep      AlexPosn
-  | TokenFix      AlexPosn
   | TokenLet      AlexPosn
   | TokenIn       AlexPosn
   | TokenTyLambda  AlexPosn
   | TokenLambda   AlexPosn
+  | TokenIf       AlexPosn
+  | TokenElse     AlexPosn
   | TokenSym      AlexPosn String
   | TokenTyVar    AlexPosn String
   | TokenZero     AlexPosn
@@ -113,6 +113,9 @@ data Token
   | TokenSum      AlexPosn
   | TokenMinus    AlexPosn
   | TokenDivide   AlexPosn
+  | TokenAnd      AlexPosn
+  | TokenOr       AlexPosn
+  | TokenNot      AlexPosn
   | TokenLPair    AlexPosn
   | TokenRPair    AlexPosn
   | TokenLBrack    AlexPosn
@@ -122,17 +125,17 @@ data Token
   | TokenMPair    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
-  | TokenInl      AlexPosn
-  | TokenInr      AlexPosn
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
-  | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
+  | TokenBool     AlexPosn Bool
   | TokenString   AlexPosn String
   | TokenAmpersand AlexPosn
   | TokenExponent  AlexPosn
   | TokenCast     AlexPosn
+  | TokenLift     AlexPosn
+  | TokenLabel    AlexPosn
   | TokenReturn   AlexPosn
   | TokenFrom     AlexPosn
   | TokenImport   AlexPosn

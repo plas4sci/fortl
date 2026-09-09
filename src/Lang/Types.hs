@@ -14,17 +14,19 @@ import Lang.Descriptions
 import Lang.TypeHelpers
 import Lang.TypeError
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isJust)
 
-
+-- Infer the type of an entire program
 synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
 synthProgram = synthProgram' []
   where
+    -- Build a type environment as we analysis a program
     synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
     synthProgram' gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+    -- Definition with a type signature
     synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind gamma ty of
         Left err -> Left err
@@ -33,39 +35,21 @@ synthProgram = synthProgram' []
             Right () -> synthProgram' ((v, ty') : gamma) defs
             Left err -> Left err
 
+    -- Definition without a type signature
     synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
         Right ty -> synthProgram' ((v, ty) : gamma) defs
         Left err -> Left err
+
+
     synthProgram' gamma ((Return e):defs) = do
       ty <- synth gamma e
       return (gamma, ty)
+
     synthProgram' gamma ((DataDef v constrs ty):defs) =
       synthProgram' gamma defs
+
     synthProgram' gamma (_:defs) = synthProgram' gamma defs
-{-
-
-**********************************************************************************
-Declarative specification of the (relational) graded simply-typed lambda calculus
-**********************************************************************************
-Recall contexts are like lists of variable-type assumptions
-
-
-G ::=  G, x : A | .
-
-       (x :_1 A) in G
-var ----------------------
-       G |- x : A
-
-     G1 |- e1 : A -> B      G2 |- e2 : A
-app ---------------------------------------
-    G1 + r * G2 |- e1 e2 : B
-
-      G, x :_r A |- e : B
-abs ------------------------
-      G |- \x -> e : A r -> B
-
--}
 
 -- | Annotate a type error with a source position if it isn't already annotated
 annotateWith :: Maybe SrcPos -> Either TypeError a -> Either TypeError a
@@ -80,7 +64,7 @@ isLocated _ = False
 
 Bidirectional checking
 *********************************
-G |- e <= A    check
+G |- e <= A    check a term has a type
 **********************************
 -}
 
@@ -106,20 +90,18 @@ check_ gamma (Var x) ty =
 
 check_ gamma (NumFloat n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Float" ->
-        Right ()
+    Just (base, _, _) | base == "Float" -> Right ()
     _ -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
 check_ gamma (NumInteger n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Integer" ->
-        Right ()
+    Just (base, _, _) | base == "Integer" -> Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
 
 check_ gamma (StringConst _) ty =
-  case typeEquality ty (IsSpec (tyCon0 "str")) of
-    Right () -> Right ()
-    Left err -> Left $ TypeCheckFailure (tyCon0 "str") ty (let ?srcFile = "" in errorToString err)
+  case isGradableType ty of
+    Just (base, _, _) | base == "String" -> Right ()
+    _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
   case typeEquality ty (IsSpec tyA) of
@@ -143,50 +125,61 @@ check_ gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) =
     Right () -> check ([(x, tyA)] ++ gamma) expr tyB
     Left err -> Left $ ChainedError (FunctionAbstractionTypeMismatch tyA tyA') err
 
-check_ gamma (Fix e) t = check gamma e (FunTy t t)
-
-check_ gamma (NatCase e e1 (x,e2)) t = do
-  check gamma e natTy
-  check gamma e1 t
-  check ([(x, natTy)] ++ gamma) e2 t
-
 check_ gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
   check gamma e2 t2
 
-check_ gamma (BinOp op e1 e2) ty@(isGradableNumericType -> Just (baseType, gradeType, desc)) =
+check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
+  case op of
+    UnOpNegate -> do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      check gamma e ty
+    UnOpNot -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
+      check gamma e ty
+
+check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
   -- We have a gradable numeric type
   case op of
     -- Plus and minus must have the same type
-    OpPlus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
-    OpMinus ->
-      case check gamma e1 ty of
-        Right () -> check gamma e2 ty
-        Left err -> Left $ OperatorTypeError op err
+    BinOpPlus -> do
+      -- can only add or subtract numeric types
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    BinOpMinus -> do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    BinOpAnd -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    BinOpOr -> do
+      assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
     _ ->
       -- For other operators, first synth the types of the arguments
       -- whose base type must match
       case synth gamma e1 of
-        Left err -> Left $ OperatorTypeError op err
+        Left err -> Left $ BinaryOperatorTypeError op err
         Right (isGradableNumericType -> Just (baseType', gradeType1, d1)) -> do
-          assert (baseType == baseType') (OperatorTypeError op (BaseTypeMismatch baseType baseType'))
+          assert (baseType == baseType') (BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType'))
           case synth gamma e2 of
-            Left err -> Left $ OperatorTypeError op err
+            Left err -> Left $ BinaryOperatorTypeError op err
             Right (isGradableNumericType -> Just (baseType'', gradeType2, d2)) -> do
-              assert (baseType == baseType'') (OperatorTypeError op (BaseTypeMismatch baseType baseType''))
+              assert (baseType == baseType'') (BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType''))
               case op of
-                OpExp    ->
+                BinOpExp    ->
                   case e2 of
                     NumFloat n -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
                   kindEquality gradeType1 (IsSpec gradeType2)
                   case op of
-                    OpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
-                    OpDivide ->
+                    BinOpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                    BinOpDivide ->
                       typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
@@ -203,18 +196,20 @@ check_ gamma (Snd e) t =
     Right (ProdTy t1 t2) -> typeEquality t2 (IsSpec t)
     _ -> Left $ ExpectingProductType e t
 
-check_ gamma (Inl e) (SumTy t1 t2) = check gamma e t1
-check_ gamma (Inl e) t = Left $ SumConstructionTypeMismatch t
-
-check_ gamma (Inr e) (SumTy t1 t2) = check gamma e t2
-check_ gamma (Inr e) t = Left $ SumConstructionTypeMismatch t
-
 check_ gamma (Case e (x,e1) (y,e2)) t =
   case synth gamma e of
     Right (SumTy t1 t2) -> do
       check ([(x,t1)] ++ gamma) e1 t
       check ([(y,t2)] ++ gamma) e2 t
     Right _ -> Left $ ExpectingSumType e
+    Left err -> Left err
+
+check_ gamma (Cond e1 e2_guard e3) t = do
+  case synth gamma e2_guard of
+    Right (isGradableBooleanType -> Just _) -> do
+      check gamma e1 t
+      check gamma e3 t
+    Right ty -> Left $ ExpectingBooleanType ty
     Left err -> Left err
 
 -- Polymorphic lambda calculus
@@ -306,7 +301,9 @@ synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 synth_ gamma (Abs x (Just tyA) e) =
   case checkKind gamma tyA type0 of
     Left err -> Left err
-    Right tyA' -> synth ((x, tyA') : gamma) e
+    Right tyA' -> do
+      tyB <- synth ((x, tyA') : gamma) e
+      Right (FunTy tyA' tyB)
 
 -- Type checking a type speciaisation
 synth_ gamma (App e (TyEmbed tau')) =
@@ -325,6 +322,17 @@ synth_ gamma (App e (TyEmbed tau')) =
   G |- e1 e2 => B
 
 -}
+
+-- special case primitive: sqrt
+-- infer the argument's description and halve every exponent in it,
+-- e.g. an argument described by [M^2] yields a result described by [M]
+synth_ gamma (App (Var "sqrt") e) = do
+  t <- synth gamma e
+  case isGradableNumericType t of
+    Just ("Float", gradeType, d) -> do
+      d' <- normalisationByEvaluation (ExponentTy d 0.5)
+      Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
+    _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
 
 synth_ gamma (App e1 e2) =
   -- Synth the left-hand side
@@ -346,31 +354,6 @@ synth_ gamma Zero =
 
 synth_ gamma Succ =
   Right (FunTy natTy natTy)
-
-synth_ gamma (NatCase e e1 (x,e2)) =
-  case check gamma e natTy of
-    Right () ->
-      case synth gamma e1 of
-        Right t ->
-          case check ([(x, natTy)] ++ gamma) e2 t of
-            Right () -> Right t
-            Left err -> Left err
-        Left err ->
-          case synth ([(x, natTy)] ++ gamma) e2 of
-            Right t ->
-              case check gamma e1 t of
-                Right () -> Right t
-                Left err -> Left err
-            Left err -> Left err
-    Left err -> Left err
-
-synth_ gamma (Fix e) =
-  case synth gamma e of
-    Right (FunTy t1 t2) ->
-      if t1 == t2 then Right t1
-      else Left $ FixpointDomainRangeMismatch e t1 t2
-    Right t -> Left $ ExpectingFunctionType e t
-    Left err -> Left err
 
 synth_ gamma (Pair e1 e2) =
   case synth gamma e1 of
@@ -415,39 +398,99 @@ synth_ gamma (NumFloat n) =
 synth_ gamma (NumInteger n) =
   Right (integerTy unitDescription)
 
+synth_ gamma (Lift e d) = do
+  -- Infer the descriptor argument and ensure its kind lives in the Descriptor sort
+  -- (e.g. UoM, KoQ, or a composed descriptor kind).
+  (d', kd) <- synthKind d
+  _ <- checkSort kd desc2
+
+  -- Infer the expression being lifted; lift only applies to Float-indexed values.
+  t <- synth gamma e
+  case isGradableType t of
+    Just (baseType, _, d1) ->
+          -- Lift from T[D1] to T[D1 & D]. If descriptor normalisation fails,
+          -- treat that as an invalid lift (e.g. conflicting overlapping keys).
+          case normalisationByEvaluation (WithTy d1 d') of
+            Left err -> Left err
+            Right lifted -> do
+              (lifted', liftedKind) <- synthKind lifted
+              Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
+    _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
+
+
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 
-synth_ gamma (BinOp op e1 e2) =
+synth_ gamma (UnOp op e) =
+  case op of
+    UnOpNegate -> do
+      t <- synth gamma e
+      assert (isJust $ isGradableNumericType t) (ExpectingNumericType t)
+      Right t
+    UnOpNot -> do
+      t <- synth gamma e
+      assert (isJust $ isGradableBooleanType t) (ExpectingBooleanType t)
+      Right t
+
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
   case synth gamma e1 of
-    Left err -> Left $ OperatorTypeError op err
+    Left err -> Left $ BinaryOperatorTypeError op err
+    Right t1 ->
+      case isGradableBooleanType t1 of
+        Nothing -> Left $ ExpectingBooleanType t1
+        Just (baseType, gradeType1, d1) ->
+          case synth gamma e2 of
+            Left err -> Left $ BinaryOperatorTypeError op err
+            Right t2 ->
+              case isGradableBooleanType t2 of
+                Nothing -> Left $ ExpectingBooleanType t2
+                Just (baseType', gradeType2, d2) ->
+                  if baseType /= baseType'
+                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
+                    else do
+                      () <- kindEquality gradeType1 (IsSpec gradeType2)
+                      case descriptionEquality d1 (IsSpec d2) of
+                        Right () -> do
+                          d1 <- normalisationByEvaluation d1
+                          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
+                        Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
+
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] =
+  case synth gamma e1 of
+    Left err -> Left $ BinaryOperatorTypeError op err
     Right t1 ->
       case isGradableNumericType t1 of
         Nothing -> Left $ ExpectingNumericType t1
         Just (baseType, gradeType1, d1) ->
           case synth gamma e2 of
-            Left err -> Left $ OperatorTypeError op err
+            Left err -> Left $ BinaryOperatorTypeError op err
             Right t2 ->
               case isGradableNumericType t2 of
                 Nothing -> Left $ ExpectingNumericType t2
                 Just (baseType', gradeType2, d2) ->
                   if baseType /= baseType'
-                    then Left $ OperatorTypeError op (BaseTypeMismatch baseType baseType')
+                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
                     else do
                       case op of
-                          OpExp    ->
+                          BinOpExp ->
                             case e2 of
                               NumFloat n -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
                               _ -> error "Bug"
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
                             case op of
-                              OpTimes -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 d2)
-                              OpDivide -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation $ ProdTy d1 (reciprocalType d2))
+                              BinOpTimes -> do
+                                d <- normalisationByEvaluation (ProdTy d1 d2)
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                              BinOpDivide -> do
+                                d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               _        ->
                                 case descriptionEquality d1 (IsSpec d2) of
-                                  Right () -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (normalisationByEvaluation d1)
-                                  Left err -> Left $ OperatorDescriptionMismatch op (normalisationByEvaluation d1) (normalisationByEvaluation d2)
+                                  Right () -> do
+                                    d1 <- normalisationByEvaluation d1
+                                    Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
+                                  Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
 
 
 {-
@@ -476,6 +519,8 @@ synth_ gamma e =
 -- # Type equality
 ---------------------------------
 
+-- Ask if two types are equal, where the second one is taken as the specification
+-- i.e., it already has some constraints associated with it.
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
 typeEquality (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
@@ -492,7 +537,28 @@ typeEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
 typeEquality t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
-    else Left $ TypeMismatch t2 t1
+    else
+      -- Investigate type aliases
+      -- trying a lookup and type equality, applied in both directions
+      applyPredicateSymmetrically
+        (\t1 t2 ->
+          case t1 of
+            TyCon _ id ->
+              case lookup id typeAliases of
+                Just t1' -> typeEquality t1' (IsSpec t2)
+                Nothing ->  Left $ TypeMismatch t1 t2
+            _ -> Left $ TypeMismatch t1 t2) t2 t1
+
+-- Given a binary predicate, try to apply to arguments
+-- in both directions
+applyPredicateSymmetrically ::
+       (a -> a -> Either e b)
+    -> (a -> a -> Either e b)
+applyPredicateSymmetrically pred x y =
+  case pred x y of
+    Left err ->
+      pred y x
+    Right res -> return res
 
 ---------------------------------
 
@@ -513,6 +579,9 @@ errorToString (CannotSynthType e) =
 errorToString (ExpectingNumericType t) =
   "Expecting numeric type but got " ++ pprint (normalise t)
 
+errorToString (ExpectingBooleanType t) =
+  "Expecting boolean type but got " ++ pprint (normalise t)
+
 errorToString (ExpectingFunctionType e t) =
   "Expecting (" ++ pprint e ++ ") to have function type but got " ++ pprint (normalise t)
 
@@ -528,16 +597,9 @@ errorToString (ExpectingPolymorphicType t) =
 errorToString (NonProductTypeToPair t) =
   "Trying to assign non-product type " <> pprint (normalise t) <> " to pair."
 
-errorToString (SumConstructionTypeMismatch t) =
-  "Sum construction cannot have type " <> pprint (normalise t)
-
 errorToString (FunctionAbstractionTypeMismatch expected actual) =
   "In function abstraction, expecting argument type " <> pprint (normalise expected)
   <> " but got " <> pprint (normalise actual)
-
-errorToString (FixpointDomainRangeMismatch e t1 t2) =
-  "Expecting (" ++ pprint e ++ ") to have function type with equal domain/range but got "
-  ++ pprint (normalise (FunTy t1 t2))
 
 errorToString (ExplicitSignatureCheckFailure ty err) =
   errorToString err <> "\nTrying to check explicit signature " ++ pprint (normalise ty)
@@ -547,6 +609,13 @@ errorToString (CannotProjectFromType t reason) =
 
 errorToString (DescriptionEqualityFailure t1 t2) =
   "Description equality failed between " ++ pprint (normalise t1) ++ " and " ++ pprint (normalise t2)
+
+errorToString (CannotComputeDescriptionRepresentation t) =
+  "Cannot compute a descriptor representation for " ++ pprint (normalise t)
+
+errorToString (OverlappingDescriptionConflict key left right) =
+  "Overlapping descriptor key `" <> key <> "` conflicts: "
+  <> pprint (normalise left) <> " vs " <> pprint (normalise right)
 
 errorToString (DescriptionKeyMismatch expected actual) =
   "Expecting description keys " <> show expected <> " but got " <> show actual
@@ -589,12 +658,15 @@ errorToString (ExpectingFunctionSort k) =
 errorToString (CannotInferKind t) =
   "Cannot infer kind for " <> pprint (normalise t)
 
-errorToString (OperatorTypeError op err) =
+errorToString (BinaryOperatorTypeError op err) =
   errorToString err <> "\nError infering type for operator " ++ pprint op
 
-errorToString (OperatorDescriptionMismatch op t1 t2) =
+errorToString (BinaryOperatorDescriptionMismatch op t1 t2) =
   "Expecting descriptions to be the same but got " <> pprint (normalise t1)
   <> " and " <> pprint (normalise t2) <> " for operator " ++ pprint op
+
+errorToString (UnaryOperatorTypeError op err) =
+  errorToString err <> "\nError infering type for operator " ++ pprint op
 
 errorToString (FreeVariablesInAbstraction vars) =
   "Free variables " <> unwords (map show vars)
@@ -625,7 +697,7 @@ normalise t =
 normalise' :: Type 0 -> Type 0
 normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
 normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
-  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (normalisationByEvaluation desc)
+  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (either (const desc) id (normalisationByEvaluation desc))
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
 normalise' (Forall x t) = Forall x (normalise' t)
 normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)

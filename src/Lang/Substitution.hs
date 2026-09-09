@@ -42,14 +42,6 @@ substituteExpr (Cast e) s =
 substituteExpr Zero s = Zero
 substituteExpr Succ s = Succ
 
-substituteExpr (Fix e) s = Fix $ substituteExpr e s
-
-substituteExpr (NatCase e e1 (y,e2)) s =
-  let e'  = substituteExpr e s
-      e1' = substituteExpr e1 s
-      (y', e2') = substitute_binding y e2 s
-  in NatCase e' e1' (y', e2')
-
 substituteExpr (Pair e1 e2) s =
   Pair (substituteExpr e1 s) (substituteExpr e2 s)
 
@@ -62,15 +54,20 @@ substituteExpr (Case e (x,e1) (y,e2)) s =
       (y', e2') = substitute_binding y e2 s
   in Case e' (x', e1') (y', e2')
 
-substituteExpr (Inl e) s = Inl $ substituteExpr e s
-substituteExpr (Inr e) s = Inr $ substituteExpr e s
-
 substituteExpr (NumFloat n) s = NumFloat n
 substituteExpr (NumInteger n) s = NumInteger n
 substituteExpr (StringConst str) s = StringConst str
 
 substituteExpr (BinOp op e1 e2) s =
   BinOp op (substituteExpr e1 s) (substituteExpr e2 s)
+
+substituteExpr (UnOp op e) s = UnOp op (substituteExpr e s)
+
+substituteExpr (Lift e t) (var, TyEmbed t') =
+  Lift (substituteExpr e (var, TyEmbed t')) (substituteType t (var, t'))
+
+substituteExpr (Lift e t) s =
+  Lift (substituteExpr e s) t
 
 -- Poly
 
@@ -86,6 +83,9 @@ substituteExpr (TyAbs y e) s =
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
+
+substituteExpr (Cond e1 e2 e3) s =
+  Cond (substituteExpr e1 s) (substituteExpr e2 s) (substituteExpr e3 s)
 
 -- substitute_binding x e (y,e') substitutes e' into e for y,
 -- but assumes e has just had binder x introduced

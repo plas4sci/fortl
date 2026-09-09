@@ -28,16 +28,15 @@ import Lang.Options
     from    { TokenFrom _ }
     import  { TokenImport _ }
     cast    { TokenCast _ }
+    lift    { TokenLift _ }
+    label   { TokenLabel _ }
     let     { TokenLet _ }
     case    { TokenCase _ }
-    natcase { TokenNatCase _ }
-    of      { TokenOf _ }
+    if      { TokenIf _ }
+    else    { TokenElse _ }
     '|'     { TokenSep _ }
-    fix     { TokenFix _ }
     fst     { TokenFst _ }
     snd     { TokenSnd _ }
-    inl     { TokenInl _ }
-    inr     { TokenInr _ }
     in      { TokenIn  _  }
     zero    { TokenZero _ }
     succ    { TokenSucc _ }
@@ -60,6 +59,9 @@ import Lang.Options
     '-'     { TokenMinus _ }
     '/'     { TokenDivide _ }
     '+'     { TokenSum _ }
+    and     { TokenAnd _ }
+    or      { TokenOr _ }
+    not     { TokenNot _ }
     '^'     { TokenExponent _ }
     '&'     { TokenAmpersand _ }
     '['     { TokenLBrack _ }
@@ -68,16 +70,19 @@ import Lang.Options
     '}'     { TokenRBrace _ }
     ','     { TokenMPair _ }
     '.'     { TokenDot _ }
-    '@'     { TokenAt _ }
     LAMBDA  { TokenLambda _ }
 
 %right in
 %right '->'
 %left ':'
 %nonassoc LAMBDA
+%left or
+%left and
 %left ','
 %left '+' '-'
+%left '/'
 %left '*'
+%right not
 %%
 
 Program :: { (Program 'Parsed, [Option]) }
@@ -113,7 +118,7 @@ NL :: { () }
 
 Def :: { [Option] -> Def 'Parsed}
   : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
-  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+--  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
 Lhs :: { [Option] -> Lhs 'Parsed }
   : IDENT { \opts -> VarLhs (symString $1) Nothing }
@@ -142,33 +147,34 @@ Expr :: { [Option] -> Expr }
   | Form
     { $1 }
 
-  | fix '(' Expr ')'
-     { \opts -> MkFix (mkPos $1) ($3 opts) }
-
-  | natcase Expr of zero '->' Expr '|' succ IDENT '->' Expr
-     { \opts -> MkNatCase (mkPos $1) ($2 opts) ($6 opts) (symString $9, ($11 opts)) }
-
   | fst '(' Expr ')'
      { \opts -> MkFst (mkPos $1) ($3 opts) }
 
   | snd '(' Expr ')'
      { \opts -> MkSnd (mkPos $1) ($3 opts) }
 
-  | inl '(' Expr ')'
-     { \opts -> MkInl (mkPos $1) ($3 opts) }
+  | lift '(' Expr ',' Type ')'
+    { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
 
-  | inr '(' Expr ')'
-     { \opts -> MkInr (mkPos $1) ($3 opts) }
+  | label '(' Form ',' Type ')'
+    { \opts -> MkLift (mkPos $1) ($3 opts) ($5 opts) }
 
- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
-     { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+  -- | case Expr of inl IDENT '->' Expr '|' inr IDENT '->' Expr
+  --     { \opts -> MkCase (mkPos $1) ($2 opts) (symString $5, $7 opts) (symString $10, ($12 opts)) }
+
+  | Expr if Expr else Expr
+      { \opts -> MkCond (mkPos $2) ($1 opts) ($3 opts) ($5 opts) }
 
 Form :: { [Option] -> Expr }
-  : Form '+' Form  { \opts -> MkBinOp (mkPos $2) OpPlus ($1 opts) ($3 opts) }
-  | Form '-' Form  { \opts -> MkBinOp (mkPos $2) OpMinus ($1 opts) ($3 opts) }
-  | Form '*' Form  { \opts -> MkBinOp (mkPos $2) OpTimes ($1 opts) ($3 opts) }
-  | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) OpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
-  | Form '/' Form  { \opts -> MkBinOp (mkPos $2) OpDivide ($1 opts) ($3 opts) }
+  : Form '+' Form  { \opts -> MkBinOp (mkPos $2) BinOpPlus ($1 opts) ($3 opts) }
+  | Form '-' Form  { \opts -> MkBinOp (mkPos $2) BinOpMinus ($1 opts) ($3 opts) }
+  | Form '*' Form  { \opts -> MkBinOp (mkPos $2) BinOpTimes ($1 opts) ($3 opts) }
+  | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
+  | Form '/' Form  { \opts -> MkBinOp (mkPos $2) BinOpDivide ($1 opts) ($3 opts) }
+  | Form and Form  { \opts -> MkBinOp (mkPos $2) BinOpAnd ($1 opts) ($3 opts) }
+  | Form or Form   { \opts -> MkBinOp (mkPos $2) BinOpOr ($1 opts) ($3 opts) }
+  | not Form       { \opts -> MkUnOp (mkPos $1) UnOpNot ($2 opts) }
+  | '-' Form       { \opts -> MkUnOp (mkPos $1) UnOpNegate ($2 opts) }
   | Juxt           { $1 }
 
 Kind :: { [Option] -> Type 1 }
@@ -185,8 +191,8 @@ Type
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
   | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
   | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
-  | TypeAtom '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
-  | TypeAtom '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
+  | Type '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
   | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 
@@ -204,22 +210,22 @@ TypeAtom
   | '?'              { \opts -> tyCon0 "?" }
 
 Juxt :: { [Option] -> Expr }
-  : Juxt '(' Atom ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  : Juxt '(' Expr ')'                 { \opts -> App ($1 opts) ($3 opts) }
+  | Juxt '[' Type ']'                 { \opts -> App ($1 opts) (TyEmbed ($3 opts)) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 
 Atom :: { [Option] -> Expr }
   : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
+  | LAMBDA '(' IDENT ':' Type ')' ':' Expr
+    { \opts -> MkAbs (mkPos $1) (symString $3) (Just ($5 opts)) ($8 opts) }
   | LAMBDA IDENT ':' Expr
     { \opts -> MkAbs (mkPos $1) (symString $2) Nothing ($4 opts) }
   | zero
     { \opts -> MkZero (mkPos $1) }
   | succ
     { \opts -> MkSucc (mkPos $1) }
-
-  | '@' TypeAtom
-    { \opts -> MkTyEmbed (mkPos $1) ($2 opts) }
 
   | Expr ',' Expr
      { \opts -> Pair ($1 opts) ($3 opts) }

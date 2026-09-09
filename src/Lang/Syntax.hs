@@ -63,18 +63,17 @@ data Expr where
     MkCast :: Maybe SrcPos -> Expr -> Expr
     MkZero :: Maybe SrcPos -> Expr
     MkSucc :: Maybe SrcPos -> Expr
-    MkNatCase :: Maybe SrcPos -> Expr -> Expr -> (Identifier, Expr) -> Expr
-    MkFix :: Maybe SrcPos -> Expr              -> Expr
     MkPair :: Maybe SrcPos -> Expr -> Expr     -> Expr
     MkFst :: Maybe SrcPos -> Expr              -> Expr
     MkSnd :: Maybe SrcPos -> Expr              -> Expr
-    MkInl :: Maybe SrcPos -> Expr              -> Expr
-    MkInr :: Maybe SrcPos -> Expr              -> Expr
     MkCase :: Maybe SrcPos -> Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
     MkNumFloat   :: Maybe SrcPos -> Float        -> Expr
     MkNumInteger :: Maybe SrcPos -> Integer      -> Expr
+    MkCond :: Maybe SrcPos -> Expr -> Expr -> Expr -> Expr
     MkStringConst :: Maybe SrcPos -> String      -> Expr
-    MkBinOp :: Maybe SrcPos -> Op -> Expr -> Expr -> Expr
+    MkBinOp :: Maybe SrcPos -> BinOp -> Expr -> Expr -> Expr
+    MkUnOp  :: Maybe SrcPos -> UnOp  -> Expr -> Expr
+    MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
 
@@ -90,19 +89,18 @@ exprPos (MkGenLet p _ _ _)  = p
 exprPos (MkCast p _)        = p
 exprPos (MkZero p)          = p
 exprPos (MkSucc p)          = p
-exprPos (MkNatCase p _ _ _) = p
-exprPos (MkFix p _)         = p
 exprPos (MkPair p _ _)      = p
 exprPos (MkFst p _)         = p
 exprPos (MkSnd p _)         = p
-exprPos (MkInl p _)         = p
-exprPos (MkInr p _)         = p
 exprPos (MkCase p _ _ _)    = p
 exprPos (MkNumFloat p _)    = p
 exprPos (MkNumInteger p _)  = p
 exprPos (MkStringConst p _) = p
 exprPos (MkBinOp p _ _ _)   = p
+exprPos (MkUnOp p _ _)      = p
+exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
+exprPos (MkCond p _ _ _)    = p
 
 -- | Position-agnostic pattern synonyms.
 -- In a pattern they match regardless of the stored position.
@@ -147,14 +145,6 @@ pattern Succ :: Expr
 pattern Succ <- MkSucc _
   where Succ = MkSucc Nothing
 
-pattern NatCase :: Expr -> Expr -> (Identifier, Expr) -> Expr
-pattern NatCase e e1 b <- MkNatCase _ e e1 b
-  where NatCase e e1 b = MkNatCase Nothing e e1 b
-
-pattern Fix :: Expr -> Expr
-pattern Fix e <- MkFix _ e
-  where Fix e = MkFix Nothing e
-
 pattern Pair :: Expr -> Expr -> Expr
 pattern Pair e1 e2 <- MkPair _ e1 e2
   where Pair e1 e2 = MkPair Nothing e1 e2
@@ -166,14 +156,6 @@ pattern Fst e <- MkFst _ e
 pattern Snd :: Expr -> Expr
 pattern Snd e <- MkSnd _ e
   where Snd e = MkSnd Nothing e
-
-pattern Inl :: Expr -> Expr
-pattern Inl e <- MkInl _ e
-  where Inl e = MkInl Nothing e
-
-pattern Inr :: Expr -> Expr
-pattern Inr e <- MkInr _ e
-  where Inr e = MkInr Nothing e
 
 pattern Case :: Expr -> (Identifier, Expr) -> (Identifier, Expr) -> Expr
 pattern Case e bl br <- MkCase _ e bl br
@@ -191,24 +173,40 @@ pattern StringConst :: String -> Expr
 pattern StringConst s <- MkStringConst _ s
   where StringConst s = MkStringConst Nothing s
 
-pattern BinOp :: Op -> Expr -> Expr -> Expr
+pattern BinOp :: BinOp -> Expr -> Expr -> Expr
 pattern BinOp op e1 e2 <- MkBinOp _ op e1 e2
   where BinOp op e1 e2 = MkBinOp Nothing op e1 e2
+
+pattern UnOp :: UnOp -> Expr -> Expr
+pattern UnOp op e <- MkUnOp _ op e
+  where UnOp op e = MkUnOp Nothing op e
+
+pattern Lift :: Expr -> Type 0 -> Expr
+pattern Lift e t <- MkLift _ e t
+  where Lift e t = MkLift Nothing e t
 
 pattern Con :: Identifier -> [Expr] -> Expr
 pattern Con c es <- MkCon _ c es
   where Con c es = MkCon Nothing c es
 
+pattern Cond :: Expr -> Expr -> Expr -> Expr
+pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
+  where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
+
 {-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkGenLet, MkCast,
-             MkZero, MkSucc, MkNatCase, MkFix, MkPair, MkFst, MkSnd,
-             MkInl, MkInr, MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, MkCon #-}
+             MkZero, MkSucc, MkPair, MkFst, MkSnd,
+            MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
+             MkCon, MkCond #-}
 {-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
-             Zero, Succ, NatCase, Fix, Pair, Fst, Snd,
-             Inl, Inr, Case, NumFloat, NumInteger, StringConst, BinOp, Con #-}
+             Zero, Succ, Pair, Fst, Snd,
+             Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
+             Cond #-}
 
 -- Operators
-data Op = OpPlus | OpTimes | OpMinus | OpDivide | OpExp
-  deriving Show
+data BinOp = BinOpPlus | BinOpTimes | BinOpMinus | BinOpDivide | BinOpExp | BinOpAnd | BinOpOr
+  deriving (Show, Eq)
+data UnOp = UnOpNegate | UnOpNot
+  deriving (Show, Eq)
 
 isValue :: Expr -> Bool
 isValue Abs{}   = True
@@ -218,8 +216,6 @@ isValue (NumFloat _) = True
 isValue (NumInteger _) = True
 isValue (StringConst _) = True
 isValue (Pair e1 e2) = isValue e1 && isValue e2
-isValue (Inl e) = isValue e
-isValue (Inr e) = isValue e
 isValue Zero = True
 isValue Succ = True
 isValue e       = isNatVal e
@@ -316,17 +312,14 @@ instance Term Expr where
   boundVars (Sig e _)                    = boundVars e
   boundVars (GenLet var e1 e2)           = var `Set.insert` (boundVars e1 `Set.union` boundVars e2)
   boundVars (Cast e)                     = boundVars e
-  boundVars (NatCase e e1 (x,e2))        =
-    x `Set.insert` (boundVars e `Set.union` boundVars e1 `Set.union` boundVars e2)
-  boundVars (Fix e)                      = boundVars e
   boundVars (Pair e1 e2)                 = boundVars e1 `Set.union` boundVars e2
   boundVars (Fst e)                      = boundVars e
   boundVars (Snd e)                      = boundVars e
-  boundVars (Inl e)                      = boundVars e
-  boundVars (Inr e)                      = boundVars e
   boundVars (Case e (x,e1) (y,e2))       =
     boundVars e `Set.union` (x `Set.insert` boundVars e1) `Set.union` (y `Set.insert` boundVars e2)
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
+  boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
+  boundVars (Cond e1 e2 e3)              = boundVars e1 `Set.union` boundVars e2 `Set.union` boundVars e3
   boundVars _                            = Set.empty
 
   freeVars (Abs var _ e)                 = Set.delete var (freeVars e)
@@ -337,17 +330,14 @@ instance Term Expr where
   freeVars (Sig e _)                     = freeVars e
   freeVars (GenLet var e1 e2)            = Set.delete var (freeVars e1 `Set.union` freeVars e2)
   freeVars (Cast e)                      = freeVars e
-  freeVars (NatCase e e1 (x,e2))         =
-    freeVars e `Set.union` freeVars e1 `Set.union` (Set.delete x (freeVars e2))
-  freeVars (Fix e)                       = freeVars e
   freeVars (Pair e1 e2)                  = freeVars e1 `Set.union` freeVars e2
   freeVars (Fst e)                       = freeVars e
   freeVars (Snd e)                       = freeVars e
-  freeVars (Inl e)                       = freeVars e
-  freeVars (Inr e)                       = freeVars e
   freeVars (Case e (x,e1) (y,e2))        =
     freeVars e `Set.union` (Set.delete x (freeVars e1)) `Set.union` (Set.delete y (freeVars e2))
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
+  freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
+  freeVars (Cond e1 e2 e3)               = freeVars e1 `Set.union` freeVars e2 `Set.union` freeVars e3
   freeVars _                             = Set.empty
 
   mkVar = Var
