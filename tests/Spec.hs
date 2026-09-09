@@ -19,6 +19,7 @@ import Control.Monad (unless)
 
 import qualified Lang.Frontend as Lang
 import Lang.Syntax
+import Lang.Semantics (Value)
 import Lang.PrettyPrint (pprint)
 import Lang.Descriptions (normalisationByEvaluation, descriptionEquality)
 import Lang.TypeHelpers (Specificational(..))
@@ -30,7 +31,7 @@ import Test.Tasty.HUnit (testCase, (@?=), assertBool, assertFailure)
 import Debug.Trace
 
 type InterpreterError = String
-type InterpreterResult = Expr
+type InterpreterResult = Value
 
 
 
@@ -66,7 +67,7 @@ goldenTestsNegative = do
     formatResult :: Either InterpreterError InterpreterResult -> String
     formatResult = \case
         Left err -> err
-        Right x -> error $ "Negative test passed!\n" <> show x
+        Right x -> error $ "Negative test passed!\n" <> pprint x
 
 goldenTestsPositive :: IO TestTree
 goldenTestsPositive = do
