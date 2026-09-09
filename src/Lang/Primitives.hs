@@ -44,19 +44,19 @@ dataConstructors = [
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
      -- Graded float
-    ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+    ("Float"    , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded integer
-  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded string
-  , ("String"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("String"  , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
     -- Graded boolean
-  , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
   , ("Nat"      , type0)
   , ("()"       , type0)
-  , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
-  , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
-  , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
-  , ("Basis"    , FunTy type0 (tyCon1 "BasisType"))
+  , ("Unit"     , FunTy [type0] (tyCon1 "UoM"))
+  , ("Quantity" , FunTy [type0] (tyCon1 "KoQ"))
+  , ("Species"  , FunTy [type0] (tyCon1 "SpeciesType"))
+  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
@@ -81,7 +81,7 @@ kindConstructors = [
   , ("BasisType" , desc2)
   , ("Base"     , desc2) -- The base Descriptor (bottom)
   -- Products of descriptors
-  , ("&"        , FunTy desc2 (FunTy desc2 desc2))
+  , ("&"        , FunTy [desc2, desc2] desc2)
   ]
 
 
@@ -95,7 +95,7 @@ agroup = tyCon1 "AGroup"
 isDescConstructor :: Identifier -> Maybe (Type 1)
 isDescConstructor conId =
   case lookup conId typeConstructors of
-    Just k@(FunTy t _) | t == desc -> Just k
+    Just k@(FunTy [t] _) | t == desc -> Just k
     Just k@(ImplicitFunTy _ t _) | t == desc2 -> Just k
     _                              -> Nothing
 

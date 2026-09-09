@@ -5,7 +5,7 @@ module Lang.Frontend where
 import Lang.Options
 import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
-import Lang.Semantics   (interpret, Env)
+import Lang.Semantics   (interpret, Env, Value)
 import Lang.Desugar     (desugar)
 import Lang.Syntax
 import Lang.Types
@@ -36,7 +36,7 @@ main = do
           putStrLn $ pprint result
           exitSuccess
 
-run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr, Context))
+run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Value, Context))
 run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname

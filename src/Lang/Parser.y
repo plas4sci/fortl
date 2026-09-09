@@ -200,13 +200,14 @@ Form :: { [Option] -> Expr }
 
 Kind :: { [Option] -> Type 1 }
 Kind
-  : Kind '->' Kind   { \opts -> FunTy ($1 opts) ($3 opts) }
+  : Kind '->' Kind   { \opts -> FunTy [$1 opts] ($3 opts) }
   | IDENT            { \opts -> case symString $1 of
                                   k -> tyCon1 k }
 
 Type :: { [Option] -> Type 0 }
 Type
-  : Type '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  : ManyTypes '->' Type        { \opts -> FunTy ($1 opts) ($3 opts) }
+  | '(' ')'   '->' Type        { \opts -> FunTy [] ($4 opts) }
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
@@ -242,20 +243,24 @@ TypeAtom
   | '?'              { \opts -> tyCon0 "?" }
 
 Juxt :: { [Option] -> Expr }
-  : Juxt '(' Expr ')'                 { \opts -> App ($1 opts) ($3 opts) }
-  | Juxt '(' ')'                      { \opts -> App ($1 opts) (Con "()" []) }
-  | Juxt '[' Type ']'                 { \opts -> App ($1 opts) (TyEmbed ($3 opts)) }
+  : Juxt '(' Arguments ')'            { \opts -> App ($1 opts) ($3 opts) }
+  | Juxt '(' ')'                      { \opts -> App ($1 opts) [] }
+  | Juxt '[' Type ']'                 { \opts -> App ($1 opts) [TyEmbed ($3 opts)] }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
+
+Arguments :: { [Option] -> [Expr] }
+  : Form ',' Arguments                { \opts -> ($1 opts) : ($3 opts) }
+  | Form                              { \opts -> [$1 opts] }
 
 Atom :: { [Option] -> Expr }
   : '(' ')'                   { \_ -> Con "()" [] }
   | '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
   | LAMBDA '(' IDENT ':' Type ')' ':' Expr
-    { \opts -> MkAbs (mkPos $1) (symString $3) (Just ($5 opts)) ($8 opts) }
+    { \opts -> MkAbs (mkPos $1) [(symString $3, Just ($5 opts))] ($8 opts) }
   | LAMBDA IDENT ':' Expr
-    { \opts -> MkAbs (mkPos $1) (symString $2) Nothing ($4 opts) }
+    { \opts -> MkAbs (mkPos $1) [(symString $2, Nothing)] ($4 opts) }
   | zero
     { \opts -> MkZero (mkPos $1) }
   | succ
