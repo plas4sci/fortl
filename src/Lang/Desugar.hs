@@ -17,12 +17,14 @@ import qualified Data.Map.Lazy as Map
 -- Desugarer state
 data ST = ST
     { next_var :: Integer
-    , pendingAnnotations :: Map.Map Identifier (Type 0)
-    , outputDefs :: [Def 'Desugared]
+      -- Stack of type annotations that have been found inline
+    , pendingAnnotations :: [Map.Map Identifier (Type 0)]
+      -- Stack of desugared defs, one list per nested function body being desugared
+    , outputDefs :: [[Def 'Desugared]]
     }
 
 initState :: ST
-initState = ST 0 Map.empty []
+initState = ST 0 [Map.empty] [[]]
 
 -- Desugarer monad
 type Desugar = StateT ST (Either TypeError)
@@ -36,79 +38,75 @@ freshVar = do
 
 -- Convert from a parsed program to a desugared one
 desugar :: Program 'Parsed -> Either TypeError (Program 'Desugared)
-desugar p = outputDefs <$> execStateT (traverse_ desugarDef p) initState
+desugar p = head . outputDefs <$> execStateT (traverse_ desugarDef p) initState
 
--- | Add desugared definitions to the output of the desugaring pass.
+-- | Add desugared definitions to the top of the output stack.
 emitDefs :: [Def 'Desugared] -> Desugar ()
-emitDefs defs = modify $ \st -> st { outputDefs = outputDefs st ++ defs }
+emitDefs defs = modify $ \st -> st { outputDefs = (head (outputDefs st) ++ defs) : tail (outputDefs st) }
 
 desugarDef :: Def 'Parsed -> Desugar ()
 desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
 desugarDef (DataDef id cs ty)   = emitDefs [DataDef id cs ty]
 desugarDef (ImportDef spec)     = emitDefs [ImportDef spec]
 desugarDef (Return e)           = emitDefs [Return e]
-desugarDef (AnnDef id ty) = do
-  -- Add the typing annotation of id
-  modify $ \st -> st { pendingAnnotations = Map.insert id ty (pendingAnnotations st) }
+
+desugarDef (AnnDef id ty) =
+  -- Add the typing annotation of id (into the head stack)
+  modify $ \st -> st { pendingAnnotations = 
+                            Map.insert id ty (head $ pendingAnnotations st)
+                            : (tail $ pendingAnnotations st) }
+
 desugarDef (FunDef id args body) = do
-  annotations <- pendingAnnotations <$> get
-  bodyExpr <- desugarBody annotations body
-  -- Get the types of arguments
-  typedArgs <- lift $ resolveFunctionParameterTypes args body
-  -- Build the function input type
-  let argType = functionArgType typedArgs
-  -- Rewrite the body expression to have the right type annotations
-  argVar <- freshVar
-  let bindArgs = bindFunctionArgs typedArgs (Var argVar) bodyExpr
-  emitDefs [FunDef id ]
-  -- Build the lambda
-  let functionExpr = Abs argVar (Just argType) bindArgs
-  emitDefs [ValDef (VarLhs id Nothing) functionExpr]
+  -- Push a new annotation map and defs list onto their stacks
+  modify $ \st -> st { pendingAnnotations = Map.empty : pendingAnnotations st
+                     , outputDefs = [] : outputDefs st }
+  -- Desugar the body
+  traverse_ desugarDef body
+  -- Pop the body's desugared defs and annotations off their stacks
+  st <- get
+  let body' = head (outputDefs st)
+      headAnnotations = head (pendingAnnotations st)
+  put (st { outputDefs = tail (outputDefs st), pendingAnnotations = tail (pendingAnnotations st) })
+  -- Resolve the types into the parameters
+  typedParams <- lift $ resolveFunctionParameterTypes args headAnnotations
+  emitDefs [FunDefElaborated id typedParams body']
 
 desugarDef (ValDef lhs e) = do
     lhs' <- applyPendingAnnotation lhs
     desugarVal lhs' e
 
 -- | Resolve the declared types of a function's parameters before lowering its
--- body to a lambda expression. Parameters can carry an optional legacy header
--- annotation, while standalone annotations in the body support Python-style
--- declarations such as @def f(x): x : T@. A body annotation takes precedence,
--- keeping the parameter name next to its documentation and unit information.
--- Every parameter must resolve to a type because the generated lambda is
--- explicitly typed.
-resolveFunctionParameterTypes :: [(Identifier, Maybe (Type 0))] -> [Def 'Parsed] -> Either TypeError [(Identifier, Type 0)]
-resolveFunctionParameterTypes args body = traverse argumentType args
+-- body to a lambda expression. Parameters can come with their type or have
+-- their type given as a standalon annotation in the body
+-- There should be exactly one of these, not both
+resolveFunctionParameterTypes :: [(Identifier, Maybe (Type 0))] -> Map.Map Identifier (Type 0) -> Either TypeError [(Identifier, Type 0)]
+resolveFunctionParameterTypes args annotations = mapM fillIn args
     where
-        argumentType (arg, headerType) =
-            case [ty | AnnDef name ty <- body, name == arg] of
-                ty:_ | Just _ <- headerType ->
-                    Left $ WellFormednessError $ DuplicateParameterAnnotation arg
-                ty:_ -> Right (arg, ty)
-                [] -> case headerType of
-                    Just ty -> Right (arg, ty)
-                    Nothing -> Left $ WellFormednessError $ MissingParameterAnnotation arg
+      fillIn (param_var, Nothing) = 
+        case Map.lookup param_var annotations of
+          Nothing -> Left $ WellFormednessError $ MissingParameterAnnotation param_var
+          Just ty -> Right (param_var, ty)
+      fillIn (param_var, Just ty) =
+        case Map.lookup param_var annotations of
+          Nothing  -> Right (param_var, ty)
+          Just ty' -> Left $ WellFormednessError $ DuplicateParameterAnnotation param_var
 
--- From a list of identifiers and types, create a product type
-functionArgType :: [(Identifier, Type 0)] -> Type 0
-functionArgType [] = tyCon0 "()"
-functionArgType args = foldr1 ProdTy (map snd args)
-
-desugarBody :: Map.Map Identifier (Type 0) -> [Def 'Parsed] -> Desugar Expr
-desugarBody _ [] = return (Con "None" [])
-desugarBody _ (Return e : _) = return e
-desugarBody annotations (AnnDef id ty : defs) =
-    desugarBody (Map.insert id ty annotations) defs
-desugarBody annotations (ValDef lhs e : defs) = do
-    let (lhs', annotations') = applyAnnotation annotations lhs
-    rest <- desugarBody annotations' defs
-    bindLhs lhs' e rest
-desugarBody annotations (_ : defs) = desugarBody annotations defs
+-- desugarBody :: Map.Map Identifier (Type 0) -> [Def 'Parsed] -> Desugar Expr
+-- desugarBody _ [] = return (Con "None" [])
+-- desugarBody _ (Return e : _) = return e
+-- desugarBody annotations (AnnDef id ty : defs) =
+--     desugarBody (Map.insert id ty annotations) defs
+-- desugarBody annotations (ValDef lhs e : defs) = do
+--     let (lhs', annotations') = applyAnnotation annotations lhs
+--     rest <- desugarBody annotations' defs
+--     bindLhs lhs' e rest
+-- desugarBody annotations (_ : defs) = desugarBody annotations defs
 
 applyPendingAnnotation :: Lhs 'Parsed -> Desugar (Lhs 'Parsed)
 applyPendingAnnotation lhs = do
     st <- get
-    let (lhs', annotations) = applyAnnotation (pendingAnnotations st) lhs
-    put $ st { pendingAnnotations = annotations }
+    let (lhs', annotations) = applyAnnotation (head $ pendingAnnotations st) lhs
+    put $ st { pendingAnnotations = annotations : (tail $ pendingAnnotations st) }
     return lhs'
 
 -- | Apply and consume a preceding standalone annotation when the binding has
@@ -127,21 +125,6 @@ bindLhs (PairLhs l1 l2) e rest = do
     tmp <- freshVar
     rest' <- bindLhs l1 (Fst (Var tmp)) rest
     bindLhs l2 (Snd (Var tmp)) (Let tmp e rest')
-
-bindFunctionArgs :: [(Identifier, Type 0)] -> Expr -> Expr -> Expr
-bindFunctionArgs [] _ body = body
-bindFunctionArgs [(x, _)] arg body = Let x arg body
-bindFunctionArgs args arg body =
-    foldr bind body (zip args (pairProjections (length args) arg))
-  where
-    bind ((x, _), projection) rest = Let x projection rest
-
-pairProjections :: Int -> Expr -> [Expr]
-pairProjections count arg =
-    [ projection index | index <- [0 .. count - 1] ]
-  where
-    projection 0 = Fst arg
-    projection index = Snd (iterate Snd arg !! (index - 1))
 
 -- (a, (b1, b2)) = c
 -- _0 = c

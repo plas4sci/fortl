@@ -31,10 +31,15 @@ data ImportSpec
 type Program (p :: Phase) = [Def p]
 
 data Def (p :: Phase) where
+    -- Parsed phase definitions
+    AnnDef  :: Identifier -> Type 0 -> Def 'Parsed
+    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def 'Parsed] -> Def 'Parsed
+    
+    -- Desugared phase definitions
+    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> [Def 'Desugared] -> Def 'Desugared
+    
+    -- Any phase definitions
     ValDef  :: Lhs p -> Expr -> Def p
-    AnnDef  :: Identifier -> Type 0 -> Def Parsed
-    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def Parsed] -> Def Parsed
-    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> [Def Desugared] -> Def Desugared
     TypeDef :: Identifier -> Type n -> Type (1 + n) -> Def p
     DataDef :: Identifier -> [(Identifier, [Type n])] -> Type (1 + n) -> Def p -- Currently not implemented beyond front end
     ImportDef :: ImportSpec -> Def p
@@ -200,7 +205,7 @@ pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
              MkZero, MkSucc, MkPair, MkFst, MkSnd,
             MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
              MkCon, MkCond #-}
-{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, GenLet, Cast,
+{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, Let, Cast,
              Zero, Succ, Pair, Fst, Snd,
              Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
              Cond #-}
