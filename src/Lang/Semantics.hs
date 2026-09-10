@@ -81,7 +81,7 @@ interpretDefs env opts ((ValDef (VarLhs id _) e):defs) =
     Right v -> interpretDefs (bindHere id v env) opts defs
     Left err -> error err
 
-interpretDefs env opts ((FunDefElaborated id params body):defs) =
+interpretDefs env opts ((FunDefElaborated id params _ body):defs) =
   -- Make a closure capturing the environment and proceed
   let env' = bindHere id (VClosure (map fst params) body env) env
   in interpretDefs env' opts defs

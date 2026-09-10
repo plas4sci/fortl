@@ -123,9 +123,13 @@ NL :: { () }
 Def :: { [Option] -> Def 'Parsed}
   : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
   | IDENT ':' Type        { \opts -> AnnDef (symString $1) ($3 opts) }
-  | def IDENT '(' Parameters ')' ':' nl indent BlockDefs dedent
-                           { \opts -> FunDef (symString $2) ($4 opts) ($9 opts) }
+  | def IDENT '(' Parameters ')' OptionalReturnType ':' nl indent BlockDefs dedent
+                           { \opts -> FunDef (symString $2) ($4 opts) ($6 opts) ($10 opts) }
 --  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
+
+OptionalReturnType :: { [Option] -> Maybe (Type 0) }
+  : '->' Type         { \opts -> Just ($2 opts) }
+  | {- empty -}  { \_    -> Nothing }
 
 Parameters :: { [Option] -> [(Identifier, Maybe (Type 0))] }
   : IDENT ':' Type ',' Parameters

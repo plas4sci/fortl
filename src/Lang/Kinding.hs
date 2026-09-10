@@ -111,9 +111,6 @@ synthSort t@(TyCon (SuccP ZeroP) c) =
       Nothing -> Left $ UnknownTypeConstructor c
       Just k' -> Right (t, k')
 
-synthSort (TyCon (SuccP (SuccP _)) c) =
-  error $ "Fortl bug: Should be inaccessible for " ++ c
-
 synthSort (TyApp t1 t2) = do
   (t1', k) <- synthSort t1
   case k of

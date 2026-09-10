@@ -33,10 +33,10 @@ type Program (p :: Phase) = [Def p]
 data Def (p :: Phase) where
     -- Parsed phase definitions
     AnnDef  :: Identifier -> Type 0 -> Def 'Parsed
-    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> [Def 'Parsed] -> Def 'Parsed
+    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> Maybe (Type 0) -> [Def 'Parsed] -> Def 'Parsed
     
     -- Desugared phase definitions
-    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> [Def 'Desugared] -> Def 'Desugared
+    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> Maybe (Type 0) -> [Def 'Desugared] -> Def 'Desugared
     
     -- Any phase definitions
     ValDef  :: Lhs p -> Expr -> Def p

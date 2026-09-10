@@ -9,8 +9,8 @@ mean_radius    : Float[Unit[m]] = 371.0e3
 """Stefan-Boltzmann's constant"""
 sigma          : Float[Unit[J / (s * m^2 * K^4)]] = 5.67e-8
 
-def energy_in(albedo : Float[Unit[1]]) -> Float[Unit[J / s]]
-  return (solar_constant * pi * (mean_radius^2) * ((1.0 : Float[Unit[1]]) - albedo)))
+def energy_in(albedo : Float[Unit[1]]) -> Float[Unit[J / s]]:
+  return (solar_constant * pi * (mean_radius^2) * ((1.0 : Float[Unit[1]]) - albedo))
 
 def energy_out(temperature : Float[Unit[K]]) -> Float[Unit[J / s]]:
   return (sigma * temperature^4 * (4.0 : Float[Unit[1]]) * pi * mean_radius^2)

@@ -38,11 +38,19 @@ freshVar = do
 
 -- Convert from a parsed program to a desugared one
 desugar :: Program 'Parsed -> Either TypeError (Program 'Desugared)
-desugar p = head . outputDefs <$> execStateT (traverse_ desugarDef p) initState
+desugar p = fst . popStack . outputDefs <$> execStateT (traverse_ desugarDef p) initState
+
+-- | Pop the top of a stack maintained non-empty by construction (pushes and
+-- pops on 'outputDefs'/'pendingAnnotations' are always balanced).
+popStack :: [a] -> (a, [a])
+popStack (top:rest) = (top, rest)
+popStack []         = error "Lang.Desugar: stack invariant violated"
 
 -- | Add desugared definitions to the top of the output stack.
 emitDefs :: [Def 'Desugared] -> Desugar ()
-emitDefs defs = modify $ \st -> st { outputDefs = (head (outputDefs st) ++ defs) : tail (outputDefs st) }
+emitDefs defs = modify $ \st ->
+  let (top, rest) = popStack (outputDefs st)
+  in st { outputDefs = (top ++ defs) : rest }
 
 desugarDef :: Def 'Parsed -> Desugar ()
 desugarDef (TypeDef id ty1 ty2) = emitDefs [TypeDef id ty1 ty2]
@@ -52,11 +60,11 @@ desugarDef (Return e)           = emitDefs [Return e]
 
 desugarDef (AnnDef id ty) =
   -- Add the typing annotation of id (into the head stack)
-  modify $ \st -> st { pendingAnnotations = 
-                            Map.insert id ty (head $ pendingAnnotations st)
-                            : (tail $ pendingAnnotations st) }
+  modify $ \st ->
+    let (top, rest) = popStack (pendingAnnotations st)
+    in st { pendingAnnotations = Map.insert id ty top : rest }
 
-desugarDef (FunDef id args body) = do
+desugarDef (FunDef id args returnTy body) = do
   -- Push a new annotation map and defs list onto their stacks
   modify $ \st -> st { pendingAnnotations = Map.empty : pendingAnnotations st
                      , outputDefs = [] : outputDefs st }
@@ -64,12 +72,12 @@ desugarDef (FunDef id args body) = do
   traverse_ desugarDef body
   -- Pop the body's desugared defs and annotations off their stacks
   st <- get
-  let body' = head (outputDefs st)
-      headAnnotations = head (pendingAnnotations st)
-  put (st { outputDefs = tail (outputDefs st), pendingAnnotations = tail (pendingAnnotations st) })
+  let (body', outputRest)          = popStack (outputDefs st)
+      (headAnnotations, annotationsRest) = popStack (pendingAnnotations st)
+  put (st { outputDefs = outputRest, pendingAnnotations = annotationsRest })
   -- Resolve the types into the parameters
   typedParams <- lift $ resolveFunctionParameterTypes args headAnnotations
-  emitDefs [FunDefElaborated id typedParams body']
+  emitDefs [FunDefElaborated id typedParams returnTy body']
 
 desugarDef (ValDef lhs e) = do
     lhs' <- applyPendingAnnotation lhs
@@ -94,8 +102,9 @@ resolveFunctionParameterTypes args annotations = mapM fillIn args
 applyPendingAnnotation :: Lhs 'Parsed -> Desugar (Lhs 'Parsed)
 applyPendingAnnotation lhs = do
     st <- get
-    let (lhs', annotations) = applyAnnotation (head $ pendingAnnotations st) lhs
-    put $ st { pendingAnnotations = annotations : (tail $ pendingAnnotations st) }
+    let (top, rest) = popStack (pendingAnnotations st)
+        (lhs', annotations) = applyAnnotation top lhs
+    put $ st { pendingAnnotations = annotations : rest }
     return lhs'
 
 -- | Apply and consume a preceding standalone annotation when the binding has

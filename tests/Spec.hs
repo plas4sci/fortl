@@ -149,7 +149,7 @@ applicationUnitTests = testGroup "Closure application unit tests"
     -- def add(x, y): return x + y
     -- partial = add(1.0)
     underProg =
-      [ FunDefElaborated "add" [("x", fl), ("y", fl)]
+      [ FunDefElaborated "add" [("x", fl), ("y", fl)] Nothing
           [Return (BinOp BinOpPlus (Var "x") (Var "y"))]
       , ValDef (VarLhs "partial" Nothing) (App (Var "add") [NumFloat 1.0])
       ]
@@ -158,8 +158,8 @@ applicationUnitTests = testGroup "Closure application unit tests"
     --   def inner(y): return x + y
     --   return inner
     adderDef =
-      FunDefElaborated "adder" [("x", fl)]
-        [ FunDefElaborated "inner" [("y", fl)]
+      FunDefElaborated "adder" [("x", fl)] Nothing
+        [ FunDefElaborated "inner" [("y", fl)] Nothing
             [Return (BinOp BinOpPlus (Var "x") (Var "y"))]
         , Return (Var "inner")
         ]

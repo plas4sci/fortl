@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE OrPatterns #-}
 
 module Lang.Types where
 
@@ -17,43 +18,64 @@ import Lang.TypeError
 import Data.Maybe (mapMaybe, isJust)
 
 -- Infer the type of an entire program
-synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
-synthProgram = synthProgram' []
+typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
+typeCheckProgram = typeCheckProgram' [] []
   where
-    -- Build a type environment as we analysis a program
-    synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
-    synthProgram' gamma [] =
+    -- Type check a program
+    --   * First argument is a stack of optional return types for function blocks
+    --   * Second argument is type context
+    --   * Third is the program under checking
+    typeCheckProgram' :: [Maybe (Type 0)] -> Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
+    typeCheckProgram' _ gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+
     -- Definition with a type signature
-    synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind ty of
         Left err -> Left err
         Right (ty', kind) ->
           case check gamma e ty' of
-            Right () -> synthProgram' ((v, ty') : gamma) defs
+            Right () -> typeCheckProgram' stack ((v, ty') : gamma) defs
             Left err -> Left err
 
     -- Definition without a type signature
-    synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
-        Right ty -> synthProgram' ((v, ty) : gamma) defs
+        Right ty -> typeCheckProgram' stack ((v, ty) : gamma) defs
         Left err -> Left err
 
-    synthProgram' gamma ((FunDefElaborated v params body):defs) = do
+    -- Function definition
+    typeCheckProgram' stack gamma ((FunDefElaborated v params optionalReturnTy body):defs) = do
       params' <- traverse elaborateParameter params
-      (_, resultType) <- synthProgram' (params' ++ gamma) body
-      synthProgram' ((v, FunTy (map snd params') resultType) : gamma) defs
+      elaboratedReturnTy <- 
+         case optionalReturnTy of
+          Nothing -> return Nothing
+          Just returnTy -> checkKind returnTy type0 >>= (return . Just)
 
-    synthProgram' gamma ((Return e):defs) = do
-      ty <- synth gamma e
-      return (gamma, ty)
+      (_, resultType) <- typeCheckProgram' (elaboratedReturnTy : stack) (params' ++ gamma) body
+      -- rest of the program
+      typeCheckProgram' stack ((v, FunTy (map snd params') resultType) : gamma) defs
 
-    synthProgram' gamma ((DataDef v constrs ty):defs) =
-      synthProgram' gamma defs
+    typeCheckProgram' stack gamma ((Return e):defs) = do
+      case stack of
+        -- If the stack is empty or has no return type
+        -- then we must infer
+        ([] ; (Nothing:_)) -> do
+          ty <- synth gamma e
+          return (gamma, ty)
 
-    synthProgram' gamma (_:defs) = synthProgram' gamma defs
+        -- But if we have a type (which came from a signature on a function)
+        -- then use it for checking
+        (Just ty : stack) -> do
+          _ <- check gamma e ty
+          return (gamma, ty)
+
+    typeCheckProgram' stack gamma ((DataDef v constrs ty):defs) =
+      typeCheckProgram' stack gamma defs
+
+    typeCheckProgram' stack gamma (_:defs) = typeCheckProgram' stack gamma defs
 
     elaborateParameter (name, ty) = do
       ty' <- checkKind ty type0

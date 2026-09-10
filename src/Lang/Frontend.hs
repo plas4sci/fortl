@@ -60,7 +60,7 @@ run report fname = do
               -- Evaluate
               let (env, normalForm) = interpret options ast
               -- Typing
-              case typeInference options ast of
+              case typeCheck options ast of
                 Left err -> do
                   let ?srcFile = fname
                   putStrLn $ ansi_bold <> ansi_red
@@ -75,9 +75,9 @@ run report fname = do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program 'Desugared -> Either TypeError (Context, Type 0)
-typeInference options program =
-    case synthProgram program of
+typeCheck :: [Option] -> Program 'Desugared -> Either TypeError (Context, Type 0)
+typeCheck options program =
+    case typeCheckProgram program of
         Right ty -> Right ty
         Left err -> Left err
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String

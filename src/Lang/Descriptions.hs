@@ -70,7 +70,9 @@ instance Representation DescriptionsRepr where
         let overlapping = intersect (keys d1) (keys d2)
         if all (\k -> (d1 ! k) == (d2 ! k)) overlapping
           then return $ union d1 d2
-          else Left $ OverlappingDescriptionConflict (head overlapping) t1 t2
+          else case overlapping of
+                 (k:_) -> Left $ OverlappingDescriptionConflict k t1 t2
+                 []    -> error "unreachable: overlapping is non-empty here since `all` over [] is True"
             
     computeRepresentation (ExponentTy t n) = do
         d <- computeRepresentation t
@@ -100,14 +102,12 @@ instance Representation DescriptionsRepr where
     -- | Reify a description representation back to a type term
     reifyToTypeTerm :: DescriptionsRepr -> Type 0
     reifyToTypeTerm ds =
-      if length (keys ds) == 0
-        then tyCon0 "1"
-        else
-          Prelude.foldr (\(k, v) t -> WithTy (TyApp (tyCon0 k) (reifyToTypeTerm v)) t) base rest
+      case assocs ds of
+        []            -> tyCon0 "1"
+        ((k, v):rest) ->
+          Prelude.foldr (\(k', v') t -> WithTy (TyApp (tyCon0 k') (reifyToTypeTerm v')) t) base rest
           where
-            base    = TyApp (tyCon0 k) (reifyToTypeTerm v)
-            (k, v)  = head (assocs ds)
-            rest    = tail (assocs ds)
+            base = TyApp (tyCon0 k) (reifyToTypeTerm v)
 
     -- | Equality on description representations
     reprEquality :: DescriptionsRepr -> Specificational DescriptionsRepr -> Either TypeError ()
@@ -141,16 +141,14 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm :: DescriptionRepr -> Type 0
     reifyToTypeTerm (IndexType t) = t
     reifyToTypeTerm (FreeAGroup a) =
-      if length (assocs a) == 0
-        then tyCon0 "1"
-        else
-          Prelude.foldr (\(k, v) t -> exp k v `ProdTy` t) base rest
+      case assocs a of
+        []            -> tyCon0 "1"
+        ((k, v):rest) ->
+          Prelude.foldr (\(k', v') t -> exp k' v' `ProdTy` t) base rest
           where
-            exp k 1 = tyCon0 k
-            exp k v = ExponentTy (tyCon0 k) v
-            base    = exp k v
-            (k, v)  = head (assocs a)
-            rest    = tail (assocs a)
+            exp k' 1 = tyCon0 k'
+            exp k' v' = ExponentTy (tyCon0 k') v'
+            base = exp k v
     reifyToTypeTerm (TypeTree t) = t
 
     -- | Equality on description representations
