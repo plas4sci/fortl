@@ -56,6 +56,9 @@ instance Representation DescriptionsRepr where
     computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
         d <- computeRepresentation t
         return $ singleton "Unit" d
+    computeRepresentation (TyApp (TyCon ZeroP "Dimension") t) = do
+        d <- computeRepresentation t
+        return $ singleton "Dimension" d
     computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
         d <- computeRepresentation t
         return $ singleton "Quantity" d

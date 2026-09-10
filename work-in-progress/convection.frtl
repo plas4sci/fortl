@@ -1,7 +1,7 @@
 # On atmospheric convection
 
 """[Specific heat capacity] of dry air"""
-c_p : Float[Unit[J/(kg * K)] & Basis[DryAir]] = 1005.0 #   & Species[DryAir]
+c_p : Float[Unit[j/(kg * K)] & Basis[DryAir]] = 1005.0 #   & Species[DryAir]
 
 
 """Gravitational acceleration"""
@@ -13,19 +13,19 @@ T : Float[Unit[K] & Basis[DryAir]] = 273.15
 """Geopotential height"""
 # Work involved in lifting one unit mass over one unit of length
 # assuming constant gravitational acceleration
-# Where J = kg * m^2 / s^2  therefore the unit here is = m
-z : Float[Unit[(J * s^2) / (m * kg)] & Basis[1]] = 0.0
+# Where j = kg * m^2 / s^2  therefore the unit here is = m
+z : Float[Unit[(j * s^2) / (m * kg)] & Basis[1]] = 0.0
 
 """Latent heat absorption of sublimation/deposition (energy difference from ice <-> vapor)"""
 # Internal energy of ice = internal energy of vapor - latent heat of sublimation
 # therefore
 # Internal energy of vapor = internal energy of ice + latent heat of sublimation
 # Magnitude of the enthalpy difference between the two phases
-L_s : Float[Unit[J / kg] & Species[Ice]] = 2.834e6
+L_s : Float[Unit[j / kg] & Species[Ice]] = 2.834e6
 
 """Latent heat release of condensation/evaporation (energy difference from vapor <-> liquid)"""
 # Internal energy of vapour = internal energy of liquid + latent heat of condensation
-L_c : Float[Unit[J / kg] & Species[Liquid]] = 2.501e6
+L_c : Float[Unit[j / kg] & Species[Liquid]] = 2.501e6
 
 """
 Key idea: in a phase transition from A -> B then the latent 
@@ -44,11 +44,11 @@ q_i : Float[Unit[1] & Species[Ice]] = 0.0
 
 # Specific non-precipitating ice/liquid static energy comprises
 # 1. Thermodynamic: heat (energy) content of dry air 
-enthalpy : Float[Unit[J / kg]] = c_p * T 
+enthalpy : Float[Unit[j / kg]] = c_p * T 
 
 # 2. Gravitational potential energy: how much work is gravity doing if a kilogram
 # of air fell to this level z
-geopotential : Float[Unit[J / kg]] = g_v * z
+geopotential : Float[Unit[j / kg]] = g_v * z
 
 # 3. Minus the chemical/internal energy associated with the phase change of 
 # water species i.e., we are assuming a bookeeping system where we assume all 
@@ -62,7 +62,7 @@ geopotential : Float[Unit[J / kg]] = g_v * z
 #  = q_c * L_c 
 # and of *ice* is
 #  = q_i * L_s
-internal_energy_ice_liquid : Float[Unit[J / kg]] = L_c * q_c + L_s * q_i
+internal_energy_ice_liquid : Float[Unit[j / kg]] = L_c * q_c + L_s * q_i
 # We want to at this point understand we have a combined Liquid + Ice so something like
 # SpeciesCombined[[Ice,Liquid]]
 # How we connect this into the next part is not clear though- perhaps at some point
@@ -76,7 +76,7 @@ internal_energy_ice_liquid : Float[Unit[J / kg]] = L_c * q_c + L_s * q_i
 # The idea is that this stays (nearly) constant for adiabatic processes,
 # with energy transferred between the terms, i.e., 
 # d(h_l) / dt ~= 0
-h_l : Float[Unit[J / kg]] = enthalpy + geopotential - internal_energy_ice_liquid
+h_l : Float[Unit[j / kg]] = enthalpy + geopotential - internal_energy_ice_liquid
 
 """[[Total water mixing ratio]]"""
 q_t : Float[Unit[1] & Species[1]] = q_v + q_c + q_i
