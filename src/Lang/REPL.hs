@@ -6,7 +6,8 @@ import Lang.Syntax
 import Lang.Frontend    (banner, run, ansi_bold, ansi_reset)
 import Lang.Parser      (parseExpr, parseType)
 import Lang.PrettyPrint (pprint)
-import Lang.Types       (synth, errorToString, Context)
+import Lang.Types       (synth, errorToString)
+import Lang.TypeHelpers (Context)
 import Lang.Semantics   (bigStep, Env)
 import Lang.Kinding     (synthKind)
 import Lang.Options     (Option)
@@ -100,7 +101,7 @@ replLoop state = do
               liftIO $ case parseType rest' of
                   Left err -> putStrLn err
                   Right ty ->
-                    case synthKind ty of
+                    case synthKind [] ty of
                       Left err -> let ?srcFile = "<repl>" in putStrLn $ errorToString err
                       Right (ty', kind) -> do
                         if ty /= ty'

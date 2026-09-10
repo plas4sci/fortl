@@ -51,13 +51,14 @@ typeConstructors = [
     -- Graded boolean
   , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
   , ("Nat"      , type0)
-  , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
+  , ("Unit"     , FunTy (tyCon1 "UnitBase") (tyCon1 "UoM"))
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
   , ("Basis"    , FunTy type0 (tyCon1 "BasisType"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
+  , ("UnitBase" , type0)
  ]
 
 typeAliases :: [(Identifier, Type 0)]

@@ -6,6 +6,10 @@ module Lang.TypeHelpers where
 import Lang.Syntax
 import Lang.Primitives
 
+-- Typing and kinding context: maps term/type-constructor names to their types
+-- (Type 0). When used for kinding, a Lift is applied to promote to Type 1.
+type Context = [(Identifier, Type 0)]
+
 -- # Smart constructors
 
 -- | Given a unit, construct its inverse
