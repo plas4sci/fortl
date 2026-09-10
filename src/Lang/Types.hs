@@ -276,8 +276,6 @@ synth_ gamma (Var x) =
           Just ty -> Right ty
           Nothing -> Left $ VariableNotFound x
 
-synth_ _ (Con "()" []) = Right $ tyCon0 "()"
-
 synth_ gamma (Let x e1 e2) = do
   ty1 <- synth gamma e1
   synth ((x, ty1) : gamma) e2

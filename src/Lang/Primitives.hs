@@ -25,7 +25,6 @@ stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
 
 boolTy :: Type 0 -> Type 0
 boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) t
-  
 
 desc :: Type 1
 desc = tyCon1 "Descriptor"
@@ -36,7 +35,6 @@ desc2 = tyCon2 "Descriptor"
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
-  , ("()"       , tyCon0 "()")
   , ("True"     , boolTy (tyCon0 "1"))
   , ("False"    , boolTy (tyCon0 "1"))
  ]

@@ -235,8 +235,7 @@ NumFloat
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom
-  : '(' ')'          { \_ -> tyCon0 "()" }
-  | IDENT            { \opts -> tyCon0 $ symString $1 }
+  : IDENT            { \opts -> tyCon0 $ symString $1 }
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> tyCon0 $ let (TokenInt _ x) = $1 in x }
@@ -254,8 +253,7 @@ Arguments :: { [Option] -> [Expr] }
   | Form                              { \opts -> [$1 opts] }
 
 Atom :: { [Option] -> Expr }
-  : '(' ')'                   { \_ -> Con "()" [] }
-  | '(' Expr ')'              { $2 }
+  : '(' Expr ')'              { $2 }
   | IDENT                     { \opts -> MkVar (mkPos $1) (symString $1) }
   | LAMBDA '(' IDENT ':' Type ')' ':' Expr
     { \opts -> MkAbs (mkPos $1) [(symString $3, Just ($5 opts))] ($8 opts) }
