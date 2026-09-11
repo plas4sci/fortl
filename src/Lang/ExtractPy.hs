@@ -94,6 +94,18 @@ pyExpr (Cond e1 e2 e3)        = pyExpr e1 ++ " if " ++ pyExpr e2 ++ " else " ++ 
 pyExpr (Con c [])             = c
 pyExpr (Con c es)             = c ++ "(" ++ intercalate ", " (map pyExpr es) ++ ")"
 
+-- | Python's operators, not fortl's: notably `^` means exponentiation in
+-- fortl's surface syntax but bitwise XOR in Python, so `BinOpExp` must map
+-- to `**`, not to fortl's own `pprint` for this operator.
+pyBinOp :: BinOp -> String
+pyBinOp BinOpExp    = "**"
+pyBinOp BinOpPlus   = "+"
+pyBinOp BinOpMinus  = "-"
+pyBinOp BinOpTimes  = "*"
+pyBinOp BinOpDivide = "/"
+pyBinOp BinOpAnd    = "and"
+pyBinOp BinOpOr     = "or"
+
 -- | Render a Haskell string as a Python string literal, escaping only the
 -- characters that need it and passing everything else through untouched.
 pyStringLit :: String -> String

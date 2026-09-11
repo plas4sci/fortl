@@ -170,6 +170,7 @@ Form :: { [Option] -> Expr }
   | Form '-' Form  { \opts -> MkBinOp (mkPos $2) BinOpMinus ($1 opts) ($3 opts) }
   | Form '*' Form  { \opts -> MkBinOp (mkPos $2) BinOpTimes ($1 opts) ($3 opts) }
   | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
+  | Form '*' '*' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $3) $4) }
   | Form '/' Form  { \opts -> MkBinOp (mkPos $2) BinOpDivide ($1 opts) ($3 opts) }
   | Form and Form  { \opts -> MkBinOp (mkPos $2) BinOpAnd ($1 opts) ($3 opts) }
   | Form or Form   { \opts -> MkBinOp (mkPos $2) BinOpOr ($1 opts) ($3 opts) }
