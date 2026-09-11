@@ -38,6 +38,7 @@ def residual(emissivity : Float[Unit[1]]) -> Float[Unit[J / s]]:
 def derivative(f : Float[Unit[1]] -> Float[Unit[J / s]], x : Float[Unit[1]]) -> Float[Unit[J / s]]:
   return (f(x + step_size) - f(x - step_size)) / (step_size + step_size)
 
+# Newton-Raphson method
 def newton_step(f : Float[Unit[1]] -> Float[Unit[J / s]], x : Float[Unit[1]]) -> Float[Unit[1]]:
   return x - (f(x) / derivative(f, x))
 
