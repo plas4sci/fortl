@@ -20,6 +20,12 @@ import Control.Monad (when)
 banner :: String
 banner = "fortl v0.2.1 - Programming for science"
 
+helpMessage :: String
+helpMessage = unlines
+  [ "Usage: fortl <filename>"
+  , "       fortl --help"
+  ]
+
 main :: IO ()
 main = do
   putStrLn banner
@@ -27,6 +33,7 @@ main = do
   -- Get command line args
   case args of
     [] -> putStrLn "Please supply a filename as a command line argument"
+    ["--help"] -> putStr helpMessage
     -- If we have at least one
     (fname:_) -> do
       result <- run True fname
