@@ -75,7 +75,7 @@ pyExpr (Snd e)                = bracketPy e ++ "[1]"
 -- Sum types/case are not implemented in Lang.Semantics either, so there is
 -- no behaviour to preserve here; fail loudly if it's ever evaluated.
 pyExpr (Case _ _ _)           =
-  "(_ for _ in ()).throw(NotImplementedError(\"case is not supported by --extract-py\"))"
+  "throw(NotImplementedError(\"case is not supported by --extract-py\"))"
 pyExpr (BinOp op e1 e2)       = bracketPy e1 ++ " " ++ pprint op ++ " " ++ bracketPy e2
 pyExpr (UnOp op e)            = pprint op ++ bracketPy e
 pyExpr (Lift e _)             = pyExpr e
