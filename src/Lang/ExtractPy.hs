@@ -11,11 +11,17 @@
 module Lang.ExtractPy (extractProgram) where
 
 import Lang.Syntax
-import Lang.PrettyPrint (isLexicallyAtomic, pprint)
+import Lang.PrettyPrint (isLexicallyAtomic)
 
 import Data.List (intercalate, isInfixOf)
 
 -- | Render a whole (parsed) fortl program as Python source.
+--
+-- The result always ends by printing `it`, seeded to `None` up front so a
+-- program that never binds it still prints something -- this mirrors
+-- "Lang.Semantics".`interpretDefs`'s own fallback (@lookup "it" env@,
+-- defaulting to @None@), so the printed value matches what @fortl@ itself
+-- prints for the same program.
 extractProgram :: Maybe String -> Program 'Parsed -> String
 extractProgram original defs =
   let body   = concatMap extractDef defs
@@ -24,7 +30,9 @@ extractProgram original defs =
                  Just filename -> "fortl program " ++ filename
       header = ("# Generated from " ++ whence ++ " by --extract-py")
              : if any ("math.sqrt(" `isInfixOf`) body then ["import math", ""] else [""]
-  in unlines (header ++ body)
+      preamble = ["it = None"]
+      trailer  = ["print(it)"]
+  in unlines (header ++ preamble ++ body ++ trailer)
 
 extractDef :: Def 'Parsed -> [String]
 extractDef (ValDef lhs e)   = [extractLhs lhs ++ " = " ++ pyExpr e]
