@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE OrPatterns #-}
 
 module Lang.Types where
 
@@ -17,39 +18,68 @@ import Lang.TypeError
 import Data.Maybe (mapMaybe, isJust)
 
 -- Infer the type of an entire program
-synthProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
-synthProgram = synthProgram' []
+typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
+typeCheckProgram = typeCheckProgram' [] []
   where
-    -- Build a type environment as we analysis a program
-    synthProgram' :: Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
-    synthProgram' gamma [] =
+    -- Type check a program
+    --   * First argument is a stack of optional return types for function blocks
+    --   * Second argument is type context
+    --   * Third is the program under checking
+    typeCheckProgram' :: [Maybe (Type 0)] -> Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
+    typeCheckProgram' _ gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+
     -- Definition with a type signature
-    synthProgram' gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
       case synthKind ty of
         Left err -> Left err
         Right (ty', kind) ->
           case check gamma e ty' of
-            Right () -> synthProgram' ((v, ty') : gamma) defs
+            Right () -> typeCheckProgram' stack ((v, ty') : gamma) defs
             Left err -> Left err
 
     -- Definition without a type signature
-    synthProgram' gamma ((ValDef (VarLhs v Nothing) e):defs) =
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v Nothing) e):defs) =
       case synth gamma e of
-        Right ty -> synthProgram' ((v, ty) : gamma) defs
+        Right ty -> typeCheckProgram' stack ((v, ty) : gamma) defs
         Left err -> Left err
 
+    -- Function definition
+    typeCheckProgram' stack gamma ((FunDefElaborated v params optionalReturnTy body):defs) = do
+      params' <- traverse elaborateParameter params
+      elaboratedReturnTy <- 
+         case optionalReturnTy of
+          Nothing -> return Nothing
+          Just returnTy -> checkKind returnTy type0 >>= (return . Just)
 
-    synthProgram' gamma ((Return e):defs) = do
-      ty <- synth gamma e
-      return (gamma, ty)
+      (_, resultType) <- typeCheckProgram' (elaboratedReturnTy : stack) (params' ++ gamma) body
+      -- rest of the program
+      typeCheckProgram' stack ((v, FunTy (map snd params') resultType) : gamma) defs
 
-    synthProgram' gamma ((DataDef v constrs ty):defs) =
-      synthProgram' gamma defs
+    typeCheckProgram' stack gamma ((Return e):defs) = do
+      case stack of
+        -- If the stack is empty or has no return type
+        -- then we must infer
+        ([] ; (Nothing:_)) -> do
+          ty <- synth gamma e
+          return (gamma, ty)
 
-    synthProgram' gamma (_:defs) = synthProgram' gamma defs
+        -- But if we have a type (which came from a signature on a function)
+        -- then use it for checking
+        (Just ty : stack) -> do
+          _ <- check gamma e ty
+          return (gamma, ty)
+
+    typeCheckProgram' stack gamma ((DataDef v constrs ty):defs) =
+      typeCheckProgram' stack gamma defs
+
+    typeCheckProgram' stack gamma (_:defs) = typeCheckProgram' stack gamma defs
+
+    elaborateParameter (name, ty) = do
+      ty' <- checkKind ty type0
+      return (name, ty')
 
 -- Represent contexts as lists
 type Context = [(Identifier, Type 0)]
@@ -100,9 +130,12 @@ check_ gamma (StringConst _) ty =
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
-  case typeEquality ty (IsSpec tyA) of
-    Right () -> check_ gamma e tyA
-    Left err -> Left $ TypeCheckFailure tyA ty (let ?srcFile = "" in errorToString err)
+  case checkKind tyA type0 of
+    Left err -> Left err
+    Right tyA' ->
+      case typeEquality ty (IsSpec tyA') of
+        Right () -> check_ gamma e tyA'
+        Left err -> Left $ TypeCheckFailure tyA' ty (let ?srcFile = "" in errorToString err)
 
 {--
 
@@ -111,15 +144,16 @@ G, x : A |- e <= B
 G |- (\x -> e) <= A -> B
 
 -}
--- Curry style
-check_ gamma (Abs x Nothing expr) (FunTy tyA tyB) =
-  check ([(x, tyA)] ++ gamma) expr tyB
-
--- Church style
-check_ gamma (Abs x (Just tyA') expr) (FunTy tyA tyB) =
-  case typeEquality tyA' (IsSpec tyA) of
-    Right () -> check ([(x, tyA)] ++ gamma) expr tyB
-    Left err -> Left $ ChainedError (FunctionAbstractionTypeMismatch tyA tyA') err
+-- Curry/Church style, mixed per-parameter. A n-ary function type can be
+-- matched either by one fully-applied abstraction or by nested abstractions
+-- taking fewer parameters at a time (currying).
+check_ gamma (Abs params expr) (FunTy tyAs tyB)
+  | length params <= length tyAs = do
+      let (tyAsHere, tyAsRest) = splitAt (length params) tyAs
+      typedParams <- checkAbsParams params tyAsHere
+      let remainingTy = if null tyAsRest then tyB else FunTy tyAsRest tyB
+      check (typedParams ++ gamma) expr remainingTy
+  | otherwise = Left $ ContextualError "Function abstraction has the wrong number of arguments"
 
 check_ gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e1 t1
@@ -264,6 +298,10 @@ synth_ gamma (Var x) =
           Just ty -> Right ty
           Nothing -> Left $ VariableNotFound x
 
+synth_ gamma (Let x e1 e2) = do
+  ty1 <- synth gamma e1
+  synth ((x, ty1) : gamma) e2
+
 
 {-
 
@@ -284,7 +322,7 @@ i.e., we know we have a signature for the argument.
 -}
 
 -- app (special for form of top-level definitions)
-synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
+synth_ gamma (App (Abs [(x, Nothing)] e1) [Sig e2 tyA]) =
   case checkKind tyA type0 of
     Left err -> Left err
     Right tyA ->
@@ -294,15 +332,20 @@ synth_ gamma (App (Abs x Nothing e1) (Sig e2 tyA)) =
 
 
 -- abs-Church (actually rule)
-synth_ gamma (Abs x (Just tyA) e) =
-  case checkKind tyA type0 of
-    Left err -> Left err
-    Right tyA' -> do
-      tyB <- synth ((x, tyA') : gamma) e
-      Right (FunTy tyA' tyB)
+synth_ gamma (Abs params e)
+  | all (isJust . snd) params = do
+      typedParams <- traverse elaborateAbsParam params
+      tyB <- synth (typedParams ++ gamma) e
+      Right (FunTy (map snd typedParams) tyB)
+  | otherwise = Left $ CannotSynthType (Abs params e)
+  where
+    elaborateAbsParam (x, Just tyA) = do
+      tyA' <- checkKind tyA type0
+      return (x, tyA')
+    elaborateAbsParam (_, Nothing) = Left $ CannotSynthType (Abs params e)
 
 -- Type checking a type speciaisation
-synth_ gamma (App e (TyEmbed tau')) =
+synth_ gamma (App e [TyEmbed tau']) =
   case checkKind tau' type0 of
     Left err -> Left err
     Right tau' ->
@@ -322,7 +365,7 @@ synth_ gamma (App e (TyEmbed tau')) =
 -- special case primitive: sqrt
 -- infer the argument's description and halve every exponent in it,
 -- e.g. an argument described by [M^2] yields a result described by [M]
-synth_ gamma (App (Var "sqrt") e) = do
+synth_ gamma (App (Var "sqrt") [e]) = do
   t <- synth gamma e
   case isGradableNumericType t of
     Just ("Float", gradeType, d) -> do
@@ -330,14 +373,12 @@ synth_ gamma (App (Var "sqrt") e) = do
       Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
     _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
 
-synth_ gamma (App e1 e2) =
+synth_ gamma (App e1 es) =
   -- Synth the left-hand side
   case synth gamma e1 of
-    Right (FunTy tyA tyB) ->
-      -- Check the right-hand side
-      case check gamma e2 tyA of
-        Right () -> Right tyB
-        Left err -> Left err
+    Right (FunTy tys tyB) -> do
+      checkArguments gamma es tys
+      Right tyB
 
     Right t ->
       Left $ ExpectingFunctionType e1 t
@@ -349,7 +390,7 @@ synth_ gamma Zero =
   Right natTy
 
 synth_ gamma Succ =
-  Right (FunTy natTy natTy)
+  Right (FunTy [natTy] natTy)
 
 synth_ gamma (Pair e1 e2) =
   case synth gamma e1 of
@@ -510,6 +551,27 @@ synth_ gamma (Sig e ty) =
 -- catch all (cannot synth here)
 synth_ gamma e =
    Left $ CannotSynthType e
+
+checkArguments :: Context -> [Expr] -> [Type 0] -> Either TypeError ()
+checkArguments gamma expressions types
+  | length expressions /= length types =
+      Left $ ContextualError "Function application has the wrong number of arguments"
+  | otherwise = sequence_ (zipWith (check gamma) expressions types)
+
+-- | Match each abstraction parameter (with an optional annotation) against
+-- its expected domain type, requiring annotations to agree when present.
+checkAbsParams :: [(Identifier, Maybe (Type 0))] -> [Type 0] -> Either TypeError Context
+checkAbsParams [] [] = Right []
+checkAbsParams ((x, Nothing):params) (tyA:tyAs) = do
+  rest <- checkAbsParams params tyAs
+  return ((x, tyA) : rest)
+checkAbsParams ((x, Just tyA'):params) (tyA:tyAs) =
+  case typeEquality tyA' (IsSpec tyA) of
+    Right () -> do
+      rest <- checkAbsParams params tyAs
+      return ((x, tyA) : rest)
+    Left err -> Left $ ChainedError (FunctionAbstractionTypeMismatch tyA tyA') err
+checkAbsParams _ _ = Left $ ContextualError "Function abstraction has the wrong number of arguments"
 
 ---------------------------------
 -- # Type equality
@@ -674,6 +736,13 @@ errorToString (TermLevelTypeAbstraction alpha) =
 errorToString TypeApplicationExpectsType =
   "Type application expects a type"
 
+errorToString (WellFormednessError err) =
+  "Malformed program: " <> case err of
+    MissingParameterAnnotation parameter ->
+      "function parameter `" <> parameter <> "` has no type annotation"
+    DuplicateParameterAnnotation parameter ->
+      "function parameter `" <> parameter <> "` is annotated in both the header and body"
+
 errorToString (ContextualError msg) =
   msg
 
@@ -691,7 +760,7 @@ normalise t =
     else normalise (normalise' t)
 
 normalise' :: Type 0 -> Type 0
-normalise' (FunTy t1 t2) = FunTy (normalise' t1) (normalise' t2)
+normalise' (FunTy ts t2) = FunTy (map normalise' ts) (normalise' t2)
 normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
   TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (either (const desc) id (normalisationByEvaluation desc))
 normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)

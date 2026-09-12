@@ -5,7 +5,7 @@ module Lang.Frontend where
 import Lang.Options
 import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
-import Lang.Semantics   (interpret, Env)
+import Lang.Semantics   (interpret, Env, Value)
 import Lang.Desugar     (desugar)
 import Lang.Syntax
 import Lang.Types
@@ -43,7 +43,7 @@ main = do
           putStrLn $ pprint result
           exitSuccess
 
-run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr, Context))
+run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Value, Context))
 run report fname = do
   -- Check if this is a file
   exists <- doesPathExist fname
@@ -57,28 +57,34 @@ run report fname = do
       input <- readFile fname
       case parseProgram fname input of
         Right (parsetree, options) -> do
-          let ast = desugar parsetree
-          -- Evaluate
-          let (env, normalForm) = interpret options ast
-          -- Typing
-          case typeInference options ast of
-              Left err -> do
-                let ?srcFile = fname
-                putStrLn $ ansi_bold <> ansi_red
-                        <> "Not well-typed.\n" <> errorToString err <> ansi_reset
-                return $ Left (errorToString err)
-              Right (ctxt, ty) -> do
-                putStrLn $ ansi_bold <> ansi_green
-                        <> "Well-typed " <> ansi_reset
-                        <> ansi_bold <> "as " <> ansi_reset <> pprint ty
-                return $ Right (parsetree, options, env, normalForm, ctxt)
+          case desugar parsetree of
+            Left err -> do
+              let ?srcFile = fname
+              putStrLn $ ansi_bold <> ansi_red
+                      <> "Not well-formed.\n" <> errorToString err <> ansi_reset
+              return $ Left (errorToString err)
+            Right ast -> do
+              -- Evaluate
+              let (env, normalForm) = interpret options ast
+              -- Typing
+              case typeCheck options ast of
+                Left err -> do
+                  let ?srcFile = fname
+                  putStrLn $ ansi_bold <> ansi_red
+                    <> "Not well-typed.\n" <> errorToString err <> ansi_reset
+                  return $ Left (errorToString err)
+                Right (ctxt, ty) -> do
+                  putStrLn $ ansi_bold <> ansi_green
+                    <> "Well-typed " <> ansi_reset
+                    <> ansi_bold <> "as " <> ansi_reset <> pprint ty
+                  return $ Right (parsetree, options, env, normalForm, ctxt)
         Left msg -> do
           putStrLn $ ansi_red ++ "Error: " ++ ansi_reset ++ msg
           return $ Left msg
 
-typeInference :: [Option] -> Program 'Desugared -> Either TypeError (Context, Type 0)
-typeInference options program =
-    case synthProgram program of
+typeCheck :: [Option] -> Program 'Desugared -> Either TypeError (Context, Type 0)
+typeCheck options program =
+    case typeCheckProgram program of
         Right ty -> Right ty
         Left err -> Left err
 ansi_red, ansi_green, ansi_reset, ansi_bold :: String
