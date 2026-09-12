@@ -1,0 +1,2 @@
+x : Float[Dimension[Foo]] = 1.0
+it = x

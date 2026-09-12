@@ -16,12 +16,22 @@ import GHC.Generics (Generic)
 %wrapper "posn"
 
 $digit  = 0-9
-$alpha  = [a-zA-Z\_\-]
+
+-- Unicode letters commonly used in science/maths identifiers, curated
+-- rather than opening identifiers to all of Unicode (which would admit
+-- confusables, mixed-script homoglyphs, and other look-alike characters).
+-- Extend these ranges deliberately as more symbols are needed.
+$greekUpper      = [\x0391-\x03A9]                         -- Α-Ω
+$greekLower      = [\x03B1-\x03C9\x03D1\x03D5\x03D6\x03F5] -- α-ω, ϑ ϕ ϖ ϵ (common variants)
+$letterlikeMath  = [\x2113\x210F\x2135-\x2138]              -- ℓ ℏ ℵ ℶ ℷ ℸ
+$unicodeAlpha    = [$greekUpper $greekLower $letterlikeMath]
+
+$alpha  = [a-zA-Z\_\-$unicodeAlpha]
 $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
-@sym    = ($lower | $upper) ($alphanum | \')*
+@sym    = ($lower | $upper | $unicodeAlpha) ($alphanum | \')*
 @tyvar    = \' @sym
 @float   = \-? $digit+ \. $digit+ ([eE] \-? $digit+)?
 @int    = \-? $digit+ ([eE] \-? $digit+)?
