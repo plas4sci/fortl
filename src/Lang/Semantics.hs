@@ -106,6 +106,9 @@ bigStep env opts (BinOp op e1 e2) = do
         BinOpDivide -> if n2 /= 0
                       then return $ NumFloat $ n1 / n2
                       else Left "Division by zero"
+        BinOpDivideInteger -> if n2 /= 0
+                      then return $ NumFloat $ fromInteger (floor (n1 / n2) :: Integer)
+                      else Left "Division by zero"
         BinOpAnd    -> Left "Logical AND is not defined for floats"
         BinOpOr     -> Left "Logical OR is not defined for floats"
     (NumInteger n1, NumInteger n2) ->
@@ -115,6 +118,9 @@ bigStep env opts (BinOp op e1 e2) = do
         BinOpTimes  -> return $ NumInteger $ n1 * n2
         BinOpMinus  -> return $ NumInteger $ n1 - n2
         BinOpDivide -> if n2 /= 0
+                      then return $ NumInteger $ n1 `div` n2
+                      else Left "Division by zero"
+        BinOpDivideInteger -> if n2 /= 0
                       then return $ NumInteger $ n1 `div` n2
                       else Left "Division by zero"
         BinOpAnd    -> Left "Logical AND is not defined for integers"

@@ -177,6 +177,10 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
                     BinOpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
                     BinOpDivide ->
                       typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
+                    BinOpDivideInteger -> do
+                      assert (baseType == "Integer") (ExpectingNumericType (TyCon ZeroP "Integer"))
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
+
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
 
@@ -451,7 +455,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
                           Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
                         Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
 
-synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] =
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpDivideInteger, BinOpExp] =
   case synth gamma e1 of
     Left err -> Left $ BinaryOperatorTypeError op err
     Right t1 ->
@@ -479,6 +483,10 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               BinOpDivide -> do
+                                d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                              BinOpDivideInteger -> do
+                                assert (baseType == "Integer") (ExpectingNumericType (TyCon ZeroP "Integer"))
                                 d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               _        ->

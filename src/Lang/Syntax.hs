@@ -203,7 +203,14 @@ pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
              Cond #-}
 
 -- Operators
-data BinOp = BinOpPlus | BinOpTimes | BinOpMinus | BinOpDivide | BinOpExp | BinOpAnd | BinOpOr
+data BinOp = BinOpPlus
+           | BinOpTimes
+           | BinOpMinus
+           | BinOpDivide
+           | BinOpDivideInteger
+           | BinOpExp
+           | BinOpAnd
+           | BinOpOr
   deriving (Show, Eq)
 data UnOp = UnOpNegate | UnOpNot
   deriving (Show, Eq)
