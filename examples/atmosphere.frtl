@@ -1,0 +1,29 @@
+# Equation of state for the atmosphere
+
+"""Ideal gas constant"""
+R : Float[Unit[J / (mol * K)]]
+R = 8.3144621
+
+def ideal_gas_law(p, V, n, T):
+  """Pressure"""
+  p : Float[Unit[N / m^2]]
+
+  """Volume"""
+  V : Float[Unit[m^3]]
+
+  """Amount of substance"""
+  n : Float[Unit[mol]]
+
+  """Temperature"""
+  T : Float[Unit[K]]
+
+  return p * V == n * R * T
+
+ideal_gas_solved = solve(repr(ideal_gas_law))
+
+ideal_gas_solved.p(V, n, T)
+ideal_gas_solved.V(p, n, T)
+ideal_gas_solved.n(p, V, T)
+ideal_gas_solved.T(p, V, n)
+
+
