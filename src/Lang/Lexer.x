@@ -16,12 +16,22 @@ import GHC.Generics (Generic)
 %wrapper "posn"
 
 $digit  = 0-9
-$alpha  = [a-zA-Z\_\-]
+
+-- Unicode letters commonly used in science/maths identifiers, curated
+-- rather than opening identifiers to all of Unicode (which would admit
+-- confusables, mixed-script homoglyphs, and other look-alike characters).
+-- Extend these ranges deliberately as more symbols are needed.
+$greekUpper      = [\x0391-\x03A9]                         -- Α-Ω
+$greekLower      = [\x03B1-\x03C9\x03D1\x03D5\x03D6\x03F5] -- α-ω, ϑ ϕ ϖ ϵ (common variants)
+$letterlikeMath  = [\x2113\x210F\x2135-\x2138]              -- ℓ ℏ ℵ ℶ ℷ ℸ
+$unicodeAlpha    = [$greekUpper $greekLower $letterlikeMath]
+
+$alpha  = [a-zA-Z\_\-$unicodeAlpha]
 $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
 $alphanum  = [$alpha $digit \_]
-@sym    = ($lower | $upper) ($alphanum | \')*
+@sym    = ($lower | $upper | $unicodeAlpha) ($alphanum | \')*
 @tyvar    = \' @sym
 @float   = \-? $digit+ \. $digit+ ([eE] \-? $digit+)?
 @int    = \-? $digit+ ([eE] \-? $digit+)?
@@ -44,14 +54,9 @@ tokens :-
   in                            { \p s -> TokenIn p }
   succ                          { \p s -> TokenSucc p }
   zero                          { \p s -> TokenZero p }
-  natcase                       { \p s -> TokenNatCase p }
   case                          { \p s -> TokenCase p }
-  of                            { \p s -> TokenOf p }
-  fix                           { \p s -> TokenFix p }
   fst                           { \p s -> TokenFst p }
   snd                           { \p s -> TokenSnd p }
-  inl                           { \p s -> TokenInl p }
-  inr                           { \p s -> TokenInr p }
   cast                          { \p s -> TokenCast p }
   lift                          { \p s -> TokenLift p }
   label                         { \p s -> TokenLabel p }
@@ -88,7 +93,6 @@ tokens :-
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
   \.                            { \p _ -> TokenDot p }
-  \@                            { \p _ -> TokenAt p }
 
 {
 
@@ -96,10 +100,7 @@ data Token
   = TokenLang     AlexPosn String
   | TokenData     AlexPosn
   | TokenCase     AlexPosn
-  | TokenNatCase  AlexPosn
-  | TokenOf       AlexPosn
   | TokenSep      AlexPosn
-  | TokenFix      AlexPosn
   | TokenLet      AlexPosn
   | TokenIn       AlexPosn
   | TokenTyLambda  AlexPosn
@@ -134,11 +135,8 @@ data Token
   | TokenMPair    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
-  | TokenInl      AlexPosn
-  | TokenInr      AlexPosn
   | TokenForall   AlexPosn
   | TokenDot      AlexPosn
-  | TokenAt       AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
   | TokenBool     AlexPosn Bool

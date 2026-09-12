@@ -72,23 +72,14 @@ bigStep env opts (GenLet x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep ((x, v1) : env) opts e2
 
-bigStep env opts (NatCase eg ez (bind, es)) =
-  case bigStep env opts eg of
-    Left err -> Left err
-    Right Zero -> bigStep env opts ez
-    Right (App Succ n) -> bigStep ((bind, n):env) opts es
-    Right _ -> Left "natcase expects a natural number"
-bigStep env opts (Fix e) =
-  case bigStep env opts e of
-    Left err -> Left err
-    Right (Abs x _ body) -> bigStep ((x, Fix (Abs x Nothing body)) : env) opts e
-    Right _ -> Left "fix expects a function"
 bigStep env opts (Case eg branchl branchr) = do
-  v <- bigStep env opts eg
-  case v of
-    Inl e1 -> bigStep ((fst branchl, e1) : env) opts (snd branchl)
-    Inr e2 -> bigStep ((fst branchr, e2) : env) opts (snd branchr)
-    _      -> Left "case expects a sum type"
+  error "Not implemented yet"
+--   v <- bigStep env opts eg
+--   case v of
+--     Inl e1 -> bigStep ((fst branchl, e1) : env) opts (snd branchl)
+--     Inr e2 -> bigStep ((fst branchr, e2) : env) opts (snd branchr)
+--     _      -> Left "case expects a sum type"
+
 bigStep env opts (Fst e) =
   case bigStep env opts e of
     Right (Pair e1 _) -> bigStep env opts e1
@@ -101,8 +92,6 @@ bigStep env opts (Pair e1 e2) = do
   v1 <- bigStep env opts e1
   v2 <- bigStep env opts e2
   return $ Pair v1 v2
-bigStep env opts (Inl e) = Inl <$> bigStep env opts e
-bigStep env opts (Inr e) = Inr <$> bigStep env opts e
 bigStep env opts (Lift e _) = bigStep env opts e
 bigStep env opts (BinOp op e1 e2) = do
   v1 <- bigStep env opts e1
