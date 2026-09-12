@@ -58,6 +58,7 @@ import Lang.Options
     '*'     { TokenProd _ }
     '-'     { TokenMinus _ }
     '/'     { TokenDivide _ }
+    '//'    { TokenDivideInt _ }
     '+'     { TokenSum _ }
     and     { TokenAnd _ }
     or      { TokenOr _ }
@@ -80,7 +81,7 @@ import Lang.Options
 %left and
 %left ','
 %left '+' '-'
-%left '/'
+%left '/' '//'
 %left '*'
 %right not
 %%
@@ -172,6 +173,7 @@ Form :: { [Option] -> Expr }
   | Form '^' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $2) $3) }
   | Form '*' '*' NumFloat  { \opts -> MkBinOp (mkPos $2) BinOpExp ($1 opts) (MkNumFloat (mkPos $3) $4) }
   | Form '/' Form  { \opts -> MkBinOp (mkPos $2) BinOpDivide ($1 opts) ($3 opts) }
+  | Form '//' Form { \opts -> MkBinOp (mkPos $2) BinOpDivideInteger ($1 opts) ($3 opts) }
   | Form and Form  { \opts -> MkBinOp (mkPos $2) BinOpAnd ($1 opts) ($3 opts) }
   | Form or Form   { \opts -> MkBinOp (mkPos $2) BinOpOr ($1 opts) ($3 opts) }
   | not Form       { \opts -> MkUnOp (mkPos $1) UnOpNot ($2 opts) }

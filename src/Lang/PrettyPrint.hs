@@ -79,6 +79,7 @@ instance PrettyPrint BinOp where
       BinOpMinus -> "-"
       BinOpTimes -> "*"
       BinOpDivide -> "/"
+      BinOpDivideInteger -> "//"
       BinOpAnd -> "and"
       BinOpOr -> "or"
 

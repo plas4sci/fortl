@@ -451,7 +451,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
                           Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
                         Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
 
-synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] =
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpDivideInteger, BinOpExp] =
   case synth gamma e1 of
     Left err -> Left $ BinaryOperatorTypeError op err
     Right t1 ->
