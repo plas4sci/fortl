@@ -55,9 +55,18 @@ typeConstructors = [
   , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
   , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
   , ("Basis"    , FunTy type0 (tyCon1 "BasisType"))
+  , ("Dimension", FunTy dimensionBase (tyCon1 "Dim"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
+    -- The standard 7 SI base dimensions
+  , ("T"        , dimensionBase) -- Time
+  , ("L"        , dimensionBase) -- Length
+  , ("M"        , dimensionBase) -- Mass
+  , ("U"        , dimensionBase) -- Electric cUrrent
+  , ("Phi"      , dimensionBase) -- Thermodynamic temperature (Theta)
+  , ("N"        , dimensionBase) -- Amount of substance
+  , ("J"        , dimensionBase) -- Luminous intensity
  ]
 
 typeAliases :: [(Identifier, Type 0)]
@@ -77,6 +86,7 @@ kindConstructors = [
   , ("KoQ"      , desc2)
   , ("SpeciesType", desc2)
   , ("BasisType" , desc2)
+  , ("Dim"      , desc2)
   , ("Base"     , desc2) -- The base Descriptor (bottom)
   -- Products of descriptors
   , ("&"        , FunTy desc2 (FunTy desc2 desc2))
@@ -88,6 +98,12 @@ base = tyCon1 "Base"
 
 agroup :: Type 1
 agroup = tyCon1 "AGroup"
+
+-- | Closed domain kind for Dimension: only the standard 7 SI base
+-- dimensions (and their products/powers) have this kind, unlike Unit's
+-- argument (any Type) which is an open set of generators.
+dimensionBase :: Type 1
+dimensionBase = tyCon1 "DimensionBase"
 
 -- | Check if a type constructors a descriptor
 isDescConstructor :: Identifier -> Maybe (Type 1)
