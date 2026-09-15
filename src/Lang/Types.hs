@@ -26,10 +26,21 @@ typeCheckProgram = typeCheckProgram' [] []
     --   * Second argument is type context
     --   * Third is the program under checking
     typeCheckProgram' :: [Maybe (Type 0)] -> Context -> Program 'Desugared -> Either TypeError (Context, Type 0)
-    typeCheckProgram' _ gamma [] =
+    -- Top level (not inside a function body): fall back to `it`, else Unit
+    typeCheckProgram' [] gamma [] =
       case lookup "it" gamma of
         Just ty -> return (gamma, ty)
         Nothing -> return (gamma, tyCon0 "Unit")  -- Return unit type when no return statement
+
+    -- Function body fell through without a `return`, and has no declared
+    -- return type: it's Unit (must not fall back to an enclosing `it`)
+    typeCheckProgram' (Nothing : _) gamma [] =
+      return (gamma, tyCon0 "Unit")
+
+    -- Function body fell through without a `return`, but declares a return
+    -- type: that's a type error, not a silent Unit
+    typeCheckProgram' (Just ty : _) _gamma [] =
+      Left $ TypeMismatch { expected = ty, actual = tyCon0 "Unit" }
 
     -- Definition with a type signature
     typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
