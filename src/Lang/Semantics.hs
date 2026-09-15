@@ -70,7 +70,15 @@ lookupBinding name env =
 
 -- Evaluate a program to normal form
 interpret :: [Option] -> Program 'Desugared -> (Env, Value)
-interpret = interpretDefs emptyEnv
+interpret opts program =
+  let (env, v) = interpretDefs emptyEnv opts program
+  in
+    -- prefer the `it` binding if there is one, else the value produced
+    -- by the last definition (e.g. an explicit `return`)
+    case lookupBinding "it" env of
+      Right v' -> (env, v')
+      Left _   -> (env, v)
+
 
 -- Interpret the definitions, including building an environment
 -- for the rest of the program
@@ -97,12 +105,7 @@ interpretDefs env opts (TypeDef{}:defs)   = interpretDefs env opts defs
 interpretDefs env opts (DataDef{}:defs)   = interpretDefs env opts defs
 interpretDefs env opts (ImportDef{}:defs) = interpretDefs env opts defs
 
-interpretDefs env opts [] =
-  -- No definition
-  -- return the expression for the last binder if there is one
-  case lookupBinding "it" env of
-    Right v  -> (env, v)
-    Left _   -> (env, ValExpr (Con "None" []))
+interpretDefs env opts [] = (env, ValExpr (Con "None" []))
 
 -- **************************************
 -- ** Interpreter for expressions
