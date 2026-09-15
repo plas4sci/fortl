@@ -75,6 +75,31 @@ checkKind t@(TyCon _ c) k | k == agroup =
 checkKind t@(TyCon _ "1") (TyCon _ "Base") =
   return t
 
+-- Allow 1 to be an element of "DimensionBase" (dimensionless)
+checkKind t@(TyCon _ "1") (TyCon _ "DimensionBase") =
+  return t
+
+-- Push the expected kind down through products and exponents
+checkKind (ProdTy t1 t2) k = do
+  t1' <- checkKind t1 k
+  t2' <- checkKind t2 k
+  return $ ProdTy t1' t2'
+
+checkKind (ExponentTy t n) k = do
+  t' <- checkKind t k
+  return $ ExponentTy t' n
+
+-- WIP: this will change at some point once open and closed kinds are fully integrated
+
+-- A base symbol may be registered under one specific (closed) kind, such
+-- as DimensionBase, and still be used freely as a Unit symbol: "Type" is
+-- always open to any symbol, closed kinds require an exact registration
+-- match. This lets e.g. "J" mean both the luminous-intensity dimension
+-- (Dimension[J], kind DimensionBase) and Joules (Unit[J], kind Type).
+checkKind t@(TyCon ZeroP c) k
+  | k == type0                                    = return t
+  | Just k' <- lookup c typeConstructors, k' == k = return t
+
 checkKind t k = do
   (t', k') <- synthKind t
   if k == k'
