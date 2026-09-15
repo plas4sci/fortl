@@ -5,6 +5,7 @@
 module Lang.PrettyPrint where
 
 import Lang.Syntax
+import Data.List (intercalate)
 
 -- Pretty print terms
 class PrettyPrint t where
@@ -25,14 +26,12 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (NumInteger _) = True
     isLexicallyAtomic _       = False
 
-    pprint (Abs var Nothing e)  = "lambda " ++ var ++ ": " ++ pprint e
-    pprint (Abs var (Just t) e) = "lambda (" ++ var ++ " : " ++ pprint t ++ "): " ++ pprint e
-    pprint (App (Abs var mt e1) e2) =
-      bracket_pprint (Abs var mt e1) ++ " " ++ bracket_pprint e2
-    pprint (App (Sig e1 t) e2) =
-      bracket_pprint (Sig e1 t) ++ " " ++ bracket_pprint e2
-    pprint (App e1 (TyEmbed t)) = pprint e1 ++ "[" ++ pprint t ++ "]"
-    pprint (App e1 e2) = pprint e1 ++ " " ++ bracket_pprint e2
+    pprint (Abs params e) = "lambda " ++ intercalate ", " (map pprintParam params) ++ ": " ++ pprint e
+      where
+        pprintParam (x, Nothing) = x
+        pprintParam (x, Just t)  = "(" ++ x ++ " : " ++ pprint t ++ ")"
+    pprint (App e1 [TyEmbed t]) = pprint e1 ++ "[" ++ pprint t ++ "]"
+    pprint (App e1 es) = pprint e1 ++ "(" ++ intercalate ", " (map pprint es) ++ ")"
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
     pprint (Cast t)  = "cast " ++ pprint t
@@ -40,7 +39,7 @@ instance PrettyPrint Expr where
     pprint (TyAbs var e) = "/\\" ++ var ++ " -> " ++ pprint e
     pprint (TyEmbed t) = "[" ++ pprint t ++ "]"
     -- ML
-    pprint (GenLet x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
+    pprint (Let x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
     -- PCF expressions
     pprint Zero                   = "zero"
     pprint Succ                   = "succ"
@@ -101,8 +100,12 @@ instance PrettyPrint (Type i) where
     pprint (TyCon _ c) = c
     pprint (ImplicitFunTy var tyA tyB) =
       "{" ++ var ++ " : " ++ pprint tyA ++ "} -> " ++ pprint tyB
-    pprint (FunTy tyA tyB) =
+      
+    pprint (FunTy [tyA] tyB) =
       bracket_pprint tyA ++ " -> " ++ pprint tyB
+    pprint (FunTy tys tyB) =
+      "(" ++ intercalate ", " (map bracket_pprint tys) ++ ") -> " ++ pprint tyB
+
     pprint (ProdTy tyA tyB) =
       bracket_pprint tyA ++ " * " ++ bracket_pprint tyB
     pprint (SumTy tyA tyB) =
