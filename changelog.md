@@ -8,6 +8,7 @@
 - `Species` and `Basis` indexed descriptors
 - `Dimension` graded descriptor (akin to `Unit`) but with closed type.
 - Python-style `def` function blocks with typed arguments and `return`
+- Unicode identifiers (Greek and a few other symbols) allowed
 
 # 0.2.0 - PROPL 2026 announcement (June 15, 2026)
 - Pythonic syntax in types
