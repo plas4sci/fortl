@@ -64,7 +64,7 @@ desugarDef (AnnDef id ty) =
     let (top, rest) = popStack (pendingAnnotations st)
     in st { pendingAnnotations = Map.insert id ty top : rest }
 
-desugarDef (FunDef id args returnTy body) = do
+desugarDef (FunDef id typeParams args returnTy body) = do
   -- Push a new annotation map and defs list onto their stacks
   modify $ \st -> st { pendingAnnotations = Map.empty : pendingAnnotations st
                      , outputDefs = [] : outputDefs st }
@@ -77,7 +77,12 @@ desugarDef (FunDef id args returnTy body) = do
   put (st { outputDefs = outputRest, pendingAnnotations = annotationsRest })
   -- Resolve the types into the parameters
   typedParams <- lift $ resolveFunctionParameterTypes args headAnnotations
-  emitDefs [FunDefElaborated id typedParams returnTy body']
+  -- Occurrences of a declared type parameter's name in the parameter/return
+  -- types are references to that type variable, not to a type constructor
+  -- of the same name
+  let typedParams' = map (\(n, t) -> (n, markTypeVars typeParams t)) typedParams
+      returnTy'     = fmap (markTypeVars typeParams) returnTy
+  emitDefs [FunDefElaborated id typeParams typedParams' returnTy' body']
 
 desugarDef (ValDef lhs e) = do
     lhs' <- applyPendingAnnotation lhs
@@ -131,3 +136,24 @@ desugarVal (PairLhs l1 l2) e = do
     emitDefs [ValDef (VarLhs tmp Nothing) e]
     desugarVal l1 (Fst (Var tmp))
     desugarVal l2 (Snd (Var tmp))
+
+-- | Rewrite bare type-constructor references that name one of a function's
+-- declared type parameters (e.g. `T` in `def id[T](x : T) -> T:`) into
+-- genuine type variables, so they can later be generalised into a `Forall`
+-- and instantiated by explicit type application.
+markTypeVars :: [Identifier] -> Type 0 -> Type 0
+markTypeVars typeParams = go
+  where
+    go (TyCon p c) | c `elem` typeParams = TyVar c
+    go t@(TyCon _ _)         = t
+    go (FunTy ts t2)         = FunTy (map go ts) (go t2)
+    go (TyApp t1 t2)         = TyApp (go t1) (go t2)
+    go (ImplicitTyApp t1 t2) = ImplicitTyApp (go t1) t2
+    go (ProdTy t1 t2)        = ProdTy (go t1) (go t2)
+    go (SumTy t1 t2)         = SumTy (go t1) (go t2)
+    go (WithTy t1 t2)        = WithTy (go t1) (go t2)
+    go (ExponentTy t n)      = ExponentTy (go t) n
+    go t@(TyVar _)           = t
+    go (Forall v t)
+      | v `elem` typeParams  = Forall v t
+      | otherwise            = Forall v (go t)

@@ -30,14 +30,12 @@ instance PrettyPrint Expr where
       where
         pprintParam (x, Nothing) = x
         pprintParam (x, Just t)  = "(" ++ x ++ " : " ++ pprint t ++ ")"
-    pprint (App e1 [TyEmbed t]) = pprint e1 ++ "[" ++ pprint t ++ "]"
     pprint (App e1 es) = pprint e1 ++ "(" ++ intercalate ", " (map pprint es) ++ ")"
     pprint (Var var) = var
     pprint (Sig e t) = bracket_pprint e ++ " : " ++ pprint t
     pprint (Cast t)  = "cast " ++ pprint t
     -- Poly
-    pprint (TyAbs var e) = "/\\" ++ var ++ " -> " ++ pprint e
-    pprint (TyEmbed t) = "[" ++ pprint t ++ "]"
+    pprint (TyIndex e tys) = pprint e ++ "[" ++ intercalate ", " (map pprint tys) ++ "]"
     -- ML
     pprint (Let x e1 e2) = "let " ++ x ++ " = " ++ pprint e1 ++ " in " ++ pprint e2
     -- PCF expressions

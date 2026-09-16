@@ -15,7 +15,7 @@ import Lang.Descriptions
 import Lang.TypeHelpers
 import Lang.TypeError
 
-import Data.Maybe (mapMaybe, isJust)
+import Data.Maybe (isJust)
 
 -- Infer the type of an entire program
 typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
@@ -58,16 +58,19 @@ typeCheckProgram = typeCheckProgram' [] []
         Left err -> Left err
 
     -- Function definition
-    typeCheckProgram' stack gamma ((FunDefElaborated v params optionalReturnTy body):defs) = do
+    typeCheckProgram' stack gamma ((FunDefElaborated v typeParams params optionalReturnTy body):defs) = do
       params' <- traverse elaborateParameter params
-      elaboratedReturnTy <- 
+      elaboratedReturnTy <-
          case optionalReturnTy of
           Nothing -> return Nothing
           Just returnTy -> checkKind returnTy type0 >>= (return . Just)
 
       (_, resultType) <- typeCheckProgram' (elaboratedReturnTy : stack) (params' ++ gamma) body
+      -- Generalise over the function's declared type parameters
+      let funTy = FunTy (map snd params') resultType
+          polyTy = foldr Forall funTy typeParams
       -- rest of the program
-      typeCheckProgram' stack ((v, FunTy (map snd params') resultType) : gamma) defs
+      typeCheckProgram' stack ((v, polyTy) : gamma) defs
 
     typeCheckProgram' stack gamma ((Return e):defs) = do
       case stack of
@@ -253,18 +256,6 @@ check_ gamma (Cond e1 e2_guard e3) t = do
     Right ty -> Left $ ExpectingBooleanType ty
     Left err -> Left err
 
--- Polymorphic lambda calculus
-check_ gamma (TyAbs alpha e) (Forall alpha' tau)
-  | alpha == alpha' =
-    -- find all free variables in gamma which have alpha free inside of their type assumption
-    case mapMaybe (\(id, t) -> if alpha `elem` freeVars t then Just id else Nothing) gamma of
-      -- side condition is true
-      [] -> check gamma e tau
-      vars -> Left $ FreeVariablesInAbstraction vars
-
-  | otherwise =
-    Left $ TermLevelTypeAbstraction alpha
-
 {--
 
 G |- e => A'   A' <: A
@@ -355,15 +346,16 @@ synth_ gamma (Abs params e)
       return (x, tyA')
     elaborateAbsParam (_, Nothing) = Left $ CannotSynthType (Abs params e)
 
--- Type checking a type speciaisation
-synth_ gamma (App e [TyEmbed tau']) =
-  case checkKind tau' type0 of
-    Left err -> Left err
-    Right tau' ->
-      case synth gamma e of
-        Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
-        Right t -> Left $ ExpectingPolymorphicType t
-        Left err -> Left err
+-- Type checking a type specialisation, e.g. `id[Float[1]]`
+synth_ gamma (TyIndex e tys) = do
+  tys' <- traverse (`checkKind` type0) tys
+  ty <- synth gamma e
+  applyTypeArgs ty tys'
+  where
+    applyTypeArgs ty [] = Right ty
+    applyTypeArgs (Forall alpha tau) (t:ts) =
+      applyTypeArgs (substituteType tau (alpha, t)) ts
+    applyTypeArgs ty (_:_) = Left $ ExpectingPolymorphicType ty
 
 {-
 

@@ -1,0 +1,9 @@
+"""
+A polymorphic identity function using a Python-style type parameter list on
+`def`, with explicit type application (`id[T]`) resolving `T` at the call
+site.
+"""
+def id[T](x : T) -> T:
+  return x
+
+it = id[Float[1]](5.0)
