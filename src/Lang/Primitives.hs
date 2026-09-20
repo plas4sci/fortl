@@ -53,8 +53,9 @@ typeConstructors = [
   , ("Unit"     , FunTy [unitBase] (tyCon1 "UoM"))
   , ("Quantity" , FunTy [type0] (tyCon1 "KoQ"))
   , ("Species"  , FunTy [type0] (tyCon1 "SpeciesType"))
-  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType"))
+  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType")) -- TODO: type0 should be the open type Bases here
   , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
+  -------
   , ("Point",     FunTy [type0] (tyCon1 "AffineTy"))
   , ("Vector",    FunTy [type0] (tyCon1 "AffineTy"))
   , ("None"     , type0)
