@@ -50,13 +50,13 @@ typeConstructors = [
     -- Graded boolean
   , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
   , ("Nat"      , type0)
-  , ("Unit"     , FunTy [type0] (tyCon1 "UoM"))
+  , ("Unit"     , FunTy [unitBase] (tyCon1 "UoM"))
   , ("Quantity" , FunTy [type0] (tyCon1 "KoQ"))
   , ("Species"  , FunTy [type0] (tyCon1 "SpeciesType"))
   , ("Basis"    , FunTy [type0] (tyCon1 "BasisType"))
   , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
-  , ("m"        , type0)
-  , ("s"        , type0)
+  , ("Point",     FunTy [type0] (tyCon1 "AffineTy"))
+  , ("Vector",    FunTy [type0] (tyCon1 "AffineTy"))
   , ("None"     , type0)
     -- The standard 7 SI base dimensions
   , ("T"        , dimensionBase) -- Time
@@ -65,7 +65,7 @@ typeConstructors = [
   , ("Theta"      , dimensionBase) -- Thermodynamic temperature (Theta)
   , ("N"        , dimensionBase) -- Amount of substance
   , ("U"        , dimensionBase) -- Electric cUrrent
-  , ("J"        , dimensionBase) -- Luminous intensity
+  , ("Ji"        , dimensionBase) -- Luminous intensity -- TODO: allow overloaded between J for dim and for joules
     -- The standard 7 SI units of measure
   , ("s"        , unitBase) -- seconds
   , ("m"        , unitBase) -- metres
@@ -74,6 +74,11 @@ typeConstructors = [
   , ("mol"      , unitBase) -- moles
   , ("A"        , unitBase) -- ampere
   , ("cd"       , unitBase) -- candela
+  -- TODO: fix open typres then these can be user-defined
+  , ("hour"     , unitBase)
+  , ("min"     , unitBase)
+  , ("J"     , unitBase)  
+  , ("W"     , unitBase)  
  ]
 
 typeAliases :: [(Identifier, Type 0)]
