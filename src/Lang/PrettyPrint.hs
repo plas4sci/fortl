@@ -109,9 +109,9 @@ instance PrettyPrint (Type i) where
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
     pprint (TyApp tyA tyB) =
-      pprint tyA ++ "[" ++ bracket_pprint tyB ++ "]"
+      pprint tyA ++ "[" ++ pprint tyB ++ "]"
     pprint (ImplicitTyApp tyA tyB) =
-      bracket_pprint tyA ++ "[{" ++ bracket_pprint tyB ++ "}]"
+      bracket_pprint tyA ++ "[{" ++ pprint tyB ++ "}]"
     pprint (TyVar var) = var
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (WithTy t1 t2) =
