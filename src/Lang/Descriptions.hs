@@ -76,6 +76,7 @@ data DescriptionRepr =
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
    | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
+   | AffineSpace (Type 0) Int
    deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
@@ -103,10 +104,22 @@ instance Representation DescriptionsRepr where
     computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
         d <- computeRepresentation t
         return $ singleton "Quantity" d
+
     computeRepresentation (TyApp (TyCon ZeroP "Species") t) =
         return $ singleton "Species" (IndexType t)
     computeRepresentation (TyApp (TyCon ZeroP "Basis") t) =
         return $ singleton "Basis" (IndexType t)
+
+    computeRepresentation (TyApp (TyCon ZeroP "Vector") t) =
+        return $ singleton "Affine" (AffineSpace t 0)
+    computeRepresentation (TyApp (TyCon ZeroP "Point") t) =
+        return $ singleton "Affine" (AffineSpace t 1)
+    -- "DVector" is not meant to be written by users -- it only ever arises
+    -- as a synthesised result (e.g. Vector - Point) -- but once synthesised
+    -- it's stored as a real type and re-used, so it must round-trip back
+    -- through computeRepresentation like Vector/Point do.
+    computeRepresentation (TyApp (TyCon ZeroP "DVector") t) =
+        return $ singleton "Affine" (AffineSpace t (-1))
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -126,6 +139,7 @@ instance Representation DescriptionsRepr where
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
           exp _ (IndexType t)  = IndexType t  -- exponentiation is no-op for indexed types
+          exp _ (AffineSpace t n) = AffineSpace t n
     computeRepresentation (TyCon ZeroP "1") = return empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -141,6 +155,11 @@ instance Representation DescriptionsRepr where
             | t1 == t2         = IndexType t1        -- S * S = S
             | otherwise        = IndexType (ProdTy t1 t2)  -- mismatch: preserved for later equality check
           combineRepr _ _                             = error "Mismatched description representation types in product"
+    computeRepresentation (SumTy t1 t2) = do
+        d1 <- computeRepresentation t1
+        d2 <- computeRepresentation t2
+        combineDescriptionsForAddSub BinOpPlus d1 d2
+
     computeRepresentation t = Left $ CannotComputeDescriptionRepresentation t
 
     -- | Reify a description representation back to a type term
@@ -149,9 +168,16 @@ instance Representation DescriptionsRepr where
       case assocs ds of
         []            -> tyCon0 "1"
         ((k, v):rest) ->
-          Prelude.foldr (\(k', v') t -> WithTy (TyApp (tyCon0 k') (reifyToTypeTerm v')) t) base rest
+          Prelude.foldr (\(k', v') t -> WithTy (wrapKey k' v') t) (wrapKey k v) rest
           where
-            base = TyApp (tyCon0 k) (reifyToTypeTerm v)
+            -- Most keys ("Unit", "Species", ...) name a real wrapper type
+            -- constructor, so re-applying it reconstructs the source
+            -- syntax. "Affine" is purely internal bookkeeping: its value
+            -- already reifies to the complete type (Point[t]/Vector[t]/
+            -- DVector[t]), so it must be spliced in as-is, not re-wrapped
+            -- as e.g. "Affine[Point[t]]".
+            wrapKey "Affine" v' = reifyToTypeTerm v'
+            wrapKey k'        v' = TyApp (tyCon0 k') (reifyToTypeTerm v')
 
     -- | Equality on description representations
     reprEquality :: DescriptionsRepr -> Specificational DescriptionsRepr -> Either TypeError ()
@@ -162,6 +188,54 @@ instance Representation DescriptionsRepr where
                 mapM_ (\((_k1, u1), (_k2, u2)) -> reprEquality u1 (IsSpec u2)) (zip (assocs d1) (assocs d2))
             else
                 Left $ DescriptionKeyMismatch (keys d2) (keys d1)
+
+-- | Negate the grade of any affine-space ("Point"/"Vector") component of a
+-- description, leaving every other component unchanged. Used to implement
+-- subtraction as addition of a negated second operand, e.g.
+-- Vector(0) - Point(1) = Vector(0) + Point(-1) = DVector(-1).
+negateAffineGrades :: DescriptionsRepr -> DescriptionsRepr
+negateAffineGrades = Data.Map.Lazy.map negOne
+  where
+    negOne (AffineSpace t n) = AffineSpace t (negate n)
+    negOne v                 = v
+
+-- | Combine two description representations for `+`/`-` (BinOpPlus negates
+-- neither side; BinOpMinus negates the affine grade of the second side
+-- first). Every key must either match exactly -- ordinary units,
+-- quantities, species, basis descriptions are unaffected by `+`/`-` and
+-- must simply agree -- or be the "Affine" key, whose grade combines
+-- additively (Vector = 0, Point = 1), rejecting any result outside
+-- {DVector = -1, Vector = 0, Point = 1} (e.g. Point + Point).
+combineDescriptionsForAddSub :: BinOp -> DescriptionsRepr -> DescriptionsRepr -> Either TypeError DescriptionsRepr
+combineDescriptionsForAddSub op d1 d2
+    | keys d1 /= keys d2 = Left mismatchErr
+    | otherwise           = traverseWithKey combineKey d1
+  where
+    d2' = if op == BinOpMinus then negateAffineGrades d2 else d2
+
+    -- Report the original (pre-negation) operands so the error reads
+    -- naturally for `-` too.
+    mismatchErr = BinaryOperatorDescriptionMismatch op (reifyToTypeTerm d1) (reifyToTypeTerm d2)
+
+    combineKey "Affine" v1 =
+      case (v1, d2' ! "Affine") of
+        (AffineSpace t1 n1, AffineSpace t2 n2)
+          | t1 /= t2                  -> Left mismatchErr
+          | n1 + n2 `elem` [-1, 0, 1] -> Right $ AffineSpace t1 (n1 + n2)
+          | otherwise ->
+              Left $ AffineSpaceCombinationUndefined op (reifyToTypeTerm v1) (reifyToTypeTerm (d2 ! "Affine"))
+        _ -> Left mismatchErr
+    combineKey k v1
+      | v1 == d2' ! k = Right v1
+      | otherwise      = Left mismatchErr
+
+-- | Whether a (not-yet-normalised) description type has an affine-space
+-- ("Point"/"Vector") component. Affine-space values cannot be scaled, so
+-- this guards `*`, `/` and `^`.
+descriptionHasAffine :: Type 0 -> Bool
+descriptionHasAffine t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
+  Right repr -> member "Affine" repr
+  Left _     -> False
 
 -- | Representation of a single description
 instance Representation DescriptionRepr where
@@ -194,6 +268,11 @@ instance Representation DescriptionRepr where
             exp k' v' = ExponentTy (tyCon0 k') v'
             base = exp k v
     reifyToTypeTerm (TypeTree t) = t
+    reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") t
+    reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point")  t
+    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DVector") t
+    reifyToTypeTerm (AffineSpace t _) = error "Not representable"
+
 
     -- | Equality on description representations
     reprEquality :: DescriptionRepr -> Specificational DescriptionRepr -> Either TypeError ()
@@ -213,6 +292,10 @@ instance Representation DescriptionRepr where
         if t1 == t2
             then Right ()
             else Left $ DescriptionEqualityFailure t2 t1  -- reuse error: shows expected vs actual species
+    reprEquality (AffineSpace t1 n1) (IsSpec (AffineSpace t2 n2)) =
+        if t1 == t2 && n1 == n2
+            then Right ()
+            else Left $ DescriptionEqualityFailure (reifyToTypeTerm (AffineSpace t2 n2)) (reifyToTypeTerm (AffineSpace t1 n1))
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
 

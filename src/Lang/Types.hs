@@ -185,16 +185,18 @@ check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc))
 check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
   -- We have a gradable numeric type
   case op of
-    -- Plus and minus must have the same type
-    BinOpPlus -> do
-      -- can only add or subtract numeric types
-      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
-      () <- check gamma e1 ty
-      check gamma e2 ty
-    BinOpMinus -> do
-      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
-      () <- check gamma e1 ty
-      check gamma e2 ty
+    -- Fast path (also makes a bare numeric literal on either side adopt
+    -- the expected type). Unsound for an affine-space (Point/Vector)
+    -- description: checking both operands against `ty` independently
+    -- can't catch e.g. Point + Point, since each operand legitimately
+    -- has type `ty` on its own -- only their *combination* is invalid.
+    -- So affine-flavoured expected types always go through synthesis
+    -- and combination instead, which also handles the general case of
+    -- the operands legitimately differing from `ty` and each other,
+    -- e.g. adding a Point to a Vector to get a Point.
+    -- TODO: Refactor to fit a more general `partial torsor/field` approach 
+    BinOpPlus  -> if descriptionHasAffine desc then synthThenCompare BinOpPlus  else sameTypeCheck
+    BinOpMinus -> if descriptionHasAffine desc then synthThenCompare BinOpMinus else sameTypeCheck
     BinOpAnd -> do
       assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
       () <- check gamma e1 ty
@@ -217,16 +219,31 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
               case op of
                 BinOpExp    ->
                   case e2 of
-                    NumFloat n -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
+                    NumFloat n -> do
+                      () <- rejectAffineScaling op d1
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
                   kindEquality gradeType1 (IsSpec gradeType2)
                   case op of
-                    BinOpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
-                    BinOpDivide ->
+                    BinOpTimes  -> do
+                      () <- rejectAffineScaling op d1
+                      () <- rejectAffineScaling op d2
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                    BinOpDivide -> do
+                      () <- rejectAffineScaling op d1
+                      () <- rejectAffineScaling op d2
                       typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
+  where
+    sameTypeCheck = do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    synthThenCompare op' = case synth gamma (BinOp op' e1 e2) of
+      Right ty' -> typeEquality ty (IsSpec ty')
+      Left err  -> Left err
 
 check_ gamma (Pair _ _) t = Left $ NonProductTypeToPair t
 
@@ -533,23 +550,32 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                       case op of
                           BinOpExp ->
                             case e2 of
-                              NumFloat n -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
+                              NumFloat n -> do
+                                () <- rejectAffineScaling op d1
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
                               _ -> error "Bug"
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
                             case op of
                               BinOpTimes -> do
+                                () <- rejectAffineScaling op d1
+                                () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               BinOpDivide -> do
+                                () <- rejectAffineScaling op d1
+                                () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
-                              _        ->
-                                case descriptionEquality d1 (IsSpec d2) of
-                                  Right () -> do
-                                    d1 <- normalisationByEvaluation d1
-                                    Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
-                                  Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
+                              -- Plus/Minus: combine descriptions key-by-key, additively
+                              -- for an affine-space ("Point"/"Vector") component,
+                              -- otherwise requiring an exact match as before
+                              _        -> do
+                                d1repr <- computeRepresentation d1
+                                d2repr <- computeRepresentation d2
+                                combined <- combineDescriptionsForAddSub op d1repr d2repr
+                                combined' <- coherenceChecks combined
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (reifyToTypeTerm combined')
 
 
 {-
@@ -715,6 +741,15 @@ errorToString (BaseTypeMismatch expected actual) =
 errorToString (DimensionAndUnitIncoherence dimension unit) =
   "Incoherence between grade " <> pprint dimension <> " and " <> pprint unit
 
+errorToString (AffineSpaceCombinationUndefined op t1 t2) =
+  "Combining " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
+  <> " via " <> pprint op
+  <> " is not defined for affine spaces (the result would fall outside {DVector, Vector, Point})"
+
+errorToString (AffineSpaceScalingUnsupported op t) =
+  "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
+  <> ": affine-space values (Point/Vector/DVector) cannot be scaled"
+
 errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK
   <> " but got " <> pprint actualK
@@ -812,3 +847,10 @@ normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
 assert :: Bool -> a -> Either a ()
 assert True _ = Right ()
 assert False x = Left x
+
+-- | Affine-space (Point/Vector/DVector) values cannot be scaled: reject
+-- `*`, `/` and `^` when the description involves one.
+rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
+rejectAffineScaling op d
+  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d
+  | otherwise               = Right ()

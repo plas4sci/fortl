@@ -1,0 +1,20 @@
+"""
+Affine-space example.
+
+A Point is an absolute position; a Vector is a displacement. Unlike
+ordinary units, they don't need identical types to combine with `+`/`-`:
+
+  Point + Vector = Point   (move a point by a displacement)
+  Point - Vector = Point   (move a point backwards)
+  Point - Point  = Vector  (the displacement between two points)
+"""
+
+x  : Float[Unit[s] & Point[Time]]  = 10.0
+dx : Float[Unit[s] & Vector[Time]] = 5.0
+y  : Float[Unit[s] & Point[Time]]  = 3.0
+
+x_forward    : Float[Unit[s] & Point[Time]]  = x + dx
+x_backward   : Float[Unit[s] & Point[Time]]  = x - dx
+displacement : Float[Unit[s] & Vector[Time]] = x - y
+
+it = (x_forward, (x_backward, displacement))

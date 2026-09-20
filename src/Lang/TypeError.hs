@@ -36,6 +36,8 @@ data TypeError
   | MismatchedDescriptionReprTypes
   | BaseTypeMismatch Identifier Identifier
   | DimensionAndUnitIncoherence { dimension :: Type 0, unit :: Type 0}
+  | AffineSpaceCombinationUndefined BinOp (Type 0) (Type 0)
+  | AffineSpaceScalingUnsupported BinOp (Type 0)
   
   -- Kinding errors
   | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Maybe (Type 0) }
