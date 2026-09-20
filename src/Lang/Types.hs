@@ -376,6 +376,25 @@ synth_ gamma (App (Var "sqrt") [e]) = do
       Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
     _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
 
+-- TODO: will go away once we have more powerful first-class polymorphism
+-- with row polymorphism
+synth_ gamma (App (Var "to_SI") [e]) = do
+    t <- synth gamma e
+    case isGradableNumericType t of
+      Just ("Float", gradeType, d) -> do
+        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
+        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) d'
+      _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+  where
+    replaceDimWithUnit :: Type 1 -> Type 1
+    replaceDimWithUnit (WithTy d1 d2) =
+      WithTy (replaceDimWithUnit d1) (replaceDimWithUnit d2)
+    replaceDimWithUnit (TyCon k "Dim") =
+      TyCon k "UoM"
+    -- TODO: needs more congruences - probably need a recursion scheme for types
+    -- to simplify
+    replaceDimWithUnit t = t
+
 synth_ gamma (App e1 es) =
   -- Synth the left-hand side
   case synth gamma e1 of

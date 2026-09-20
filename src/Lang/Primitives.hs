@@ -77,9 +77,19 @@ typeConstructors = [
   -- TODO: fix open typres then these can be user-defined
   , ("hour"     , unitBase)
   , ("min"     , unitBase)
-  , ("J"     , unitBase)  
-  , ("W"     , unitBase)  
+  , ("J"     , unitBase)
+  , ("W"     , unitBase)
  ]
+
+rewriteSI :: String -> String
+rewriteSI "T" = "s"
+rewriteSI "L" = "m"
+rewriteSI "M" = "kg"
+rewriteSI "Theta" = "K"
+rewriteSI "N" = "mol"
+rewriteSI "U" = "A"
+rewriteSI "Ji" = "cd"
+rewriteSI x = error $ "Unknown SI dimension " <> x
 
 typeAliases :: [(Identifier, Type 0)]
 typeAliases = [

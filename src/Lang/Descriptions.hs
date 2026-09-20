@@ -9,9 +9,11 @@ module Lang.Descriptions where
 import Lang.Syntax
 import Lang.TypeHelpers
 import Lang.PrettyPrint
+import qualified Data.Map.Lazy as Map
 import Data.Map.Lazy
 import Lang.TypeError
 import Data.List (sort, intersect)
+import Lang.Primitives (rewriteSI)
 
 unitDescription :: Type 0
 unitDescription = tyCon0 "1"
@@ -53,6 +55,14 @@ type AGroupRepr = Map Identifier Float
 instance Representation DescriptionsRepr where
     -- | Compute the representation of a description type
     computeRepresentation :: Type 0 -> Either TypeError DescriptionsRepr
+    -- Apply desc homomorphisms
+    computeRepresentation (TyApp (TyCon ZeroP "SI") t) = do
+      d <- computeRepresentation t
+      case Map.lookup "Dimension" d of
+        Just (FreeAGroup repr) -> do
+          return $ insert "Unit" (FreeAGroup (mapKeys rewriteSI repr)) (delete "Dimension" d)
+        _ -> return d
+
     computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
         d <- computeRepresentation t
         return $ singleton "Unit" d

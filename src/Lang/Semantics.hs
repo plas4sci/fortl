@@ -40,10 +40,14 @@ data Env = Env
     }
 
 primitives :: [(Identifier, Value)]
-primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)]
+primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
+              , ("to_SI", VPrimitive "to_SI" idFunc)]
   where
+    idFunc [x] = Right x
+    idFunc _   = Left "fortl bug: identity(conversion) expects a single argument"
+
     sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
-    sqrtFunc _ = Left "sqrt expects a single float argument" 
+    sqrtFunc _ = Left "fortl bug: sqrt expects a single float argument" 
 
 -- Empty env (at top of lexical scope)
 emptyEnv :: Env
