@@ -43,13 +43,13 @@ typeCheckProgram = typeCheckProgram' [] []
       Left $ TypeMismatch { expected = ty, actual = tyCon0 "Unit" }
 
     -- Definition with a type signature
-    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
-      case synthKind ty of
-        Left err -> Left err
-        Right (ty', kind) ->
-          case check gamma e ty' of
-            Right () -> typeCheckProgram' stack ((v, ty') : gamma) defs
-            Left err -> Left err
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) = do
+      -- Synthesise the kind (which will elaborate thet ype)
+      (ty', kind) <- synthKind ty
+      -- Normalise the type (helps with equality and coherence)
+      ty'' <- normaliseType ty'
+      ()   <- check gamma e ty''
+      typeCheckProgram' stack ((v, ty'') : gamma) defs
 
     -- Definition without a type signature
     typeCheckProgram' stack gamma ((ValDef (VarLhs v Nothing) e):defs) =
@@ -712,6 +712,9 @@ errorToString MismatchedDescriptionReprTypes =
 errorToString (BaseTypeMismatch expected actual) =
   "Mismatch between base type of graded types, expected " <> expected <> " but got " <> actual
 
+errorToString (DimensionAndUnitIncoherence dimension unit) =
+  "Incoherence between grade " <> pprint dimension <> " and " <> pprint unit
+
 errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK
   <> " but got " <> pprint actualK
@@ -777,23 +780,34 @@ errorToString (Located (SrcPos l c) err) =
 -- | Normalize a type (useful for displaying information to the user)
 normalise :: Type 0 -> Type 0
 normalise t =
-  if normalise' t == t
-    then t
-    else normalise (normalise' t)
+    if normalise' t == t
+      then t
+      else normalise (normalise' t)
+  where
+    normalise' t = either (const t) id (normaliseType t)
 
-normalise' :: Type 0 -> Type 0
-normalise' (FunTy ts t2) = FunTy (map normalise' ts) (normalise' t2)
-normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
-  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (either (const desc) id (normalisationByEvaluation desc))
-normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
-normalise' (Forall x t) = Forall x (normalise' t)
-normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)
-normalise' (SumTy t1 t2) = SumTy (normalise' t1) (normalise' t2)
-normalise' (WithTy t (TyCon ZeroP "1")) = normalise' t
-normalise' (WithTy (TyCon ZeroP "1") t) = normalise' t
-normalise' (WithTy t1 t2) = WithTy (normalise' t1) (normalise' t2)
-normalise' (ExponentTy t n) = ExponentTy (normalise' t) n
-normalise' t = t  -- Base case: TyCon, TyVar, etc.
+normaliseType :: Type 0 -> Either TypeError (Type 0)
+normaliseType (FunTy ts t2) = (<$$>) FunTy (mapM normaliseType ts) (normaliseType t2)
+normaliseType (isGradableNumericType -> Just (baseType, gradeType, desc)) = do
+  desc' <- normalisationByEvaluation desc
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) desc'
+normaliseType (TyApp t1 t2) = (<$$>) TyApp (normaliseType t1) (normaliseType t2)
+normaliseType (Forall x t) = (Forall x) <$> (normaliseType t)
+normaliseType (ProdTy t1 t2) = (<$$>) ProdTy(normaliseType t1) (normaliseType t2)
+normaliseType (SumTy t1 t2) = (<$$>) SumTy (normaliseType t1) (normaliseType t2)
+normaliseType (WithTy t (TyCon ZeroP "1")) = normaliseType t
+normaliseType (WithTy (TyCon ZeroP "1") t) = normaliseType t
+normaliseType (WithTy t1 t2) = (<$$>) WithTy (normaliseType t1) (normaliseType t2)
+normaliseType (ExponentTy t n) = (<$$>) ExponentTy (normaliseType t) (return n)
+normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
+
+-- Helper
+(<$$>) :: Monad m => (a -> b -> c) -> m a -> m b -> m c
+(<$$>) f mx my = do
+  x <- mx
+  y <- my
+  return $ f x y
+
 
 assert :: Bool -> a -> Either a ()
 assert True _ = Right ()

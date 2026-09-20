@@ -36,13 +36,43 @@ class Representation a where
 normalisationByEvaluation :: Type 0 -> Either TypeError (Type 0)
 normalisationByEvaluation t = do
         repr <- computeRepresentation t :: Either TypeError DescriptionsRepr
-        return (reifyToTypeTerm repr)
+        repr' <- coherenceChecks repr
+        return (reifyToTypeTerm repr')
+
+coherenceChecks :: DescriptionsRepr -> Either TypeError DescriptionsRepr
+coherenceChecks repr = do
+  case Map.lookup "Unit" repr of
+    Just (FreeAGroup unitRepr) ->
+      case Map.lookup "Dimension" repr of
+        Just (FreeAGroup dimRepr) ->
+          if checkCoherence unitRepr (assocs dimRepr)
+            then Right repr
+            else Left (DimensionAndUnitIncoherence
+                    (reifyToTypeTerm $ singleton "Dimension" $ FreeAGroup dimRepr)
+                    (reifyToTypeTerm $ singleton "Unit" $ FreeAGroup unitRepr))
+        _ -> Right repr
+    _ -> Right repr
+
+  where
+    -- TODO: generalise to the idea that all injective grading algebra morphisms
+    -- must have this coherence
+
+    -- We need the there to be no left over units that don't match a dimension
+    checkCoherence unitRepr [] = Map.null unitRepr
+
+    -- Check that the unit is SI compliant with the dimension
+    checkCoherence unitRepr ((dimName, exponent):dimRepr) =
+      case Map.lookup (rewriteSI dimName) unitRepr of
+        Just exponent' | exponent == exponent ->
+          checkCoherence (delete (rewriteSI dimName) unitRepr) dimRepr
+
+        _ -> False
 
 -- | Internal representation of groups of descriptions
 type DescriptionsRepr = Map Identifier DescriptionRepr
 
 -- | Representation of a description
-data DescriptionRepr = 
+data DescriptionRepr =
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
    | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
@@ -63,6 +93,7 @@ instance Representation DescriptionsRepr where
           return $ insert "Unit" (FreeAGroup (mapKeys rewriteSI repr)) (delete "Dimension" d)
         _ -> return d
 
+    -- Free abelian groups
     computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
         d <- computeRepresentation t
         return $ singleton "Unit" d
@@ -86,7 +117,7 @@ instance Representation DescriptionsRepr where
           else case overlapping of
                  (k:_) -> Left $ OverlappingDescriptionConflict k t1 t2
                  []    -> error "unreachable: overlapping is non-empty here since `all` over [] is True"
-            
+
     computeRepresentation (ExponentTy t n) = do
         d <- computeRepresentation t
         return $ fmap (exp n) d
@@ -184,9 +215,9 @@ instance Representation DescriptionRepr where
             else Left $ DescriptionEqualityFailure t2 t1  -- reuse error: shows expected vs actual species
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
-    
+
 
 --------
 
--- coercions :: 
+-- coercions ::
 
