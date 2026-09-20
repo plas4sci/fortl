@@ -57,12 +57,12 @@ The interactive REPL (`fortli`) supports interactive evaluation and type inferen
 % fortli
 ...
 [F]> :l examples/units.frtl
-Well-typed as Float[{UoM}][Unit[(M * S^-1.0)]]
+Well-typed as Float[{UoM}][Unit[(m * s^-1.0)]]
 0.25
 units> x
 1.0
 units> :t x
-Float[{UoM}][Unit[M]]
+Float[{UoM}][Unit[m]]
 units> :k Float
 {d : Descriptor} -> d -> Type
 ```

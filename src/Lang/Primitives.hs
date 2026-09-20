@@ -62,10 +62,18 @@ typeConstructors = [
   , ("T"        , dimensionBase) -- Time
   , ("L"        , dimensionBase) -- Length
   , ("M"        , dimensionBase) -- Mass
-  , ("U"        , dimensionBase) -- Electric cUrrent
-  , ("Phi"      , dimensionBase) -- Thermodynamic temperature (Theta)
+  , ("Theta"      , dimensionBase) -- Thermodynamic temperature (Theta)
   , ("N"        , dimensionBase) -- Amount of substance
+  , ("U"        , dimensionBase) -- Electric cUrrent
   , ("J"        , dimensionBase) -- Luminous intensity
+    -- The standard 7 SI units of measure
+  , ("s"        , unitBase) -- seconds
+  , ("m"        , unitBase) -- metres
+  , ("kg"       , unitBase) -- kilograms
+  , ("K"        , unitBase) -- Kelvin
+  , ("mol"      , unitBase) -- moles
+  , ("A"        , unitBase) -- ampere
+  , ("cd"       , unitBase) -- candela
  ]
 
 typeAliases :: [(Identifier, Type 0)]
@@ -103,6 +111,12 @@ agroup = tyCon1 "AGroup"
 -- argument (any Type) which is an open set of generators.
 dimensionBase :: Type 1
 dimensionBase = tyCon1 "DimensionBase"
+
+-- This is actually an open type
+-- TODO: internal mechanism for determining what is a closed and open type
+unitBase :: Type 1
+unitBase = tyCon1 "UnitBase"
+
 
 -- | Check if a type constructors a descriptor
 isDescConstructor :: Identifier -> Maybe (Type 1)
