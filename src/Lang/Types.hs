@@ -130,17 +130,17 @@ check_ gamma (Var x) ty =
 
 check_ gamma (NumFloat n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Float" -> Right ()
+    Just (base, _, d) | base == "Float" -> normalisationByEvaluation d >> Right ()
     _ -> Left $ TypeCheckFailure (floatTy unitDescription) ty "Expecting Float type."
 
 check_ gamma (NumInteger n) ty =
   case isGradableNumericType ty of
-    Just (base, _, _) | base == "Integer" -> Right ()
+    Just (base, _, d) | base == "Integer" -> normalisationByEvaluation d >> Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting Integer type."
 
 check_ gamma (StringConst _) ty =
   case isGradableType ty of
-    Just (base, _, _) | base == "String" -> Right ()
+    Just (base, _, d) | base == "String" -> normalisationByEvaluation d >> Right ()
     _ -> Left $ TypeCheckFailure (integerTy unitDescription) ty "Expecting String type."
 
 check_ gamma (Sig e tyA) ty =
