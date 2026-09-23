@@ -49,7 +49,6 @@ tokens :-
   "#" .*                        ;
   @tyvar                          { \p s -> TokenTyVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
-  forall                        { \p _ -> TokenForall p }
   data                          { \p s -> TokenData p }
   let                           { \p s -> TokenLet p }
   def                           { \p s -> TokenDef p }
@@ -77,7 +76,6 @@ tokens :-
   @float                        { \p s -> TokenFloat p s }
   @int                          { \p s -> TokenInt p s }
   "->"                          { \p s -> TokenArrow p }
-  \/\\                          { \p s -> TokenTyLambda p }
   \=                            { \p s -> TokenEq p }
   \(                            { \p s -> TokenLParen p }
   \)                            { \p s -> TokenRParen p }
@@ -94,7 +92,6 @@ tokens :-
   "]"                           { \p s -> TokenRBrack p }
   ","                           { \p s -> TokenMPair p }
   "^"                           { \p s -> TokenExponent p }
-  \.                            { \p _ -> TokenDot p }
 
 {
 
@@ -106,7 +103,6 @@ data Token
   | TokenSep      AlexPosn
   | TokenLet      AlexPosn
   | TokenIn       AlexPosn
-  | TokenTyLambda  AlexPosn
   | TokenLambda   AlexPosn
   | TokenIf       AlexPosn
   | TokenElse     AlexPosn
@@ -140,8 +136,6 @@ data Token
   | TokenMPair    AlexPosn
   | TokenFst      AlexPosn
   | TokenSnd      AlexPosn
-  | TokenForall   AlexPosn
-  | TokenDot      AlexPosn
   | TokenInt      AlexPosn String
   | TokenFloat    AlexPosn String
   | TokenBool     AlexPosn Bool

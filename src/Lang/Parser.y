@@ -50,8 +50,6 @@ import Lang.Options
     FLOAT   { TokenFloat _ _ }
     INT     { TokenInt _ _ }
     STRING  { TokenString _ _ }
-    forall  { TokenForall _ }
-    Lam     { TokenTyLambda _ }
     '->'    { TokenArrow _ }
     '='     { TokenEq _ }
     '('     { TokenLParen _ }
@@ -72,7 +70,6 @@ import Lang.Options
     '{'     { TokenLBrace _ }
     '}'     { TokenRBrace _ }
     ','     { TokenMPair _ }
-    '.'     { TokenDot _ }
     LAMBDA  { TokenLambda _ }
 
 %right in
@@ -123,13 +120,21 @@ NL :: { () }
 Def :: { [Option] -> Def 'Parsed}
   : Lhs '=' Expr          { \opts -> ValDef ($1 opts) ($3 opts) }
   | IDENT ':' Type        { \opts -> AnnDef (symString $1) ($3 opts) }
-  | def IDENT '(' Parameters ')' OptionalReturnType ':' nl indent BlockDefs dedent
-                           { \opts -> FunDef (symString $2) ($4 opts) ($6 opts) ($10 opts) }
+  | def IDENT OptionalTypeParams '(' Parameters ')' OptionalReturnType ':' nl indent BlockDefs dedent
+                           { \opts -> FunDef (symString $2) $3 ($5 opts) ($7 opts) ($11 opts) }
 --  | data IDENT ':' Kind '=' ConstructorList { \opts -> DataDef (symString $2) ($6 opts) ($4 opts) }
 
 OptionalReturnType :: { [Option] -> Maybe (Type 0) }
   : '->' Type         { \opts -> Just ($2 opts) }
   | {- empty -}  { \_    -> Nothing }
+
+OptionalTypeParams :: { [Identifier] }
+  : '[' TypeParamList ']' { $2 }
+  | {- empty -}           { [] }
+
+TypeParamList :: { [Identifier] }
+  : IDENT ',' TypeParamList { (symString $1) : $3 }
+  | IDENT                   { [symString $1] }
 
 Parameters :: { [Option] -> [(Identifier, Maybe (Type 0))] }
   : IDENT ':' Type ',' Parameters
@@ -161,10 +166,6 @@ ConstructorList
 Expr :: { [Option] -> Expr }
   : let IDENT '=' Expr in Expr
     { \opts -> MkLet (mkPos $1) (symString $2) ($4 opts) ($6 opts) }
-
-  -- TODO: probably needs reconciling with lambda syntax
-  | Lam IDENT '->' Expr
-    { \opts -> MkTyAbs (mkPos $1) (symString $2) ($4 opts) }
 
   | Form ':' Type
     { \opts -> MkSig (mkPos $2) ($1 opts) ($3 opts) }
@@ -220,7 +221,6 @@ Type
   | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | Type '[' Type ']' { \opts -> TyApp ($1 opts) ($3 opts) }
   | TypeAtom              { \opts -> $1 opts }
-  | forall IDENT '.' Type { \opts -> Forall (symString $2) ($4 opts) }
 
 ManyTypes :: { [Option] -> [Type 0] }
 ManyTypes
@@ -248,7 +248,7 @@ TypeAtom
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Arguments ')'            { \opts -> App ($1 opts) ($3 opts) }
   | Juxt '(' ')'                      { \opts -> App ($1 opts) [] }
-  | Juxt '[' Type ']'                 { \opts -> App ($1 opts) [TyEmbed ($3 opts)] }
+  | Juxt '[' ManyTypesMore ']'        { \opts -> MkTyIndex (mkPos $2) ($1 opts) ($3 opts) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
 

@@ -50,23 +50,47 @@ typeConstructors = [
     -- Graded boolean
   , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
   , ("Nat"      , type0)
-  , ("Unit"     , FunTy [type0] (tyCon1 "UoM"))
+  , ("Unit"     , FunTy [unitBase] (tyCon1 "UoM"))
   , ("Quantity" , FunTy [type0] (tyCon1 "KoQ"))
   , ("Species"  , FunTy [type0] (tyCon1 "SpeciesType"))
-  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType"))
+  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType")) -- TODO: type0 should be the open type Bases here
   , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
-  , ("m"        , type0)
-  , ("s"        , type0)
+  -------
+  , ("Point",     FunTy [type0] (tyCon1 "AffineTy"))
+  , ("Vector",    FunTy [type0] (tyCon1 "AffineTy"))
   , ("None"     , type0)
     -- The standard 7 SI base dimensions
   , ("T"        , dimensionBase) -- Time
   , ("L"        , dimensionBase) -- Length
   , ("M"        , dimensionBase) -- Mass
-  , ("U"        , dimensionBase) -- Electric cUrrent
-  , ("Phi"      , dimensionBase) -- Thermodynamic temperature (Theta)
+  , ("Theta"      , dimensionBase) -- Thermodynamic temperature (Theta)
   , ("N"        , dimensionBase) -- Amount of substance
-  , ("J"        , dimensionBase) -- Luminous intensity
+  , ("U"        , dimensionBase) -- Electric cUrrent
+  , ("Ji"        , dimensionBase) -- Luminous intensity -- TODO: allow overloaded between J for dim and for joules
+    -- The standard 7 SI units of measure
+  , ("s"        , unitBase) -- seconds
+  , ("m"        , unitBase) -- metres
+  , ("kg"       , unitBase) -- kilograms
+  , ("K"        , unitBase) -- Kelvin
+  , ("mol"      , unitBase) -- moles
+  , ("A"        , unitBase) -- ampere
+  , ("cd"       , unitBase) -- candela
+  -- TODO: fix open typres then these can be user-defined
+  , ("hour"     , unitBase)
+  , ("min"     , unitBase)
+  , ("J"     , unitBase)
+  , ("W"     , unitBase)
  ]
+
+rewriteSI :: String -> String
+rewriteSI "T" = "s"
+rewriteSI "L" = "m"
+rewriteSI "M" = "kg"
+rewriteSI "Theta" = "K"
+rewriteSI "N" = "mol"
+rewriteSI "U" = "A"
+rewriteSI "Ji" = "cd"
+rewriteSI x = error $ "Unknown SI dimension " <> x
 
 typeAliases :: [(Identifier, Type 0)]
 typeAliases = [
@@ -103,6 +127,12 @@ agroup = tyCon1 "AGroup"
 -- argument (any Type) which is an open set of generators.
 dimensionBase :: Type 1
 dimensionBase = tyCon1 "DimensionBase"
+
+-- This is actually an open type
+-- TODO: internal mechanism for determining what is a closed and open type
+unitBase :: Type 1
+unitBase = tyCon1 "UnitBase"
+
 
 -- | Check if a type constructors a descriptor
 isDescConstructor :: Identifier -> Maybe (Type 1)
