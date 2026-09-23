@@ -46,8 +46,9 @@ typeCheckProgram = typeCheckProgram' [] []
     typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) = do
       -- Synthesise the kind (which will elaborate thet ype)
       (ty', kind) <- synthKind ty
-      -- Normalise the type (helps with equality and coherence)
-      ty'' <- normaliseType ty'
+      -- Normalise the type (helps with equality and coherence); this can
+      -- fail (e.g. descriptor conflicts) so locate errors at the definition
+      ty'' <- annotateWith (exprPos e) (normaliseType ty')
       ()   <- check gamma e ty''
       typeCheckProgram' stack ((v, ty'') : gamma) defs
 
