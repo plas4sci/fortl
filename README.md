@@ -71,16 +71,16 @@ units> :k Float
 
 Fortl is written in Haskell and is built with [Stack](https://docs.haskellstack.org/).
 
-**Prerequisites**: The best approach is to get [GHCup](https://www.haskell.org/ghcup/) and install GHC (The Glorious Haskell Compiler) 9.2.5 and Stack together.
-
 **Install (for users)**:
 
-1. Install the pre-requisites
-2. Clone this repo
-3. To install on your $PATH then you can run:
+1. Install [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
+2. Clone this repo (`git clone https://github.com/plas4sci/fortl`)
+3. `cd fortl`
+3. Then run
 ```bash
 stack install
 ```
+(The first time it will install the GHC Haskell compiler).
 
 After installing, `fortl` and `fortli` will be available as commands directly.
 
