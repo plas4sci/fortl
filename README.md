@@ -69,9 +69,9 @@ units> :k Float
 
 ## Building and Installing
 
-Fortl is built with [Stack](https://docs.haskellstack.org/).
+Fortl is written in Haskell and is built with [Stack](https://docs.haskellstack.org/).
 
-**Prerequisites**: [GHC 9.2.5](https://www.haskell.org/ghc/) and Stack installed.
+**Prerequisites**: The best approach is to get [GHCup](https://www.haskell.org/ghcup/) and install GHC (The Glorious Haskell Compiler) 9.2.5 and Stack together.
 
 **Build:**
 
