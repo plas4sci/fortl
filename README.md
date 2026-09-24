@@ -73,31 +73,29 @@ Fortl is written in Haskell and is built with [Stack](https://docs.haskellstack.
 
 **Prerequisites**: The best approach is to get [GHCup](https://www.haskell.org/ghcup/) and install GHC (The Glorious Haskell Compiler) 9.2.5 and Stack together.
 
-**Build:**
+**Install (for users)**:
 
-```bash
-stack build
-```
-
-**Run a file:**
-
-```bash
-stack exec fortl -- <file.frtl>
-```
-
-**Interactive REPL:**
-
-```bash
-stack exec fortli
-```
-
-**Install executables to your PATH:**
-
+1. Install the pre-requisites
+2. Clone this repo
+3. To install on your $PATH then you can run:
 ```bash
 stack install
 ```
 
 After installing, `fortl` and `fortli` will be available as commands directly.
+
+**For developers**:
+
+Building:
+```bash
+stack build
+```
+
+Running the tests:
+```bash
+stack test
+```
+
 
 ## Background
 
