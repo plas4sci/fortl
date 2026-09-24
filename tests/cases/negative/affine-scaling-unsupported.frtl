@@ -1,0 +1,3 @@
+x : Float[Point[Time]] = 10.0
+y : Float[Point[Time]] = 2.0
+it = x * y

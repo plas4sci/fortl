@@ -1,0 +1,1 @@
+tests/cases/negative/affine-base-mismatch.frtl:3:8: Expecting descriptions to be the same but got Point[Time] and Vector[Length] for operator +

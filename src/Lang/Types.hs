@@ -15,7 +15,7 @@ import Lang.Descriptions
 import Lang.TypeHelpers
 import Lang.TypeError
 
-import Data.Maybe (mapMaybe, isJust)
+import Data.Maybe (isJust)
 
 -- Infer the type of an entire program
 typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
@@ -43,13 +43,14 @@ typeCheckProgram = typeCheckProgram' [] []
       Left $ TypeMismatch { expected = ty, actual = tyCon0 "Unit" }
 
     -- Definition with a type signature
-    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) =
-      case synthKind ty of
-        Left err -> Left err
-        Right (ty', kind) ->
-          case check gamma e ty' of
-            Right () -> typeCheckProgram' stack ((v, ty') : gamma) defs
-            Left err -> Left err
+    typeCheckProgram' stack gamma ((ValDef (VarLhs v (Just ty)) e):defs) = do
+      -- Synthesise the kind (which will elaborate thet ype)
+      (ty', kind) <- synthKind ty
+      -- Normalise the type (helps with equality and coherence); this can
+      -- fail (e.g. descriptor conflicts) so locate errors at the definition
+      ty'' <- annotateWith (exprPos e) (normaliseType ty')
+      ()   <- check gamma e ty''
+      typeCheckProgram' stack ((v, ty'') : gamma) defs
 
     -- Definition without a type signature
     typeCheckProgram' stack gamma ((ValDef (VarLhs v Nothing) e):defs) =
@@ -58,16 +59,19 @@ typeCheckProgram = typeCheckProgram' [] []
         Left err -> Left err
 
     -- Function definition
-    typeCheckProgram' stack gamma ((FunDefElaborated v params optionalReturnTy body):defs) = do
+    typeCheckProgram' stack gamma ((FunDefElaborated v typeParams params optionalReturnTy body):defs) = do
       params' <- traverse elaborateParameter params
-      elaboratedReturnTy <- 
+      elaboratedReturnTy <-
          case optionalReturnTy of
           Nothing -> return Nothing
           Just returnTy -> checkKind returnTy type0 >>= (return . Just)
 
       (_, resultType) <- typeCheckProgram' (elaboratedReturnTy : stack) (params' ++ gamma) body
+      -- Generalise over the function's declared type parameters
+      let funTy = FunTy (map snd params') resultType
+          polyTy = foldr Forall funTy typeParams
       -- rest of the program
-      typeCheckProgram' stack ((v, FunTy (map snd params') resultType) : gamma) defs
+      typeCheckProgram' stack ((v, polyTy) : gamma) defs
 
     typeCheckProgram' stack gamma ((Return e):defs) = do
       case stack of
@@ -182,16 +186,18 @@ check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc))
 check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, desc)) =
   -- We have a gradable numeric type
   case op of
-    -- Plus and minus must have the same type
-    BinOpPlus -> do
-      -- can only add or subtract numeric types
-      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
-      () <- check gamma e1 ty
-      check gamma e2 ty
-    BinOpMinus -> do
-      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
-      () <- check gamma e1 ty
-      check gamma e2 ty
+    -- Fast path (also makes a bare numeric literal on either side adopt
+    -- the expected type). Unsound for an affine-space (Point/Vector)
+    -- description: checking both operands against `ty` independently
+    -- can't catch e.g. Point + Point, since each operand legitimately
+    -- has type `ty` on its own -- only their *combination* is invalid.
+    -- So affine-flavoured expected types always go through synthesis
+    -- and combination instead, which also handles the general case of
+    -- the operands legitimately differing from `ty` and each other,
+    -- e.g. adding a Point to a Vector to get a Point.
+    -- TODO: Refactor to fit a more general `partial torsor/field` approach 
+    BinOpPlus  -> if descriptionHasAffine desc then synthThenCompare BinOpPlus  else sameTypeCheck
+    BinOpMinus -> if descriptionHasAffine desc then synthThenCompare BinOpMinus else sameTypeCheck
     BinOpAnd -> do
       assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
       () <- check gamma e1 ty
@@ -214,16 +220,31 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
               case op of
                 BinOpExp    ->
                   case e2 of
-                    NumFloat n -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
+                    NumFloat n -> do
+                      () <- rejectAffineScaling op d1
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
                   kindEquality gradeType1 (IsSpec gradeType2)
                   case op of
-                    BinOpTimes  -> typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
-                    BinOpDivide ->
+                    BinOpTimes  -> do
+                      () <- rejectAffineScaling op d1
+                      () <- rejectAffineScaling op d2
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                    BinOpDivide -> do
+                      () <- rejectAffineScaling op d1
+                      () <- rejectAffineScaling op d2
                       typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
+  where
+    sameTypeCheck = do
+      assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
+      () <- check gamma e1 ty
+      check gamma e2 ty
+    synthThenCompare op' = case synth gamma (BinOp op' e1 e2) of
+      Right ty' -> typeEquality ty (IsSpec ty')
+      Left err  -> Left err
 
 check_ gamma (Pair _ _) t = Left $ NonProductTypeToPair t
 
@@ -252,18 +273,6 @@ check_ gamma (Cond e1 e2_guard e3) t = do
       check gamma e3 t
     Right ty -> Left $ ExpectingBooleanType ty
     Left err -> Left err
-
--- Polymorphic lambda calculus
-check_ gamma (TyAbs alpha e) (Forall alpha' tau)
-  | alpha == alpha' =
-    -- find all free variables in gamma which have alpha free inside of their type assumption
-    case mapMaybe (\(id, t) -> if alpha `elem` freeVars t then Just id else Nothing) gamma of
-      -- side condition is true
-      [] -> check gamma e tau
-      vars -> Left $ FreeVariablesInAbstraction vars
-
-  | otherwise =
-    Left $ TermLevelTypeAbstraction alpha
 
 {--
 
@@ -355,15 +364,16 @@ synth_ gamma (Abs params e)
       return (x, tyA')
     elaborateAbsParam (_, Nothing) = Left $ CannotSynthType (Abs params e)
 
--- Type checking a type speciaisation
-synth_ gamma (App e [TyEmbed tau']) =
-  case checkKind tau' type0 of
-    Left err -> Left err
-    Right tau' ->
-      case synth gamma e of
-        Right (Forall alpha tau) -> Right $ substituteType tau (alpha, tau')
-        Right t -> Left $ ExpectingPolymorphicType t
-        Left err -> Left err
+-- Type checking a type specialisation, e.g. `id[Float[1]]`
+synth_ gamma (TyIndex e tys) = do
+  tys' <- traverse (`checkKind` type0) tys
+  ty <- synth gamma e
+  applyTypeArgs ty tys'
+  where
+    applyTypeArgs ty [] = Right ty
+    applyTypeArgs (Forall alpha tau) (t:ts) =
+      applyTypeArgs (substituteType tau (alpha, t)) ts
+    applyTypeArgs ty (_:_) = Left $ ExpectingPolymorphicType ty
 
 {-
 
@@ -383,6 +393,25 @@ synth_ gamma (App (Var "sqrt") [e]) = do
       d' <- normalisationByEvaluation (ExponentTy d 0.5)
       Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
     _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+
+-- TODO: will go away once we have more powerful first-class polymorphism
+-- with row polymorphism
+synth_ gamma (App (Var "to_SI") [e]) = do
+    t <- synth gamma e
+    case isGradableNumericType t of
+      Just ("Float", gradeType, d) -> do
+        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
+        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) d'
+      _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+  where
+    replaceDimWithUnit :: Type 1 -> Type 1
+    replaceDimWithUnit (WithTy d1 d2) =
+      WithTy (replaceDimWithUnit d1) (replaceDimWithUnit d2)
+    replaceDimWithUnit (TyCon k "Dim") =
+      TyCon k "UoM"
+    -- TODO: needs more congruences - probably need a recursion scheme for types
+    -- to simplify
+    replaceDimWithUnit t = t
 
 synth_ gamma (App e1 es) =
   -- Synth the left-hand side
@@ -522,23 +551,32 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                       case op of
                           BinOpExp ->
                             case e2 of
-                              NumFloat n -> Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
+                              NumFloat n -> do
+                                () <- rejectAffineScaling op d1
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
                               _ -> error "Bug"
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
                             case op of
                               BinOpTimes -> do
+                                () <- rejectAffineScaling op d1
+                                () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
                               BinOpDivide -> do
+                                () <- rejectAffineScaling op d1
+                                () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
                                 Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
-                              _        ->
-                                case descriptionEquality d1 (IsSpec d2) of
-                                  Right () -> do
-                                    d1 <- normalisationByEvaluation d1
-                                    Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
-                                  Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
+                              -- Plus/Minus: combine descriptions key-by-key, additively
+                              -- for an affine-space ("Point"/"Vector") component,
+                              -- otherwise requiring an exact match as before
+                              _        -> do
+                                d1repr <- computeRepresentation d1
+                                d2repr <- computeRepresentation d2
+                                combined <- combineDescriptionsForAddSub op d1repr d2repr
+                                combined' <- coherenceChecks combined
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (reifyToTypeTerm combined')
 
 
 {-
@@ -701,6 +739,18 @@ errorToString MismatchedDescriptionReprTypes =
 errorToString (BaseTypeMismatch expected actual) =
   "Mismatch between base type of graded types, expected " <> expected <> " but got " <> actual
 
+errorToString (DimensionAndUnitIncoherence dimension unit) =
+  "Incoherence between grade " <> pprint dimension <> " and " <> pprint unit
+
+errorToString (AffineSpaceCombinationUndefined op t1 t2) =
+  "Combining " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
+  <> " via " <> pprint op
+  <> " is not defined for affine spaces (the result would fall outside {DVector, Vector, Point})"
+
+errorToString (AffineSpaceScalingUnsupported op t) =
+  "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
+  <> ": affine-space values (Point/Vector/DVector) cannot be scaled"
+
 errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK
   <> " but got " <> pprint actualK
@@ -766,24 +816,42 @@ errorToString (Located (SrcPos l c) err) =
 -- | Normalize a type (useful for displaying information to the user)
 normalise :: Type 0 -> Type 0
 normalise t =
-  if normalise' t == t
-    then t
-    else normalise (normalise' t)
+    if normalise' t == t
+      then t
+      else normalise (normalise' t)
+  where
+    normalise' t = either (const t) id (normaliseType t)
 
-normalise' :: Type 0 -> Type 0
-normalise' (FunTy ts t2) = FunTy (map normalise' ts) (normalise' t2)
-normalise' (isGradableNumericType -> Just (baseType, gradeType, desc)) =
-  TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) (either (const desc) id (normalisationByEvaluation desc))
-normalise' (TyApp t1 t2) = TyApp (normalise' t1) (normalise' t2)
-normalise' (Forall x t) = Forall x (normalise' t)
-normalise' (ProdTy t1 t2) = ProdTy (normalise' t1) (normalise' t2)
-normalise' (SumTy t1 t2) = SumTy (normalise' t1) (normalise' t2)
-normalise' (WithTy t (TyCon ZeroP "1")) = normalise' t
-normalise' (WithTy (TyCon ZeroP "1") t) = normalise' t
-normalise' (WithTy t1 t2) = WithTy (normalise' t1) (normalise' t2)
-normalise' (ExponentTy t n) = ExponentTy (normalise' t) n
-normalise' t = t  -- Base case: TyCon, TyVar, etc.
+normaliseType :: Type 0 -> Either TypeError (Type 0)
+normaliseType (FunTy ts t2) = (<$$>) FunTy (mapM normaliseType ts) (normaliseType t2)
+normaliseType (isGradableNumericType -> Just (baseType, gradeType, desc)) = do
+  desc' <- normalisationByEvaluation desc
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) desc'
+normaliseType (TyApp t1 t2) = (<$$>) TyApp (normaliseType t1) (normaliseType t2)
+normaliseType (Forall x t) = (Forall x) <$> (normaliseType t)
+normaliseType (ProdTy t1 t2) = (<$$>) ProdTy(normaliseType t1) (normaliseType t2)
+normaliseType (SumTy t1 t2) = (<$$>) SumTy (normaliseType t1) (normaliseType t2)
+normaliseType (WithTy t (TyCon ZeroP "1")) = normaliseType t
+normaliseType (WithTy (TyCon ZeroP "1") t) = normaliseType t
+normaliseType (WithTy t1 t2) = (<$$>) WithTy (normaliseType t1) (normaliseType t2)
+normaliseType (ExponentTy t n) = (<$$>) ExponentTy (normaliseType t) (return n)
+normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
+
+-- Helper
+(<$$>) :: Monad m => (a -> b -> c) -> m a -> m b -> m c
+(<$$>) f mx my = do
+  x <- mx
+  y <- my
+  return $ f x y
+
 
 assert :: Bool -> a -> Either a ()
 assert True _ = Right ()
 assert False x = Left x
+
+-- | Affine-space (Point/Vector/DVector) values cannot be scaled: reject
+-- `*`, `/` and `^` when the description involves one.
+rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
+rejectAffineScaling op d
+  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d
+  | otherwise               = Right ()

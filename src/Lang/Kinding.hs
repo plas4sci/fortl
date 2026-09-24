@@ -75,6 +75,10 @@ checkKind t@(TyCon _ c) k | k == agroup =
 checkKind t@(TyCon _ "1") (TyCon _ "Base") =
   return t
 
+-- Allow 1 to be an element of "UnitBase" (dimensionless)
+checkKind t@(TyCon _ "1") (TyCon _ "UnitBase") =
+  return t
+
 -- Allow 1 to be an element of "DimensionBase" (dimensionless)
 checkKind t@(TyCon _ "1") (TyCon _ "DimensionBase") =
   return t
