@@ -271,11 +271,21 @@ synthSortFunctionArguments (t:ts) = do
 indent :: String -> String
 indent = unlines . map ("  " <>) . lines
 
+-- Products of descriptor kinds (&) are associative and commutative, so
+-- compare them as multisets of their components
 kindEquality :: Type 1 -> Specificational (Type 1) -> Either TypeError ()
-kindEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
-  (kindEquality t1 (IsSpec t1') >> kindEquality t2 (IsSpec t2')) <|>
-  (kindEquality t1 (IsSpec t2') >> kindEquality t2 (IsSpec t1'))
 kindEquality t1 (IsSpec t2) =
-  if t1 == t2
+  if sameComponents (withComponents t1) (withComponents t2)
     then Right ()
     else Left $ KindMismatch t2 t1 Nothing
+  where
+    sameComponents [] ks' = null ks'
+    sameComponents (k:ks) ks' =
+      case break (== k) ks' of
+        (before, _ : after) -> sameComponents ks (before ++ after)
+        (_, [])             -> False
+
+-- | Flatten a (nested) product of descriptor kinds into its components
+withComponents :: Type 1 -> [Type 1]
+withComponents (WithTy t1 t2) = withComponents t1 ++ withComponents t2
+withComponents t              = [t]
