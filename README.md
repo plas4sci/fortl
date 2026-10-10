@@ -71,7 +71,11 @@ units> :k Float
 
 Fortl is written in Haskell and is built with [Stack](https://docs.haskellstack.org/).
 
-**Install (for users)**:
+**Install (prebuilt binaries)**:
+
+Download an archive for your platform from the [releases page](https://github.com/plas4sci/fortl/releases), unpack it, and put the `fortl` and `fortli` executables somewhere on your `PATH`. No Haskell toolchain required.
+
+**Install (from source)**:
 
 1. Install [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
 2. Clone this repo (`git clone https://github.com/plas4sci/fortl`)
