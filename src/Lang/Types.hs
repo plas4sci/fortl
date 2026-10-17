@@ -16,6 +16,7 @@ import Lang.TypeHelpers
 import Lang.TypeError
 
 import Data.Maybe (isJust)
+import Data.Either (isRight)
 
 -- Infer the type of an entire program
 typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
@@ -393,6 +394,44 @@ synth_ gamma (App (Var "sqrt") [e]) = do
       d' <- normalisationByEvaluation (ExponentTy d 0.5)
       Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
     _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+
+-- special case primitives: sin, cos, tan
+-- the argument must be dimensionless and, if it has a kind of quantity,
+-- that quantity must be Angle; the result drops the Angle quantity,
+-- e.g. an argument described by [Unit[1] & Quantity[Angle]] yields [Unit[1]]
+synth_ gamma (App (Var f) [e]) | f `elem` ["sin", "cos", "tan"] = do
+  t <- synth gamma e
+  case isGradableNumericType t of
+    Just ("Float", _, d) -> do
+      assert (not (descriptionHasAffine d)) $
+        ContextualError $ f <> " cannot be applied to an affine-space (Point/Vector) value " <> pprint t
+      units      <- descriptionComponent "Unit" d
+      dimensions <- descriptionComponent "Dimension" d
+      quantity   <- descriptionComponent "Quantity" d
+      assert (units `absentOrEqual` [unitTy (tyCon0 "1")] && dimensions `absentOrEqual` [dimensionTy (tyCon0 "1")]) $
+        ContextualError $ f <> " expects a dimensionless argument but got " <> pprint t
+      assert (quantity `absentOrEqual` [quantityTy (tyCon0 "1"), angleQuantity]) $
+        ContextualError $ f <> " expects an argument of quantity Angle but got " <> pprint t
+      d' <- dropDescriptionComponent "Quantity" d
+      floatWithDescription d'
+    _ -> Left $ ContextualError $ f <> " expects a Float argument but got " <> pprint t
+
+-- special case primitive: atan2
+-- both arguments must have the same type; the result is their ratio
+-- (so units and dimensions cancel) with quantity Angle, i.e.,
+--   atan2 : Float[d] -> Float[d] -> Float[d/d & Quantity[Angle]]
+-- Vector components are fine, but a Point has no meaningful direction
+synth_ gamma (App (Var "atan2") [e1, e2]) = do
+  t <- synth gamma e1
+  () <- check gamma e2 t
+  case isGradableNumericType t of
+    Just ("Float", _, d) -> do
+      assert (not (descriptionIsPoint d)) $
+        ContextualError $ "atan2 cannot be applied to Points (only Vectors) but got " <> pprint t
+      d' <- dropAffine d
+      ratio <- dropDescriptionComponent "Quantity" (ProdTy d' (reciprocalType d'))
+      floatWithDescription (WithTy ratio angleQuantity)
+    _ -> Left $ ContextualError $ "atan2 expects Float arguments but got " <> pprint t
 
 -- TODO: will go away once we have more powerful first-class polymorphism
 -- with row polymorphism
@@ -848,6 +887,26 @@ normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
 assert :: Bool -> a -> Either a ()
 assert True _ = Right ()
 assert False x = Left x
+
+-- | Helpers for the trigonometric primitives
+unitTy, dimensionTy, quantityTy :: Type 0 -> Type 0
+unitTy      = TyApp (tyCon0 "Unit")
+dimensionTy = TyApp (tyCon0 "Dimension")
+quantityTy  = TyApp (tyCon0 "Quantity")
+
+angleQuantity :: Type 0
+angleQuantity = quantityTy (tyCon0 "Angle")
+
+-- | A description component is either absent or equal to one of the given ones
+absentOrEqual :: Maybe (Type 0) -> [Type 0] -> Bool
+absentOrEqual Nothing  _   = True
+absentOrEqual (Just t) tys = any (\t' -> isRight (descriptionEquality t (IsSpec t'))) tys
+
+-- | Build a (kind-elaborated) Float type with the given description
+floatWithDescription :: Type 0 -> Either TypeError (Type 0)
+floatWithDescription d = do
+  d' <- normalisationByEvaluation d
+  checkKind (TyApp (tyCon0 "Float") d') type0
 
 -- | Affine-space (Point/Vector/DVector) values cannot be scaled: reject
 -- `*`, `/` and `^` when the description involves one.

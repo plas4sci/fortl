@@ -84,6 +84,10 @@ typeConstructors = [
   , ("mol"      , unitBase) -- moles
   , ("A"        , unitBase) -- ampere
   , ("cd"       , unitBase) -- candela
+
+  , ("rad"       , unitBase) -- angles
+  , ("deg"       , unitBase) -- angles
+
   -- TODO: fix open typres then these can be user-defined
   , ("hour"     , unitBase)
   , ("min"     , unitBase)

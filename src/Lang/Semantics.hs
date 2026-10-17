@@ -41,8 +41,18 @@ data Env = Env
 
 primitives :: [(Identifier, Value)]
 primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
+              , ("sin", VPrimitive "sin" (floatFunc1 "sin" sin))
+              , ("cos", VPrimitive "cos" (floatFunc1 "cos" cos))
+              , ("tan", VPrimitive "tan" (floatFunc1 "tan" tan))
+              , ("atan2", VPrimitive "atan2" atan2Func)
               , ("to_SI", VPrimitive "to_SI" idFunc)]
   where
+    floatFunc1 _ f [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ f n
+    floatFunc1 name _ _ = Left $ "fortl bug: " <> name <> " expects a single float argument"
+
+    atan2Func [ValExpr (NumFloat y), ValExpr (NumFloat x)] = Right $ ValExpr $ NumFloat $ atan2 y x
+    atan2Func _ = Left "fortl bug: atan2 expects two float arguments"
+
     idFunc [x] = Right x
     idFunc _   = Left "fortl bug: identity(conversion) expects a single argument"
 

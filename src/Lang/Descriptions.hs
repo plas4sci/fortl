@@ -237,6 +237,32 @@ descriptionHasAffine t = case computeRepresentation t :: Either TypeError Descri
   Right repr -> member "Affine" repr
   Left _     -> False
 
+-- | Whether a description is that of a Point in an affine space
+descriptionIsPoint :: Type 0 -> Bool
+descriptionIsPoint t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
+  Right repr | Just (AffineSpace _ 1) <- Map.lookup "Affine" repr -> True
+  _ -> False
+
+-- | The component of a description built from the given descriptor
+-- constructor, if present, e.g. the "Quantity" component of
+-- Unit[m] & Quantity[Length] is Quantity[Length]
+descriptionComponent :: Identifier -> Type 0 -> Either TypeError (Maybe (Type 0))
+descriptionComponent k t = do
+  repr <- computeRepresentation t :: Either TypeError DescriptionsRepr
+  return $ (\v -> reifyToTypeTerm (singleton k v)) <$> Map.lookup k repr
+
+-- | Remove the component of a description built from the given descriptor
+-- constructor, e.g. dropping "Quantity" from Unit[1] & Quantity[Angle]
+-- gives Unit[1]
+dropDescriptionComponent :: Identifier -> Type 0 -> Either TypeError (Type 0)
+dropDescriptionComponent k t = do
+  repr <- computeRepresentation t :: Either TypeError DescriptionsRepr
+  return $ reifyToTypeTerm (Map.delete k repr)
+
+-- | Remove any affine-space (Point/Vector) component of a description
+dropAffine :: Type 0 -> Either TypeError (Type 0)
+dropAffine = dropDescriptionComponent "Affine"
+
 -- | Representation of a single description
 instance Representation DescriptionRepr where
     -- | Compute the representation of a description type
