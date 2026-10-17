@@ -16,12 +16,23 @@ import GHC.Generics (Generic)
 %wrapper "posn"
 
 $digit  = 0-9
-$alpha  = [a-zA-Z\_\-]
+
+-- Unicode letters commonly used in science/maths identifiers, curated
+-- rather than opening identifiers to all of Unicode (which would admit
+-- confusables, mixed-script homoglyphs, and other look-alike characters).
+-- Extend these ranges deliberately as more symbols are needed.
+$greekUpper      = [\x0391-\x03A9]                         -- Α-Ω
+$greekLower      = [\x03B1-\x03C9\x03D1\x03D5\x03D6\x03F5] -- α-ω, ϑ ϕ ϖ ϵ (common variants)
+$letterlikeMath  = [\x2113\x210F\x2135-\x2138]              -- ℓ ℏ ℵ ℶ ℷ ℸ
+$unicodeAlpha    = [$greekUpper $greekLower $letterlikeMath]
+
+$alpha  = [a-zA-Z\_\-$unicodeAlpha]
 $lower  = [a-z]
 $upper  = [A-Z]
 $eol    = [\n]
+$hwhite = [\ \t]
 $alphanum  = [$alpha $digit \_]
-@sym    = ($lower | $upper) ($alphanum | \')*
+@sym    = ($lower | $upper | $unicodeAlpha) ($alphanum | \')*
 @tyvar    = \' @sym
 @float   = \-? $digit+ \. $digit+ ([eE] \-? $digit+)?
 @int    = \-? $digit+ ([eE] \-? $digit+)?
@@ -32,15 +43,16 @@ $alphanum  = [$alpha $digit \_]
 
 tokens :-
 
-  $white*$eol                   { \p s -> TokenNL p }
+  $hwhite*$eol                  { \p s -> TokenNL p }
   $eol+                         { \p s -> TokenNL p }
-  $white+                       ;
+  $hwhite+                      ;
   "#" .*                        ;
   @tyvar                          { \p s -> TokenTyVar p (tail s) }
   lang\.@langPrag               { \p s -> TokenLang p s }
   forall                        { \p _ -> TokenForall p }
   data                          { \p s -> TokenData p }
   let                           { \p s -> TokenLet p }
+  def                           { \p s -> TokenDef p }
   in                            { \p s -> TokenIn p }
   succ                          { \p s -> TokenSucc p }
   zero                          { \p s -> TokenZero p }
@@ -89,6 +101,7 @@ tokens :-
 data Token
   = TokenLang     AlexPosn String
   | TokenData     AlexPosn
+  | TokenDef      AlexPosn
   | TokenCase     AlexPosn
   | TokenSep      AlexPosn
   | TokenLet      AlexPosn
@@ -106,6 +119,8 @@ data Token
   | TokenLParen   AlexPosn
   | TokenRParen   AlexPosn
   | TokenNL       AlexPosn
+  | TokenIndent   AlexPosn
+  | TokenDedent   AlexPosn
   | TokenSig      AlexPosn
   | TokenEquiv    AlexPosn
   | TokenHole     AlexPosn
@@ -149,7 +164,61 @@ tyVarString :: Token -> String
 tyVarString (TokenTyVar _ x) = x
 tyVarString t = error $ "Not a type variable " ++ show t
 
-scanTokens = alexScanTokens . stripDocstrings >>= (return . trim)
+scanTokens = alexScanTokens . stripDocstrings >>= (return . trim . layout)
+
+-- Add layout markers for function bodies. Existing multiline expressions use
+-- indentation for readability, so layout is activated only after a def header.
+-- A stack of block columns supports arbitrarily nested defs.
+layout :: [Token] -> [Token]
+layout tokens = go [] tokens [] 0
+  where
+    -- go <tokens of current line so far> <remaining tokens> <block column stack> <paren depth>
+    go _ [] stack _ = map (const (TokenDedent (AlexPn 0 0 0))) stack
+    go line (t:ts) stack parenDepth =
+      case t of
+        TokenNL p ->
+          let (next, _) = nextNonNL ts
+              lineHeader = isDefHeader line
+              nextColumn = maybe 0 (snd . getPos) next
+              newline = if (not (null stack) && parenDepth == 0)
+                           || lineHeader || lineStartsImport line
+                        then [t]
+                        else []
+              (popped, remaining) = span (> nextColumn) stack
+              (emitted, stack')
+                -- indentation is ignored inside parentheses
+                | parenDepth /= 0 = (newline, stack)
+                -- block opens after a def header: nl before indent
+                | lineHeader && nextColumn > lineColumn line =
+                    (newline ++ [TokenIndent p], nextColumn : stack)
+                -- blocks close: one dedent per level, before the nl so the
+                -- enclosing block still sees a statement separator
+                | otherwise =
+                    (map (const (TokenDedent p)) popped ++ newline, remaining)
+          in emitted ++ go [] ts stack' parenDepth
+        _ -> t : go (line ++ [t]) ts stack (parenDepth + parenthesisDepth t)
+
+    nextNonNL [] = (Nothing, [])
+    nextNonNL (TokenNL _ : ts) = nextNonNL ts
+    nextNonNL (t:ts) = (Just t, ts)
+
+    lineColumn [] = 0
+    lineColumn (t:_) = snd (getPos t)
+
+    isDefHeader line = any isDef line && any isColon line
+    isDef (TokenDef _) = True
+    isDef _ = False
+    isColon (TokenSig _) = True
+    isColon _ = False
+
+    parenthesisDepth (TokenLParen _) = 1
+    parenthesisDepth (TokenRParen _) = -1
+    parenthesisDepth _ = 0
+
+    lineStartsImport (TokenLang _ _ : _) = True
+    lineStartsImport (TokenImport _ : _) = True
+    lineStartsImport (TokenFrom _ : _) = True
+    lineStartsImport _ = False
 
 -- Strip Python-style triple-quoted docstrings before lexing.
 -- We preserve newlines to keep parser layout/error positions stable.

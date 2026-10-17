@@ -1,0 +1,5 @@
+def identity(x: Float[Unit[1]]):
+  x : Float[Unit[1]]
+  return x
+
+it = identity((1.0 : Float[Unit[1]]))

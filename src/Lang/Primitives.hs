@@ -25,7 +25,6 @@ stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
 
 boolTy :: Type 0 -> Type 0
 boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) t
-  
 
 desc :: Type 1
 desc = tyCon1 "Descriptor"
@@ -43,21 +42,30 @@ dataConstructors = [
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
      -- Graded float
-    ("Float"    , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+    ("Float"    , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded integer
-  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded string
-  , ("String"  , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("String"  , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
     -- Graded boolean
-  , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy (tyVar "d") type0))
+  , ("Bool"     , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
   , ("Nat"      , type0)
-  , ("Unit"     , FunTy type0 (tyCon1 "UoM"))
-  , ("Quantity" , FunTy type0 (tyCon1 "KoQ"))
-  , ("Species"  , FunTy type0 (tyCon1 "SpeciesType"))
-  , ("Basis"    , FunTy type0 (tyCon1 "BasisType"))
+  , ("Unit"     , FunTy [type0] (tyCon1 "UoM"))
+  , ("Quantity" , FunTy [type0] (tyCon1 "KoQ"))
+  , ("Species"  , FunTy [type0] (tyCon1 "SpeciesType"))
+  , ("Basis"    , FunTy [type0] (tyCon1 "BasisType"))
+  , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
   , ("m"        , type0)
   , ("s"        , type0)
   , ("None"     , type0)
+    -- The standard 7 SI base dimensions
+  , ("T"        , dimensionBase) -- Time
+  , ("L"        , dimensionBase) -- Length
+  , ("M"        , dimensionBase) -- Mass
+  , ("U"        , dimensionBase) -- Electric cUrrent
+  , ("Phi"      , dimensionBase) -- Thermodynamic temperature (Theta)
+  , ("N"        , dimensionBase) -- Amount of substance
+  , ("J"        , dimensionBase) -- Luminous intensity
  ]
 
 typeAliases :: [(Identifier, Type 0)]
@@ -77,9 +85,10 @@ kindConstructors = [
   , ("KoQ"      , desc2)
   , ("SpeciesType", desc2)
   , ("BasisType" , desc2)
+  , ("Dim"      , desc2)
   , ("Base"     , desc2) -- The base Descriptor (bottom)
   -- Products of descriptors
-  , ("&"        , FunTy desc2 (FunTy desc2 desc2))
+  , ("&"        , FunTy [desc2, desc2] desc2)
   ]
 
 
@@ -89,11 +98,17 @@ base = tyCon1 "Base"
 agroup :: Type 1
 agroup = tyCon1 "AGroup"
 
+-- | Closed domain kind for Dimension: only the standard 7 SI base
+-- dimensions (and their products/powers) have this kind, unlike Unit's
+-- argument (any Type) which is an open set of generators.
+dimensionBase :: Type 1
+dimensionBase = tyCon1 "DimensionBase"
+
 -- | Check if a type constructors a descriptor
 isDescConstructor :: Identifier -> Maybe (Type 1)
 isDescConstructor conId =
   case lookup conId typeConstructors of
-    Just k@(FunTy t _) | t == desc -> Just k
+    Just k@(FunTy [t] _) | t == desc -> Just k
     Just k@(ImplicitFunTy _ t _) | t == desc2 -> Just k
     _                              -> Nothing
 

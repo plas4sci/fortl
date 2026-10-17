@@ -1,0 +1,7 @@
+def increment(x):
+  x : Float[Unit[1]]
+  result : Float[Unit[1]]
+  result = x + (1.0 : Float[Unit[1]])
+  return result
+
+it : Float[Unit[1]] = increment((2.0 : Float[Unit[1]]))

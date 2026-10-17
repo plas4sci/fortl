@@ -53,6 +53,9 @@ data TypeError
   | FreeVariablesInAbstraction [Identifier]
   | TermLevelTypeAbstraction Identifier
   | TypeApplicationExpectsType
+
+  -- Program well-formedness errors
+  | WellFormednessError WellFormednessError
   
   -- Generic/contextual errors
   | ContextualError String
@@ -63,6 +66,11 @@ data TypeError
   -- Source location annotation
   | Located SrcPos TypeError
 
+  deriving (Show)
+
+data WellFormednessError
+  = MissingParameterAnnotation Identifier
+  | DuplicateParameterAnnotation Identifier
   deriving (Show)
 
 class MonadAlt m where

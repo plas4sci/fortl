@@ -7,7 +7,7 @@ import Lang.Frontend    (banner, run, ansi_bold, ansi_reset)
 import Lang.Parser      (parseExpr, parseType)
 import Lang.PrettyPrint (pprint)
 import Lang.Types       (synth, errorToString, Context)
-import Lang.Semantics   (bigStep, Env)
+import Lang.Semantics   (bigStep, Env, emptyEnv, Value)
 import Lang.Kinding     (synthKind)
 import Lang.Options     (Option)
 
@@ -35,7 +35,7 @@ initialState :: REPLState
 initialState = REPLState {
      currentFile = Nothing
    , prompt      = "[F]"
-   , env         = []
+   , env         = emptyEnv
    , options     = []
    , typingContext = []
   }
@@ -125,7 +125,7 @@ replLoop state = do
 trim :: String -> String
 trim = reverse . dropWhile isSpace . reverse
 
-displayResult :: Expr -> IO ()
+displayResult :: Value -> IO ()
 displayResult e = do
   putStrLn $ pprint e
 

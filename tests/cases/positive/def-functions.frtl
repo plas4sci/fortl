@@ -1,0 +1,5 @@
+def add(x: Float[1], y: Float[1]):
+  result = x + y
+  return result
+
+it : Float[1] = add(2.0, 3.0)

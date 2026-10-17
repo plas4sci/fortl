@@ -1,2 +1,2 @@
-area : Float[Unit[M^2]] = 9.0
-it : Float[Unit[M]] = sqrt(area)
+area : Float[Unit[m^2]] = 9.0
+it : Float[Unit[m]] = sqrt(area)
