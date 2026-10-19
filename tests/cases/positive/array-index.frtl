@@ -1,0 +1,7 @@
+# simple array type checking
+def getFirst(x) -> float:
+  x : array[float]
+  return x[0]
+
+# Should (1, 0)
+it = (getFirst(ones(10)), getFirst(zeros(10)))
