@@ -63,7 +63,7 @@ coherenceChecks repr = do
     -- Check that the unit is SI compliant with the dimension
     checkCoherence unitRepr ((dimName, exponent):dimRepr) =
       case Map.lookup (rewriteSI dimName) unitRepr of
-        Just exponent' | exponent == exponent ->
+        Just exponent' | exponent == exponent' ->
           checkCoherence (delete (rewriteSI dimName) unitRepr) dimRepr
 
         _ -> False
