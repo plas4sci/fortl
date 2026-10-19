@@ -12,6 +12,7 @@
 module Lang.Syntax where
 
 import qualified Data.Set as Set
+import Data.Data
 import GHC.TypeLits
 
 data Phase = Parsed | Desugared
@@ -84,6 +85,45 @@ data Expr where
     MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
+
+-- | Hand-written 'Data' instance exposing only the 'Expr' children of each
+-- node. Positions, identifiers, operators, literals and types are baked into
+-- the constructor function passed to @z@, so generic traversals (and zippers,
+-- e.g., in "Lang.Solver") see them as part of the node, not as children.
+-- Only 'gfoldl' is meaningful: 'gunfold' is unsupported and 'toConstr' returns
+-- a single placeholder constructor.
+--
+-- NB: when adding a constructor with 'Expr' children, add a case here,
+-- otherwise the fallback treats it as a leaf.
+instance Data Expr where
+  gfoldl k z e = case e of
+    MkAbs p xs b         -> z (MkAbs p xs) `k` b
+    MkApp p f as         -> z (MkApp p) `k` f `k` as
+    MkSig p e1 t         -> z (\e1' -> MkSig p e1' t) `k` e1
+    MkTyAbs p x e1       -> z (MkTyAbs p x) `k` e1
+    MkLet p x e1 e2      -> z (MkLet p x) `k` e1 `k` e2
+    MkCast p e1          -> z (MkCast p) `k` e1
+    MkPair p e1 e2       -> z (MkPair p) `k` e1 `k` e2
+    MkFst p e1           -> z (MkFst p) `k` e1
+    MkSnd p e1           -> z (MkSnd p) `k` e1
+    MkCase p s (x, e1) (y, e2) ->
+      z (\s' e1' e2' -> MkCase p s' (x, e1') (y, e2')) `k` s `k` e1 `k` e2
+    MkCond p c e1 e2     -> z (MkCond p) `k` c `k` e1 `k` e2
+    MkBinOp p op e1 e2   -> z (MkBinOp p op) `k` e1 `k` e2
+    MkUnOp p op e1       -> z (MkUnOp p op) `k` e1
+    MkLift p e1 t        -> z (\e1' -> MkLift p e1' t) `k` e1
+    MkCon p c es         -> z (MkCon p c) `k` es
+    -- Leaves: Var, TyEmbed, Zero, Succ, NumFloat, NumInteger, StringConst
+    _                    -> z e
+  gunfold _ _ _ = error "gunfold: not supported for Expr"
+  toConstr _    = exprConstr
+  dataTypeOf _  = exprDataType
+
+exprDataType :: DataType
+exprDataType = mkDataType "Lang.Syntax.Expr" [exprConstr]
+
+exprConstr :: Constr
+exprConstr = mkConstr exprDataType "Expr" [] Prefix
 
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos

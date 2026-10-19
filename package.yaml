@@ -13,6 +13,7 @@ dependencies:
 - directory
 - filepath
 - haskeline
+- syz
 
 ghc-options:
 - -O0
@@ -57,6 +58,7 @@ library:
   - Lang.Frontend
   - Lang.Descriptions
   - Lang.TypeHelpers
+  - Lang.Solver
 
 tests:
   fortl-golden:
