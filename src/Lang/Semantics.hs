@@ -9,6 +9,7 @@ import Lang.Substitution
 import Lang.PrettyPrint
 import Lang.Primitives (dataConstructors)
 import qualified Data.Map.Lazy as Map
+import Data.Array
 -- import Debug.Trace
 
 -- **************************************
@@ -20,12 +21,14 @@ import qualified Data.Map.Lazy as Map
 data Value =
     VClosure   { closureParams :: [Identifier], closureBody :: [Def 'Desugared], closureEnv :: Env }
   | VPrimitive { primitiveName :: String, primitiveFunc :: [Value] -> Either String Value }
+  | VArray     { arrayData :: Array Integer Float }
   | ValExpr Expr
 
 instance PrettyPrint Value where
   pprint (ValExpr e) = pprint e
   pprint (VPrimitive name _) = "<primitive:" ++ name ++ ">"
   pprint (VClosure params _ _) = "<function/" ++ show (length params) ++ ">"
+  pprint (VArray arr ) = "<array:" ++ show arr ++ ">"
 
 -- | Project a normal-form expression out of a value
 -- (closures have no expression form)
@@ -33,6 +36,7 @@ valueToExpr :: Value -> Either String Expr
 valueToExpr (ValExpr e) = Right e
 valueToExpr VClosure{}  = Left "Cannot use a function value here"
 valueToExpr VPrimitive{} = Left "Cannot use a primitive value here"
+valueToExpr VArray{} = Left "Cannot use an array here"
 
 -- Environment
 data Env = Env
@@ -41,10 +45,18 @@ data Env = Env
     }
 
 primitives :: [(Identifier, Value)]
-primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)]
+primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc) 
+              , ("ones", VPrimitive "ones" onesFunc)
+              , ("zeros", VPrimitive "zeros" zerosFunc) ]
   where
     sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
-    sqrtFunc _ = Left "sqrt expects a single float argument" 
+    sqrtFunc _ = Left "sqrt expects a single float argument"
+
+    onesFunc [ValExpr (NumInteger n)] = Right $ VArray (listArray (0, n) [1 | _ <- [0..n]])
+    onesFunc _ = Left "ones expects a single float argument"
+
+    zerosFunc [ValExpr (NumInteger n)] = Right $ VArray (listArray (0, n) [0 | _ <- [0..n]])
+    zerosFunc _ = Left "zeros expects a single float argument"
 
 -- Empty env (at top of lexical scope)
 emptyEnv :: Env
@@ -112,6 +124,14 @@ interpretDefs env opts [] = (env, ValExpr (Con "None" []))
 -- ***************************************
 
 bigStep :: Env -> [Option] -> Expr -> Either String Value
+
+bigStep env opts (Subscript e1 e2) = do
+  case bigStep env opts e1 of
+    Right (VArray arr) -> 
+      case bigStep env opts e2 of
+        Right (ValExpr (NumInteger n)) -> Right $ ValExpr $ NumFloat (arr ! n)
+        _ -> error "broken subscript"
+    _ -> error "broken array"
 
 bigStep env opts (App e1 es) = do
   v1 <- bigStep env opts e1

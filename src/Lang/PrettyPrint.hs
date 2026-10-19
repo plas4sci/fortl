@@ -26,6 +26,8 @@ instance PrettyPrint Expr where
     isLexicallyAtomic (NumInteger _) = True
     isLexicallyAtomic _       = False
 
+    pprint (Subscript e1 e2) =
+      pprint e1 ++ "[" ++ pprint e2 ++ "]"
     pprint (Abs params e) = "lambda " ++ intercalate ", " (map pprintParam params) ++ ": " ++ pprint e
       where
         pprintParam (x, Nothing) = x

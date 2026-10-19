@@ -66,6 +66,7 @@ data Expr where
     MkVar :: Maybe SrcPos -> Identifier      -> Expr
     MkSig :: Maybe SrcPos -> Expr -> Type 0  -> Expr
     MkTyAbs   :: Maybe SrcPos -> Identifier -> Expr -> Expr
+    MkSubscript :: Maybe SrcPos -> Expr  -> Expr -> Expr -- e.g., e1[e2]
     MkTyEmbed :: Maybe SrcPos -> Type 0             -> Expr
     MkLet :: Maybe SrcPos -> Identifier -> Expr -> Expr -> Expr
     MkCast :: Maybe SrcPos -> Expr -> Expr
@@ -85,8 +86,10 @@ data Expr where
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
 
+
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos
+exprPos (MkSubscript p _ _) = p
 exprPos (MkAbs p _ _)       = p
 exprPos (MkApp p _ _)       = p
 exprPos (MkVar p _)         = p
@@ -110,6 +113,7 @@ exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
 exprPos (MkCond p _ _ _)    = p
 
+
 -- | Position-agnostic pattern synonyms.
 -- In a pattern they match regardless of the stored position.
 -- As expressions they construct with Nothing as the position.
@@ -132,6 +136,10 @@ pattern Sig e t <- MkSig _ e t
 pattern TyAbs :: Identifier -> Expr -> Expr
 pattern TyAbs x e <- MkTyAbs _ x e
   where TyAbs x e = MkTyAbs Nothing x e
+
+pattern Subscript :: Expr -> Expr -> Expr
+pattern Subscript t1 t2 <- MkSubscript _ t1 t2
+  where Subscript t1 t2 = MkSubscript Nothing t1 t2
 
 pattern TyEmbed :: Type 0 -> Expr
 pattern TyEmbed t <- MkTyEmbed _ t
@@ -325,6 +333,7 @@ instance Term Expr where
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
   boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
   boundVars (Cond e1 e2 e3)              = boundVars e1 `Set.union` boundVars e2 `Set.union` boundVars e3
+  boundVars (Subscript e1 e2)            = boundVars e1 `Set.union` boundVars e2
   boundVars _                            = Set.empty
 
   freeVars (Abs params e)                = foldr Set.delete (freeVars e) (map fst params)
@@ -343,6 +352,7 @@ instance Term Expr where
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
   freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
   freeVars (Cond e1 e2 e3)               = freeVars e1 `Set.union` freeVars e2 `Set.union` freeVars e3
+  freeVars (Subscript e1 e2)             = freeVars e1 `Set.union` freeVars e2
   freeVars _                             = Set.empty
 
   mkVar = Var

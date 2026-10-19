@@ -1,3 +1,6 @@
+def array_id(x : array[float]) -> array[float]:
+  return x
+
 # simple array type checking
 def getFirst(x) -> float:
   x : array[float]
