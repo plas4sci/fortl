@@ -69,35 +69,37 @@ units> :k Float
 
 ## Building and Installing
 
-Fortl is built with [Stack](https://docs.haskellstack.org/).
+Fortl is written in Haskell and is built with [Stack](https://docs.haskellstack.org/).
 
-**Prerequisites**: [GHC 9.2.5](https://www.haskell.org/ghc/) and Stack installed.
+**Install (prebuilt binaries)**:
 
-**Build:**
+Download an archive for your platform from the [releases page](https://github.com/plas4sci/fortl/releases), unpack it, and put the `fortl` and `fortli` executables somewhere on your `PATH`. No Haskell toolchain required.
 
+**Install (from source)**:
+
+1. Install [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
+2. Clone this repo (`git clone https://github.com/plas4sci/fortl`)
+3. `cd fortl`
+3. Then run
+```bash
+stack install
+```
+(The first time it will install the GHC Haskell compiler).
+
+After installing, `fortl` and `fortli` will be available as commands directly.
+
+**For developers**:
+
+Building:
 ```bash
 stack build
 ```
 
-**Run a file:**
-
+Running the tests:
 ```bash
-stack exec fortl -- <file.frtl>
+stack test
 ```
 
-**Interactive REPL:**
-
-```bash
-stack exec fortli
-```
-
-**Install executables to your PATH:**
-
-```bash
-stack install
-```
-
-After installing, `fortl` and `fortli` will be available as commands directly.
 
 ## Background
 

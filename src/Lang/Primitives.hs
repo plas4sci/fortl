@@ -32,6 +32,15 @@ desc = tyCon1 "Descriptor"
 desc2 :: Type 2
 desc2 = tyCon2 "Descriptor"
 
+-- TODO:
+-- prims :: [(Identifier, Type 0)]
+-- prims = [
+--   ("sqrt", ImpliftFunTy "d" desc2 (ImplicitFunTy "u"
+--              FunTY (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (TyVar "u"))
+--                    (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (ExponentTy (TyVar "u") 0.5)
+
+-- ]
+
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
@@ -75,6 +84,10 @@ typeConstructors = [
   , ("mol"      , unitBase) -- moles
   , ("A"        , unitBase) -- ampere
   , ("cd"       , unitBase) -- candela
+
+  , ("rad"       , unitBase) -- angles
+  , ("deg"       , unitBase) -- angles
+
   -- TODO: fix open typres then these can be user-defined
   , ("hour"     , unitBase)
   , ("min"     , unitBase)
