@@ -381,19 +381,13 @@ synth_ gamma (App (Var "sqrt") [e]) = do
 synth_ gamma (App (Var "to_SI") [e]) = do
     t <- synth gamma e
     case isGradableNumericType t of
-      Just ("Float", gradeType, d) -> do
+      Just ("Float", _, d) -> do
         d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
-        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) d'
+        -- Re-elaborate `Float[d']` so that its grade kind is computed from the
+        -- new description (as for a source annotation), rather than patched
+        (t', _) <- synthKind (TyApp (tyCon0 "Float") d')
+        Right t'
       _ -> Left $ ContextualError $ "to_SI expects a Float argument but got " <> pprint t
-  where
-    replaceDimWithUnit :: Type 1 -> Type 1
-    replaceDimWithUnit (WithTy d1 d2) =
-      WithTy (replaceDimWithUnit d1) (replaceDimWithUnit d2)
-    replaceDimWithUnit (TyCon k "Dim") =
-      TyCon k "UoM"
-    -- TODO: needs more congruences - probably need a recursion scheme for types
-    -- to simplify
-    replaceDimWithUnit t = t
 
 synth_ gamma (App e1 es) =
   -- Synth the left-hand side
