@@ -384,7 +384,7 @@ synth_ gamma (App (Var "to_SI") [e]) = do
       Just ("Float", gradeType, d) -> do
         d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
         Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) d'
-      _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
+      _ -> Left $ ContextualError $ "to_SI expects a Float argument but got " <> pprint t
   where
     replaceDimWithUnit :: Type 1 -> Type 1
     replaceDimWithUnit (WithTy d1 d2) =
