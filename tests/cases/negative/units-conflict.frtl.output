@@ -1,1 +1,1 @@
-Overlapping descriptor key `Unit` conflicts: Unit[m] vs Unit[kg]
+tests/cases/negative/units-conflict.frtl:1:35: Overlapping descriptor key `Unit` conflicts: Unit[m] vs Unit[kg]
