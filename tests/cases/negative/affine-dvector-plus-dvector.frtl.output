@@ -1,0 +1,1 @@
+tests/cases/negative/affine-dvector-plus-dvector.frtl:9:9: Combining DVector[Time] and DVector[Time] via + is not defined for affine spaces (the result would fall outside {DVector, Vector, Point})

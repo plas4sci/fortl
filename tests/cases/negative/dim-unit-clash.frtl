@@ -1,0 +1,2 @@
+x : Float[Unit[m] & Dimension[T]] = 4.0 # non-sensical
+it = x

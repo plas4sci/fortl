@@ -1,0 +1,1 @@
+tests/cases/negative/affine-scaling-unsupported.frtl:3:8: Cannot use * with the affine-space value Point[Time]: affine-space values (Point/Vector/DVector) cannot be scaled

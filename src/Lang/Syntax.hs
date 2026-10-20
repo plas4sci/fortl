@@ -33,10 +33,10 @@ type Program (p :: Phase) = [Def p]
 data Def (p :: Phase) where
     -- Parsed phase definitions
     AnnDef  :: Identifier -> Type 0 -> Def 'Parsed
-    FunDef  :: Identifier -> [(Identifier, Maybe (Type 0))] -> Maybe (Type 0) -> [Def 'Parsed] -> Def 'Parsed
-    
+    FunDef  :: Identifier -> [Identifier] -> [(Identifier, Maybe (Type 0))] -> Maybe (Type 0) -> [Def 'Parsed] -> Def 'Parsed
+
     -- Desugared phase definitions
-    FunDefElaborated  :: Identifier -> [(Identifier, Type 0)] -> Maybe (Type 0) -> [Def 'Desugared] -> Def 'Desugared
+    FunDefElaborated  :: Identifier -> [Identifier] -> [(Identifier, Type 0)] -> Maybe (Type 0) -> [Def 'Desugared] -> Def 'Desugared
     
     -- Any phase definitions
     ValDef  :: Lhs p -> Expr -> Def p
@@ -65,9 +65,8 @@ data Expr where
     MkApp :: Maybe SrcPos -> Expr -> [Expr]  -> Expr
     MkVar :: Maybe SrcPos -> Identifier      -> Expr
     MkSig :: Maybe SrcPos -> Expr -> Type 0  -> Expr
-    MkTyAbs   :: Maybe SrcPos -> Identifier -> Expr -> Expr
     MkSubscript :: Maybe SrcPos -> Expr  -> Expr -> Expr -- e.g., e1[e2]
-    MkTyEmbed :: Maybe SrcPos -> Type 0             -> Expr
+    MkTyIndex :: Maybe SrcPos -> Expr -> [Type 0] -> Expr
     MkLet :: Maybe SrcPos -> Identifier -> Expr -> Expr -> Expr
     MkCast :: Maybe SrcPos -> Expr -> Expr
     MkZero :: Maybe SrcPos -> Expr
@@ -89,7 +88,7 @@ data Expr where
 -- GHC does not check this against the constructors above: it MUST list a
 -- pattern synonym for every Mk* constructor. A missing entry silently turns
 -- off incomplete-pattern warnings for matches written with the synonyms.
-{-# COMPLETE Abs, App, Var, Sig, TyAbs, Subscript, TyEmbed, Let, Cast,
+{-# COMPLETE Abs, App, Var, Sig, Subscript, TyIndex, Let, Cast,
              Zero, Succ, Pair, Fst, Snd, Case, NumFloat, NumInteger,
              Cond, StringConst, BinOp, UnOp, Lift, Con #-}
 
@@ -100,8 +99,7 @@ exprPos (MkAbs p _ _)       = p
 exprPos (MkApp p _ _)       = p
 exprPos (MkVar p _)         = p
 exprPos (MkSig p _ _)       = p
-exprPos (MkTyAbs p _ _)     = p
-exprPos (MkTyEmbed p _)     = p
+exprPos (MkTyIndex p _ _)   = p
 exprPos (MkLet p _ _ _)     = p
 exprPos (MkCast p _)        = p
 exprPos (MkZero p)          = p
@@ -140,17 +138,13 @@ pattern Sig :: Expr -> Type 0 -> Expr
 pattern Sig e t <- MkSig _ e t
   where Sig e t = MkSig Nothing e t
 
-pattern TyAbs :: Identifier -> Expr -> Expr
-pattern TyAbs x e <- MkTyAbs _ x e
-  where TyAbs x e = MkTyAbs Nothing x e
-
 pattern Subscript :: Expr -> Expr -> Expr
 pattern Subscript t1 t2 <- MkSubscript _ t1 t2
   where Subscript t1 t2 = MkSubscript Nothing t1 t2
 
-pattern TyEmbed :: Type 0 -> Expr
-pattern TyEmbed t <- MkTyEmbed _ t
-  where TyEmbed t = MkTyEmbed Nothing t
+pattern TyIndex :: Expr -> [Type 0] -> Expr
+pattern TyIndex e tys <- MkTyIndex _ e tys
+  where TyIndex e tys = MkTyIndex Nothing e tys
 
 pattern Let :: Identifier -> Expr -> Expr -> Expr
 pattern Let x e1 e2 <- MkLet _ x e1 e2
@@ -224,7 +218,6 @@ data UnOp = UnOpNegate | UnOpNot
 
 isValue :: Expr -> Bool
 isValue Abs{}   = True
-isValue TyAbs{} = True
 isValue Var{}   = True
 isValue (NumFloat _) = True
 isValue (NumInteger _) = True
@@ -316,8 +309,7 @@ class Term t where
 
 instance Term Expr where
   boundVars (Abs params e)               = Set.fromList (map fst params) `Set.union` boundVars e
-  boundVars (TyAbs var e)                = var `Set.insert` boundVars e
-  boundVars (TyEmbed t)                  = boundVars t
+  boundVars (TyIndex e tys)              = boundVars e `Set.union` Set.unions (map boundVars tys)
   boundVars (App e1 es)                  = boundVars e1 `Set.union` Set.unions (map boundVars es)
   boundVars (Var var)                    = Set.empty
   boundVars (Sig e _)                    = boundVars e
@@ -335,8 +327,7 @@ instance Term Expr where
   boundVars _                            = Set.empty
 
   freeVars (Abs params e)                = foldr Set.delete (freeVars e) (map fst params)
-  freeVars (TyAbs var e)                 = Set.delete var (freeVars e)
-  freeVars (TyEmbed t)                   = freeVars t
+  freeVars (TyIndex e tys)               = freeVars e `Set.union` Set.unions (map freeVars tys)
   freeVars (App e1 es)                   = freeVars e1 `Set.union` Set.unions (map freeVars es)
   freeVars (Var var)                     = Set.singleton var
   freeVars (Sig e _)                     = freeVars e

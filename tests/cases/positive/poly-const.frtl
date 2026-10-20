@@ -1,0 +1,8 @@
+"""
+A polymorphic function with two type parameters, instantiated at two
+different concrete types via explicit type application (`const[S, T]`).
+"""
+def const[S, T](x : S, y : T) -> T:
+  return y
+
+it = const[Float[1], str](5.0, "hi")

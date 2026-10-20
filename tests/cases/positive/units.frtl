@@ -1,4 +1,4 @@
 y : Float[Unit[m]] = 2.0
 x : Float[Unit[m]] = 1.0 + y
-t : Float[Unit[S]] = 4.0
-it : Float[Unit[S^-1 * m]] = x / t
+t : Float[Unit[s]] = 4.0
+it : Float[Unit[s^-1 * m]] = x / t

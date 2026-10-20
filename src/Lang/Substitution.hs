@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 
-
 module Lang.Substitution where
 
 import Lang.Syntax
@@ -23,6 +22,9 @@ substituteExpr (Var y) (x, e')
 
 substituteExpr (App e1 es) s =
   App (substituteExpr e1 s) (map (`substituteExpr` s) es)
+
+substituteExpr (TyIndex e tys) s =
+  TyIndex (substituteExpr e s) tys
 
 substituteExpr (Abs [] e) s = Abs [] (substituteExpr e s)
 substituteExpr (Abs ((x, mt):params) e) s =
@@ -71,23 +73,8 @@ substituteExpr (BinOp op e1 e2) s =
 
 substituteExpr (UnOp op e) s = UnOp op (substituteExpr e s)
 
-substituteExpr (Lift e t) (var, TyEmbed t') =
-  Lift (substituteExpr e (var, TyEmbed t')) (substituteType t (var, t'))
-
 substituteExpr (Lift e t) s =
   Lift (substituteExpr e s) t
-
--- Poly
-
--- Substitute inside types
-substituteExpr (TyEmbed t) (var, TyEmbed t') =
-  TyEmbed (substituteType t (var, t'))
-
-substituteExpr (TyEmbed t) (var, _) =
-    TyEmbed t
-
-substituteExpr (TyAbs y e) s =
-  TyAbs y (substituteExpr e s)
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)

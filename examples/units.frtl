@@ -1,6 +1,6 @@
 # data unit : type = m | s
 y : Float[Unit[m]] = 2.0
 x : Float[Unit[m]] = 1.0
-t : Float[Unit[S]] = 4.0
-v : Float[Unit[m * S^-1]] = x / t
+t : Float[Unit[s]] = 4.0
+v : Float[Unit[m * s^-1]] = x / t
 it = v

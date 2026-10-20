@@ -5,7 +5,6 @@ module Lang.Semantics where
 
 import Lang.Syntax
 import Lang.Options
-import Lang.Substitution
 import Lang.PrettyPrint
 import Lang.Primitives (dataConstructors)
 import qualified Data.Map.Lazy as Map
@@ -47,10 +46,24 @@ data Env = Env
 primitives :: [(Identifier, Value)]
 primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
               , ("ones", VPrimitive "ones" onesFunc)
-              , ("zeros", VPrimitive "zeros" zerosFunc) ]
+              , ("zeros", VPrimitive "zeros" zerosFunc)
+              , ("sin", VPrimitive "sin" (floatFunc1 "sin" sin))
+              , ("cos", VPrimitive "cos" (floatFunc1 "cos" cos))
+              , ("tan", VPrimitive "tan" (floatFunc1 "tan" tan))
+              , ("atan2", VPrimitive "atan2" atan2Func)
+              , ("to_SI", VPrimitive "to_SI" idFunc)]
   where
+    floatFunc1 _ f [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ f n
+    floatFunc1 name _ _ = Left $ "fortl bug: " <> name <> " expects a single float argument"
+
+    atan2Func [ValExpr (NumFloat y), ValExpr (NumFloat x)] = Right $ ValExpr $ NumFloat $ atan2 y x
+    atan2Func _ = Left "fortl bug: atan2 expects two float arguments"
+
+    idFunc [x] = Right x
+    idFunc _   = Left "fortl bug: identity(conversion) expects a single argument"
+
     sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
-    sqrtFunc _ = Left "sqrt expects a single float argument"
+    sqrtFunc _ = Left "fortl bug: sqrt expects a single float argument" 
 
     onesFunc [ValExpr (NumInteger n)] = Right $ VArray (listArray (0, n) [1 | _ <- [0..n]])
     onesFunc _ = Left "ones expects a single float argument"
@@ -101,8 +114,10 @@ interpretDefs env opts ((ValDef (VarLhs id _) e):defs) =
     Right v -> interpretDefs (bindHere id v env) opts defs
     Left err -> error err
 
-interpretDefs env opts ((FunDefElaborated id params _ body):defs) =
+interpretDefs env opts ((FunDefElaborated id _typeParams params _ body):defs) =
   -- Make a closure capturing the environment and proceed
+  -- (type parameters are erased at runtime: type application only affects
+  -- typechecking, not evaluation)
   let env' = bindHere id (VClosure (map fst params) body env) env
   in interpretDefs env' opts defs
 
@@ -155,18 +170,11 @@ bigStep env opts (App e1 es) = do
       vs <- mapM (bigStep env opts) es
       f vs
 
-    -- Type abstraction: uses a substitution (rather than environment) to avoid
-    -- having to carry around type environments
-    apply (ValExpr (TyAbs var body)) es =
-      case es of
-        [e2] -> do
-          v2 <- bigStep env opts e2
-          case v2 of
-            ValExpr (TyEmbed t) -> bigStep env opts (substitute body (var, TyEmbed t))
-            _ -> Left "Type application expects a type"
-        _ -> Left "Type application expects one type"
-
     apply _ _ = Left "Application expects a function"
+
+-- Type application only matters for typechecking; at runtime it is erased
+-- and the underlying (still-curried) function value is returned unchanged.
+bigStep env opts (TyIndex e _tys) = bigStep env opts e
 
 bigStep env opts (Sig e _) = bigStep env opts e
 bigStep env opts (Cast e) = bigStep env opts e
@@ -281,8 +289,6 @@ bigStep env opts (Cond e1 e2 e3) = do
     _              -> Left "Condition expects a boolean"
 
 -- Values
-bigStep env opts (TyEmbed e) = Right $ ValExpr $ TyEmbed e -- TODO: remove this
-bigStep env opts (TyAbs x e) = Right $ ValExpr $ TyAbs x e
 bigStep env opts (NumFloat f) = Right $ ValExpr $ NumFloat f
 bigStep env opts (NumInteger n) = Right $ ValExpr $ NumInteger n
 bigStep env opts (StringConst s) = Right $ ValExpr $ StringConst s
