@@ -86,10 +86,16 @@ data Expr where
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
 
+-- GHC does not check this against the constructors above: it MUST list a
+-- pattern synonym for every Mk* constructor. A missing entry silently turns
+-- off incomplete-pattern warnings for matches written with the synonyms.
+{-# COMPLETE Abs, App, Var, Sig, TyAbs, Subscript, TyEmbed, Let, Cast,
+             Zero, Succ, Pair, Fst, Snd, Case, NumFloat, NumInteger,
+             Cond, StringConst, BinOp, UnOp, Lift, Con #-}
+
 
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos
-exprPos (MkSubscript p _ _) = p
 exprPos (MkAbs p _ _)       = p
 exprPos (MkApp p _ _)       = p
 exprPos (MkVar p _)         = p
@@ -112,6 +118,7 @@ exprPos (MkUnOp p _ _)      = p
 exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
 exprPos (MkCond p _ _ _)    = p
+exprPos (MkSubscript p _ _) = p
 
 
 -- | Position-agnostic pattern synonyms.
@@ -208,15 +215,6 @@ pattern Con c es <- MkCon _ c es
 pattern Cond :: Expr -> Expr -> Expr -> Expr
 pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
   where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
-
-{-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyAbs, MkTyEmbed, MkLet, MkCast,
-             MkZero, MkSucc, MkPair, MkFst, MkSnd,
-            MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp, 
-             MkCon, MkCond #-}
-{-# COMPLETE Abs, App, Var, Sig, TyAbs, TyEmbed, Let, Cast,
-             Zero, Succ, Pair, Fst, Snd,
-             Case, NumFloat, NumInteger, StringConst, BinOp, Con, 
-             Cond #-}
 
 -- Operators
 data BinOp = BinOpPlus | BinOpTimes | BinOpMinus | BinOpDivide | BinOpExp | BinOpAnd | BinOpOr
