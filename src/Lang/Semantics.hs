@@ -45,7 +45,7 @@ data Env = Env
     }
 
 primitives :: [(Identifier, Value)]
-primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc) 
+primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
               , ("ones", VPrimitive "ones" onesFunc)
               , ("zeros", VPrimitive "zeros" zerosFunc) ]
   where
@@ -124,14 +124,6 @@ interpretDefs env opts [] = (env, ValExpr (Con "None" []))
 -- ***************************************
 
 bigStep :: Env -> [Option] -> Expr -> Either String Value
-
-bigStep env opts (Subscript e1 e2) = do
-  case bigStep env opts e1 of
-    Right (VArray arr) -> 
-      case bigStep env opts e2 of
-        Right (ValExpr (NumInteger n)) -> Right $ ValExpr $ NumFloat (arr ! n)
-        _ -> error "broken subscript"
-    _ -> error "broken array"
 
 bigStep env opts (App e1 es) = do
   v1 <- bigStep env opts e1
@@ -301,3 +293,11 @@ bigStep env opts (Abs params body) = Right $ VClosure (map fst params) [Return b
 bigStep env opts (Con c es) = do
   vs <- mapM (\e -> bigStep env opts e >>= valueToExpr) es
   return $ ValExpr $ Con c vs
+
+bigStep env opts (Subscript e1 e2) = do
+  case bigStep env opts e1 of
+    Right (VArray arr) ->
+      case bigStep env opts e2 of
+        Right (ValExpr (NumInteger n)) -> Right $ ValExpr $ NumFloat (arr ! n)
+        _ -> Left "Subscript should be an integer"
+    _ -> Left "Subscript expects an array"
