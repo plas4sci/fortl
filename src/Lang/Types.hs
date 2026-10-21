@@ -18,9 +18,12 @@ import Lang.TypeError
 import Data.Maybe (isJust)
 import Data.Either (isRight)
 
+-- Represent contexts as lists
+type Context = [(Identifier, Type 0)]
+
 -- Infer the type of an entire program
 typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
-typeCheckProgram = typeCheckProgram' [] []
+typeCheckProgram = typeCheckProgram' [] builtinFunctions
   where
     -- Type check a program
     --   * First argument is a stack of optional return types for function blocks
@@ -97,9 +100,6 @@ typeCheckProgram = typeCheckProgram' [] []
       ty' <- checkKind ty type0
       return (name, ty')
 
--- Represent contexts as lists
-type Context = [(Identifier, Type 0)]
-
 -- | Annotate a type error with a source position if it isn't already annotated
 annotateWith :: Maybe SrcPos -> Either TypeError a -> Either TypeError a
 annotateWith (Just p) (Left err) | not (isLocated err) = Left (Located p err)
@@ -113,7 +113,7 @@ isLocated _ = False
 
 Bidirectional checking
 *********************************
-G |- e <= A    check a term has a type
+G : Context |- e : Expr <= A : Type   check a term has a type
 **********************************
 -}
 
@@ -276,6 +276,9 @@ check_ gamma (Cond e1 e2_guard e3) t = do
     Left err -> Left err
 
 {--
+
+If we cannot check it, try to infer it instead
+and then do equaliy
 
 G |- e => A'   A' <: A
 --------------------------- synthCheck
@@ -636,6 +639,18 @@ synth_ gamma (Sig e ty) =
         Right () -> Right ty'
         Left err -> Left $ ExplicitSignatureCheckFailure ty err
 
+-- Handle array subscripting
+synth_ gamma (Subscript e1 e2) = 
+  case synth_ gamma e1 of 
+
+    Right (TyApp (TyCon _ "array") elementTy) -> do 
+      () <- check gamma e2 (tyCon0 "int")
+      return elementTy
+
+    Right t -> Left $ ExpectingArrayType t
+
+    Left e -> Left e
+
 -- catch all (cannot synth here)
 synth_ gamma e =
    Left $ CannotSynthType e
@@ -739,6 +754,9 @@ errorToString (ExpectingSumType e) =
 
 errorToString (ExpectingPolymorphicType t) =
   "Expecting polymorphic type but got `" <> pprint (normalise t) <> "`"
+
+errorToString (ExpectingArrayType t) = 
+  "Expecting array type but got `" <> pprint t <> "`"
 
 errorToString (NonProductTypeToPair t) =
   "Trying to assign non-product type " <> pprint (normalise t) <> " to pair."

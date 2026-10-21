@@ -65,6 +65,7 @@ data Expr where
     MkApp :: Maybe SrcPos -> Expr -> [Expr]  -> Expr
     MkVar :: Maybe SrcPos -> Identifier      -> Expr
     MkSig :: Maybe SrcPos -> Expr -> Type 0  -> Expr
+    MkSubscript :: Maybe SrcPos -> Expr  -> Expr -> Expr -- e.g., e1[e2]
     MkTyIndex :: Maybe SrcPos -> Expr -> [Type 0] -> Expr
     MkLet :: Maybe SrcPos -> Identifier -> Expr -> Expr -> Expr
     MkCast :: Maybe SrcPos -> Expr -> Expr
@@ -83,6 +84,14 @@ data Expr where
     MkLift :: Maybe SrcPos -> Expr -> Type 0 -> Expr
     MkCon   :: Maybe SrcPos -> Identifier -> [Expr]  -> Expr
   deriving Show
+
+-- GHC does not check this against the constructors above: it MUST list a
+-- pattern synonym for every Mk* constructor. A missing entry silently turns
+-- off incomplete-pattern warnings for matches written with the synonyms.
+{-# COMPLETE Abs, App, Var, Sig, Subscript, TyIndex, Let, Cast,
+             Zero, Succ, Pair, Fst, Snd, Case, NumFloat, NumInteger,
+             Cond, StringConst, BinOp, UnOp, Lift, Con #-}
+
 
 -- | Extract the source position from any Expr node
 exprPos :: Expr -> Maybe SrcPos
@@ -107,6 +116,8 @@ exprPos (MkUnOp p _ _)      = p
 exprPos (MkLift p _ _)      = p
 exprPos (MkCon p _ _)       = p
 exprPos (MkCond p _ _ _)    = p
+exprPos (MkSubscript p _ _) = p
+
 
 -- | Position-agnostic pattern synonyms.
 -- In a pattern they match regardless of the stored position.
@@ -126,6 +137,10 @@ pattern Var x <- MkVar _ x
 pattern Sig :: Expr -> Type 0 -> Expr
 pattern Sig e t <- MkSig _ e t
   where Sig e t = MkSig Nothing e t
+
+pattern Subscript :: Expr -> Expr -> Expr
+pattern Subscript t1 t2 <- MkSubscript _ t1 t2
+  where Subscript t1 t2 = MkSubscript Nothing t1 t2
 
 pattern TyIndex :: Expr -> [Type 0] -> Expr
 pattern TyIndex e tys <- MkTyIndex _ e tys
@@ -194,15 +209,6 @@ pattern Con c es <- MkCon _ c es
 pattern Cond :: Expr -> Expr -> Expr -> Expr
 pattern Cond e1 e2 e3 <- MkCond _ e1 e2 e3
   where Cond e1 e2 e3 = MkCond Nothing e1 e2 e3
-
-{-# COMPLETE MkAbs, MkApp, MkVar, MkSig, MkTyIndex, MkLet, MkCast,
-             MkZero, MkSucc, MkPair, MkFst, MkSnd,
-            MkCase, MkNumFloat, MkNumInteger, MkStringConst, MkBinOp,
-             MkCon, MkCond #-}
-{-# COMPLETE Abs, App, Var, Sig, TyIndex, Let, Cast,
-             Zero, Succ, Pair, Fst, Snd,
-             Case, NumFloat, NumInteger, StringConst, BinOp, Con,
-             Cond #-}
 
 -- Operators
 data BinOp = BinOpPlus | BinOpTimes | BinOpMinus | BinOpDivide | BinOpExp | BinOpAnd | BinOpOr
@@ -317,6 +323,7 @@ instance Term Expr where
   boundVars (BinOp _ e1 e2)              = boundVars e1 `Set.union` boundVars e2
   boundVars (Lift e t)                   = boundVars e `Set.union` boundVars t
   boundVars (Cond e1 e2 e3)              = boundVars e1 `Set.union` boundVars e2 `Set.union` boundVars e3
+  boundVars (Subscript e1 e2)            = boundVars e1 `Set.union` boundVars e2
   boundVars _                            = Set.empty
 
   freeVars (Abs params e)                = foldr Set.delete (freeVars e) (map fst params)
@@ -334,6 +341,7 @@ instance Term Expr where
   freeVars (BinOp _ e1 e2)               = freeVars e1 `Set.union` freeVars e2
   freeVars (Lift e t)                    = freeVars e `Set.union` freeVars t
   freeVars (Cond e1 e2 e3)               = freeVars e1 `Set.union` freeVars e2 `Set.union` freeVars e3
+  freeVars (Subscript e1 e2)             = freeVars e1 `Set.union` freeVars e2
   freeVars _                             = Set.empty
 
   mkVar = Var
