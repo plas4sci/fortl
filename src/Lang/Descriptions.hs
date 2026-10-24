@@ -14,6 +14,7 @@ import Data.Map.Lazy
 import Lang.TypeError
 import Data.List (sort, intersect)
 import Lang.Primitives (rewriteSI)
+import Data.Ratio (numerator, denominator)
 
 unitDescription :: Type 0
 unitDescription = tyCon0 "1"
@@ -116,7 +117,7 @@ instance Representation DescriptionsRepr where
         return $ singleton "Affine" (AffineSpace t 1)
     computeRepresentation (TyApp (TyCon ZeroP "NPoint") [t]) =
         return $ singleton "Affine" (AffineSpace t (-1))
-    computeRepresentation t@(TyApp (TyApp (TyCon ZeroP "Affine") space) w) =
+    computeRepresentation t@(TyApp (TyCon ZeroP "Affine") [space, w]) =
         case w of
           TyRat r -> return $ singleton "Affine" (AffineSpace space r)
           _       -> Left $ CannotComputeDescriptionRepresentation t
