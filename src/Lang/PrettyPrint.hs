@@ -113,11 +113,8 @@ instance PrettyPrint (Type i) where
       bracket_pprint tyA ++ " * " ++ bracket_pprint tyB
     pprint (SumTy tyA tyB) =
       bracket_pprint tyA ++ " + " ++ bracket_pprint tyB
-    -- a type constructor applied to two arguments, e.g. Affine[Time, 2]
-    pprint (TyApp (TyApp tyA tyB) tyC) =
-      pprint tyA ++ "[" ++ pprint tyB ++ ", " ++ pprint tyC ++ "]"
     pprint (TyApp tyA tyB) =
-      pprint tyA ++ "[" ++ pprint tyB ++ "]"
+      pprint tyA ++ "[" ++ intercalate ", " (map pprint tyB) ++ "]"
     pprint (ImplicitTyApp tyA tyB) =
       bracket_pprint tyA ++ "[{" ++ pprint tyB ++ "}]"
     pprint (TyVar var) = var

@@ -15,16 +15,16 @@ natTy :: Type 0
 natTy = tyCon0 "Nat"
 
 floatTy :: Type 0 -> Type 0
-floatTy t = TyApp (ImplicitTyApp (tyCon0 "Float") (tyCon1 "Base")) t
+floatTy t = TyApp (ImplicitTyApp (tyCon0 "Float") (tyCon1 "Base")) [t]
 
 integerTy :: Type 0 -> Type 0
-integerTy t = TyApp (ImplicitTyApp (tyCon0 "Integer") (tyCon1 "Base")) t
+integerTy t = TyApp (ImplicitTyApp (tyCon0 "Integer") (tyCon1 "Base")) [t]
 
 stringTy :: Type 0 -> Type 0
-stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) t
+stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) [t]
 
 boolTy :: Type 0 -> Type 0
-boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) t
+boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) [t]
 
 desc :: Type 1
 desc = tyCon1 "Descriptor"
