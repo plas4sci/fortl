@@ -146,16 +146,15 @@ instance Representation DescriptionsRepr where
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
-        return $ unionWith combineRepr d1 d2
+        sequenceA $ unionWith (\a b -> do { x <- a; y <- b; combineRepr x y }) (fmap Right d1) (fmap Right d2)
         where
-          combineRepr :: DescriptionRepr -> DescriptionRepr -> DescriptionRepr
-          combineRepr (FreeAGroup a1) (FreeAGroup a2) = FreeAGroup $ unionWith (+) a1 a2
-          combineRepr (TypeTree t1) (TypeTree t2)     = TypeTree $ ProdTy t1 t2
-          combineRepr (IndexType t1) (IndexType t2)
-            | t1 == tyCon0 "1" = IndexType t2        -- 1 * S = S
-            | t2 == tyCon0 "1" = IndexType t1        -- S * 1 = S
-            | t1 == t2         = IndexType t1        -- S * S = S
-            | otherwise        = IndexType (ProdTy t1 t2)  -- mismatch: preserved for later equality check
+          combineRepr :: DescriptionRepr -> DescriptionRepr -> Either TypeError DescriptionRepr
+          combineRepr (FreeAGroup a1) (FreeAGroup a2) = Right $ FreeAGroup $ unionWith (+) a1 a2
+          combineRepr (TypeTree t1) (TypeTree t2)     = Right $ TypeTree $ ProdTy t1 t2
+          combineRepr (IndexType t1) (IndexType t2) = Right $ IndexType (combineIndex t1 t2)
+          -- weights multiply, so a scalar of weight c scales a weight w to c * w,
+          -- and base spaces combine like indices
+          combineRepr (AffineSpace s1 w1) (AffineSpace s2 w2) = Right $ AffineSpace (combineIndex s1 s2) (w1 * w2)
           combineRepr _ _                             = error "Mismatched description representation types in product"
     computeRepresentation (SumTy t1 t2) = do
         d1 <- computeRepresentation t1
