@@ -114,11 +114,7 @@ instance Representation DescriptionsRepr where
         return $ singleton "Affine" (AffineSpace t 0)
     computeRepresentation (TyApp (TyCon ZeroP "Point") t) =
         return $ singleton "Affine" (AffineSpace t 1)
-    -- "DVector" is not meant to be written by users -- it only ever arises
-    -- as a synthesised result (e.g. Vector - Point) -- but once synthesised
-    -- it's stored as a real type and re-used, so it must round-trip back
-    -- through computeRepresentation like Vector/Point do.
-    computeRepresentation (TyApp (TyCon ZeroP "DVector") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "DPoint") t) =
         return $ singleton "Affine" (AffineSpace t (-1))
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -174,7 +170,7 @@ instance Representation DescriptionsRepr where
             -- constructor, so re-applying it reconstructs the source
             -- syntax. "Affine" is purely internal bookkeeping: its value
             -- already reifies to the complete type (Point[t]/Vector[t]/
-            -- DVector[t]), so it must be spliced in as-is, not re-wrapped
+            -- DPoint[t]), so it must be spliced in as-is, not re-wrapped
             -- as e.g. "Affine[Point[t]]".
             wrapKey "Affine" v' = reifyToTypeTerm v'
             wrapKey k'        v' = TyApp (tyCon0 k') (reifyToTypeTerm v')
@@ -192,7 +188,7 @@ instance Representation DescriptionsRepr where
 -- | Negate the grade of any affine-space ("Point"/"Vector") component of a
 -- description, leaving every other component unchanged. Used to implement
 -- subtraction as addition of a negated second operand, e.g.
--- Vector(0) - Point(1) = Vector(0) + Point(-1) = DVector(-1).
+-- Vector(0) - Point(1) = Vector(0) + Point(-1) = DPoint(-1).
 negateAffineGrades :: DescriptionsRepr -> DescriptionsRepr
 negateAffineGrades = Data.Map.Lazy.map negOne
   where
@@ -205,7 +201,7 @@ negateAffineGrades = Data.Map.Lazy.map negOne
 -- quantities, species, basis descriptions are unaffected by `+`/`-` and
 -- must simply agree -- or be the "Affine" key, whose grade combines
 -- additively (Vector = 0, Point = 1), rejecting any result outside
--- {DVector = -1, Vector = 0, Point = 1} (e.g. Point + Point).
+-- {DPoint = -1, Vector = 0, Point = 1} (e.g. Point + Point).
 combineDescriptionsForAddSub :: BinOp -> DescriptionsRepr -> DescriptionsRepr -> Either TypeError DescriptionsRepr
 combineDescriptionsForAddSub op d1 d2
     | keys d1 /= keys d2 = Left mismatchErr
@@ -296,7 +292,7 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm (TypeTree t) = t
     reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") t
     reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point")  t
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DVector") t
+    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DPoint") t
     reifyToTypeTerm (AffineSpace t _) = error "Not representable"
 
 

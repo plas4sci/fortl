@@ -784,11 +784,11 @@ errorToString (DimensionAndUnitIncoherence dimension unit) =
 errorToString (AffineSpaceCombinationUndefined op t1 t2) =
   "Combining " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
   <> " via " <> pprint op
-  <> " is not defined for affine spaces (the result would fall outside {DVector, Vector, Point})"
+  <> " is not defined for affine spaces (the result would fall outside {DPoint, Vector, Point})"
 
 errorToString (AffineSpaceScalingUnsupported op t) =
   "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
-  <> ": affine-space values (Point/Vector/DVector) cannot be scaled"
+  <> ": affine-space values (Point/Vector/DPoint) cannot be scaled"
 
 errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK
@@ -908,7 +908,7 @@ floatWithDescription d = do
   d' <- normalisationByEvaluation d
   checkKind (TyApp (tyCon0 "Float") d') type0
 
--- | Affine-space (Point/Vector/DVector) values cannot be scaled: reject
+-- | Affine-space (Point/Vector/DPoint) values cannot be scaled: reject
 -- `*`, `/` and `^` when the description involves one.
 rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
 rejectAffineScaling op d
