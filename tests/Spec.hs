@@ -204,7 +204,7 @@ speciesUnitTests = testGroup "Species indexing unit tests"
     ]
   ]
   where
-    sp s = TyApp (tyCon0 "Species") (tyCon0 s)
+    sp s = TyApp (tyCon0 "Species") [tyCon0 s]
 
     assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
     assertNormalisesTo input expected =
@@ -226,7 +226,7 @@ basisUnitTests = testGroup "Basis indexing unit tests"
         descriptionEquality (bs "Fox") (IsSpec (bs "Rabbit"))
   ]
   where
-    bs s = TyApp (tyCon0 "Basis") (tyCon0 s)
+    bs s = TyApp (tyCon0 "Basis") [tyCon0 s]
 
     assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
     assertNormalisesTo input expected =

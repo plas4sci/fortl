@@ -116,8 +116,8 @@ instance SubstituteType 0 where
   substituteType (ImplicitTyApp t1 t2) s =
     ImplicitTyApp (substituteType t1 s) t2
 
-  substituteType (TyApp t1 t2) s =
-    TyApp (substituteType t1 s) (substituteType t2 s)
+  substituteType (TyApp t1 ts) s =
+    TyApp (substituteType t1 s) (map (`substituteType` s) ts)
 
   -- Actual substitution happening here
   substituteType (TyVar var) (varS, t)
@@ -144,8 +144,8 @@ instance SubstituteType 1 where
 
   substituteType (TyCon p c) s = TyCon p c
 
-  substituteType (TyApp t1 t2) s =
-    TyApp (substituteType t1 s) (substituteType t2 s)
+  substituteType (TyApp t1 ts) s =
+    TyApp (substituteType t1 s) (map (`substituteType` s) ts)
 
   -- Actual substitution happening here
   substituteType (TyVar var) (varS, t)

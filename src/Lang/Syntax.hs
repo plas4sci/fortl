@@ -255,7 +255,7 @@ data Type (n :: Nat) where
     TyCon :: ProxyN l -> Identifier -> Type l        -- K
 
     ImplicitTyApp :: Type 0 -> Type 1 -> Type 0
-    TyApp :: Type l -> Type l -> Type l  -- A B
+    TyApp :: Type l -> [Type l] -> Type l  -- A [B1, ..., Bn] (multi type application)
 
     ProdTy :: Type 0 -> Type 0 -> Type 0 -- A * B
     SumTy  :: Type 0 -> Type 0 -> Type 0  -- A + B
@@ -343,7 +343,7 @@ instance {-# OVERLAPS #-} Term (Type 0) where
   boundVars (ProdTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (SumTy t1 t2)  = boundVars t1 `Set.union` boundVars t2
   boundVars (ImplicitTyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
-  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 ts)  = Set.unions (boundVars t1 : map boundVars ts)
   boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (Forall var t) = var `Set.insert` boundVars t
@@ -354,7 +354,7 @@ instance {-# OVERLAPS #-} Term (Type 0) where
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (SumTy t1 t2)  = freeVars t1 `Set.union` freeVars t2
   freeVars (ImplicitTyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
-  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 ts)  = Set.unions (freeVars t1 : map freeVars ts)
   freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (Forall var t) = var `Set.delete` freeVars t
@@ -366,14 +366,14 @@ instance {-# OVERLAPS #-} Term (Type 0) where
 instance Term (Type 1) where
   boundVars (ImplicitFunTy i t1 t2) = i `Set.insert` (boundVars t1 `Set.union` boundVars t2)
   boundVars (FunTy ts t2)  = Set.unions (map boundVars ts) `Set.union` boundVars t2
-  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 ts)  = Set.unions (boundVars t1 : map boundVars ts)
   boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
   freeVars (ImplicitFunTy i t1 t2) = freeVars t1 `Set.union` (Set.delete i (freeVars t2))
   freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
-  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 ts)  = Set.unions (freeVars t1 : map freeVars ts)
   freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
@@ -382,13 +382,13 @@ instance Term (Type 1) where
 
 instance Term (Type 2) where
   boundVars (FunTy ts t2)  = Set.unions (map boundVars ts) `Set.union` boundVars t2
-  boundVars (TyApp t1 t2)  = boundVars t1 `Set.union` boundVars t2
+  boundVars (TyApp t1 ts)  = Set.unions (boundVars t1 : map boundVars ts)
   boundVars (TyCon _ _)      = Set.empty
   boundVars (TyVar var)    = Set.empty
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
 
   freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
-  freeVars (TyApp t1 t2)  = freeVars t1 `Set.union` freeVars t2
+  freeVars (TyApp t1 ts)  = Set.unions (freeVars t1 : map freeVars ts)
   freeVars (TyCon _ _)      = Set.empty
   freeVars (TyVar var)    = Set.singleton var
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2

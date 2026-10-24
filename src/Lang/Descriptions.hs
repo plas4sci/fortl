@@ -87,7 +87,7 @@ instance Representation DescriptionsRepr where
     -- | Compute the representation of a description type
     computeRepresentation :: Type 0 -> Either TypeError DescriptionsRepr
     -- Apply desc homomorphisms
-    computeRepresentation (TyApp (TyCon ZeroP "SI") t) = do
+    computeRepresentation (TyApp (TyCon ZeroP "SI") [t]) = do
       d <- computeRepresentation t
       case Map.lookup "Dimension" d of
         Just (FreeAGroup repr) -> do
@@ -95,30 +95,30 @@ instance Representation DescriptionsRepr where
         _ -> return d
 
     -- Free abelian groups
-    computeRepresentation (TyApp (TyCon ZeroP "Unit") t)     = do
+    computeRepresentation (TyApp (TyCon ZeroP "Unit") [t])     = do
         d <- computeRepresentation t
         return $ singleton "Unit" d
-    computeRepresentation (TyApp (TyCon ZeroP "Dimension") t) = do
+    computeRepresentation (TyApp (TyCon ZeroP "Dimension") [t]) = do
         d <- computeRepresentation t
         return $ singleton "Dimension" d
-    computeRepresentation (TyApp (TyCon ZeroP "Quantity") t) = do
+    computeRepresentation (TyApp (TyCon ZeroP "Quantity") [t]) = do
         d <- computeRepresentation t
         return $ singleton "Quantity" d
 
-    computeRepresentation (TyApp (TyCon ZeroP "Species") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "Species") [t]) =
         return $ singleton "Species" (IndexType t)
-    computeRepresentation (TyApp (TyCon ZeroP "Basis") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "Basis") [t]) =
         return $ singleton "Basis" (IndexType t)
 
-    computeRepresentation (TyApp (TyCon ZeroP "Vector") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "Vector") [t]) =
         return $ singleton "Affine" (AffineSpace t 0)
-    computeRepresentation (TyApp (TyCon ZeroP "Point") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "Point") [t]) =
         return $ singleton "Affine" (AffineSpace t 1)
     -- "DVector" is not meant to be written by users -- it only ever arises
     -- as a synthesised result (e.g. Vector - Point) -- but once synthesised
     -- it's stored as a real type and re-used, so it must round-trip back
     -- through computeRepresentation like Vector/Point do.
-    computeRepresentation (TyApp (TyCon ZeroP "DVector") t) =
+    computeRepresentation (TyApp (TyCon ZeroP "DVector") [t]) =
         return $ singleton "Affine" (AffineSpace t (-1))
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -177,7 +177,7 @@ instance Representation DescriptionsRepr where
             -- DVector[t]), so it must be spliced in as-is, not re-wrapped
             -- as e.g. "Affine[Point[t]]".
             wrapKey "Affine" v' = reifyToTypeTerm v'
-            wrapKey k'        v' = TyApp (tyCon0 k') (reifyToTypeTerm v')
+            wrapKey k'        v' = TyApp (tyCon0 k') [reifyToTypeTerm v']
 
     -- | Equality on description representations
     reprEquality :: DescriptionsRepr -> Specificational DescriptionsRepr -> Either TypeError ()
@@ -294,9 +294,9 @@ instance Representation DescriptionRepr where
             exp k' v' = ExponentTy (tyCon0 k') v'
             base = exp k v
     reifyToTypeTerm (TypeTree t) = t
-    reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") t
-    reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point")  t
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DVector") t
+    reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") [t]
+    reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point") [t]
+    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DVector") [t]
     reifyToTypeTerm (AffineSpace t _) = error "Not representable"
 
 
