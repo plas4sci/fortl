@@ -154,6 +154,7 @@ markTypeVars typeParams = go
     go (WithTy t1 t2)        = WithTy (go t1) (go t2)
     go (ExponentTy t n)      = ExponentTy (go t) n
     go t@(TyVar _)           = t
+    go t@(TyRat _)           = t
     go (Forall v t)
       | v `elem` typeParams  = Forall v t
       | otherwise            = Forall v (go t)

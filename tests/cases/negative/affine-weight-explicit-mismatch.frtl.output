@@ -1,0 +1,2 @@
+tests/cases/negative/affine-weight-explicit-mismatch.frtl:2:40: Description equality failed between Point[Time] and Affine[Time, 2]
+Trying to check at Float[{UoM & AffineTy}][Unit[s] & Affine[Time, 2]] but got type Float[{UoM & AffineTy}][Unit[s] & Point[Time]]

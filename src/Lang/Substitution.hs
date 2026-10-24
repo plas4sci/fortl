@@ -133,6 +133,8 @@ instance SubstituteType 0 where
   substituteType (ExponentTy t1 f) s =
     ExponentTy (substituteType t1 s) f
 
+  substituteType (TyRat r) s = TyRat r
+
 
 instance SubstituteType 1 where
   substituteType (ImplicitFunTy var t1 t2) s =

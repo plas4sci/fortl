@@ -1,0 +1,8 @@
+"""
+Type-level exponents are exact rationals, written as an integer, a decimal or
+a parenthesised fraction.
+"""
+x : Float[Unit[m^(1/2)]] = 3.0
+y : Float[Unit[m^0.5]] = x
+z : Float[Unit[m]] = x * y
+it = z

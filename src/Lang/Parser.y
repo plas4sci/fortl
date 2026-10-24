@@ -216,7 +216,7 @@ Type
   | Type '*' Type         { \opts -> ProdTy ($1 opts) ($3 opts) }
   | Type '+' Type         { \opts -> SumTy ($1 opts) ($3 opts) }
   | Type '&' Type         { \opts -> WithTy ($1 opts) ($3 opts) }
-  | Type '^' NumFloat     { \opts -> ExponentTy ($1 opts) $3 }
+  | Type '^' NumRat       { \opts -> ExponentTy ($1 opts) $3 }
   | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
   | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | Type '[' ManyTypesMore ']' { \opts -> TyApp ($1 opts) ($3 opts) }
@@ -236,6 +236,20 @@ NumFloat :: { Float }
 NumFloat
   : FLOAT { let (TokenFloat _ x) = $1 in read x }
   | INT   { let (TokenInt _ x) = $1   in let r = (read x) :: Integer in fromIntegral r }
+
+-- Exact rationals at the type level: a numeral, or a parenthesised fraction
+NumRat :: { Rational }
+NumRat
+  : FLOAT { let (TokenFloat _ x) = $1 in rationalOfDecimal x }
+  | INT   { let (TokenInt _ x) = $1   in rationalOfDecimal x }
+  | '(' RatLit ')' { $2 }
+
+RatLit :: { Rational }
+RatLit
+  : FLOAT         { let (TokenFloat _ x) = $1 in rationalOfDecimal x }
+  | INT           { let (TokenInt _ x) = $1   in rationalOfDecimal x }
+  | INT '/' INT   { let { (TokenInt _ x) = $1 ; (TokenInt _ y) = $3 }
+                    in rationalOfDecimal x / rationalOfDecimal y }
 
 TypeAtom :: { [Option] -> Type 0 }
 TypeAtom

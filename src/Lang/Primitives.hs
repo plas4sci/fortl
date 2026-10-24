@@ -67,6 +67,8 @@ typeConstructors = [
   -------
   , ("Point",     FunTy [type0] (tyCon1 "AffineTy"))
   , ("Vector",    FunTy [type0] (tyCon1 "AffineTy"))
+  , ("NPoint",    FunTy [type0] (tyCon1 "AffineTy"))
+  , ("Affine",    FunTy [type0] (FunTy [type0] (tyCon1 "AffineTy"))) -- Affine[space, weight]
   , ("None"     , type0)
     -- The standard 7 SI base dimensions
   , ("T"        , dimensionBase) -- Time
