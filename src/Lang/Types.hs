@@ -223,7 +223,7 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
                   case e2 of
                     NumFloat n -> do
                       () <- rejectAffineScaling op d1
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [ExponentTy d1 n]) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
                   kindEquality gradeType1 (IsSpec gradeType2)
@@ -231,11 +231,11 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
                     BinOpTimes  -> do
                       () <- rejectAffineScaling op d1
                       () <- rejectAffineScaling op d2
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [ProdTy d1 d2]) (IsSpec ty)
                     BinOpDivide -> do
                       () <- rejectAffineScaling op d1
                       () <- rejectAffineScaling op d2
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [ProdTy d1 (reciprocalType d2)]) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
   where
@@ -392,7 +392,7 @@ synth_ gamma (App (Var "sqrt") [e]) = do
   case isGradableNumericType t of
     Just ("Float", gradeType, d) -> do
       d' <- normalisationByEvaluation (ExponentTy d 0.5)
-      Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) d'
+      Right $ TyApp (ImplicitTyApp (tyCon0 "Float") gradeType) [d']
     _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
 
 -- special case primitives: sin, cos, tan
@@ -439,8 +439,8 @@ synth_ gamma (App (Var "to_SI") [e]) = do
     t <- synth gamma e
     case isGradableNumericType t of
       Just ("Float", gradeType, d) -> do
-        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
-        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) d'
+        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") [d])
+        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) [d']
       _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
   where
     replaceDimWithUnit :: Type 1 -> Type 1
@@ -530,7 +530,7 @@ synth_ gamma (Lift e d) = do
             Left err -> Left err
             Right lifted -> do
               (lifted', liftedKind) <- synthKind lifted
-              Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) lifted'
+              Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) [lifted']
     _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
 
 
@@ -568,7 +568,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
                       case descriptionEquality d1 (IsSpec d2) of
                         Right () -> do
                           d1 <- normalisationByEvaluation d1
-                          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d1
+                          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [d1]
                         Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
 
 synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] =
@@ -592,7 +592,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                             case e2 of
                               NumFloat n -> do
                                 () <- rejectAffineScaling op d1
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [ExponentTy d1 n]
                               _ -> error "Bug"
                           _-> do
                             () <- kindEquality gradeType1 (IsSpec gradeType2)
@@ -601,12 +601,12 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                                 () <- rejectAffineScaling op d1
                                 () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 d2)
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [d]
                               BinOpDivide -> do
                                 () <- rejectAffineScaling op d1
                                 () <- rejectAffineScaling op d2
                                 d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [d]
                               -- Plus/Minus: combine descriptions key-by-key, additively
                               -- for an affine-space ("Point"/"Vector") component,
                               -- otherwise requiring an exact match as before
@@ -615,7 +615,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                                 d2repr <- computeRepresentation d2
                                 combined <- combineDescriptionsForAddSub op d1repr d2repr
                                 combined' <- coherenceChecks combined
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) (reifyToTypeTerm combined')
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [(reifyToTypeTerm combined')]
 
 
 {-
@@ -865,8 +865,8 @@ normaliseType :: Type 0 -> Either TypeError (Type 0)
 normaliseType (FunTy ts t2) = (<$$>) FunTy (mapM normaliseType ts) (normaliseType t2)
 normaliseType (isGradableNumericType -> Just (baseType, gradeType, desc)) = do
   desc' <- normalisationByEvaluation desc
-  return $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) desc'
-normaliseType (TyApp t1 t2) = (<$$>) TyApp (normaliseType t1) (normaliseType t2)
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) [desc']
+normaliseType (TyApp t1 ts) = (<$$>) TyApp (normaliseType t1) (mapM normaliseType ts)
 normaliseType (Forall x t) = (Forall x) <$> (normaliseType t)
 normaliseType (ProdTy t1 t2) = (<$$>) ProdTy(normaliseType t1) (normaliseType t2)
 normaliseType (SumTy t1 t2) = (<$$>) SumTy (normaliseType t1) (normaliseType t2)
@@ -890,9 +890,9 @@ assert False x = Left x
 
 -- | Helpers for the trigonometric primitives
 unitTy, dimensionTy, quantityTy :: Type 0 -> Type 0
-unitTy      = TyApp (tyCon0 "Unit")
-dimensionTy = TyApp (tyCon0 "Dimension")
-quantityTy  = TyApp (tyCon0 "Quantity")
+unitTy t      = TyApp (tyCon0 "Unit") [t]
+dimensionTy t = TyApp (tyCon0 "Dimension") [t]
+quantityTy t  = TyApp (tyCon0 "Quantity") [t]
 
 angleQuantity :: Type 0
 angleQuantity = quantityTy (tyCon0 "Angle")
@@ -906,7 +906,7 @@ absentOrEqual (Just t) tys = any (\t' -> isRight (descriptionEquality t (IsSpec 
 floatWithDescription :: Type 0 -> Either TypeError (Type 0)
 floatWithDescription d = do
   d' <- normalisationByEvaluation d
-  checkKind (TyApp (tyCon0 "Float") d') type0
+  checkKind (TyApp (tyCon0 "Float") [d']) type0
 
 -- | Affine-space (Point/Vector/DVector) values cannot be scaled: reject
 -- `*`, `/` and `^` when the description involves one.
