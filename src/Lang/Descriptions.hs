@@ -305,18 +305,11 @@ instance Representation DescriptionRepr where
             exp k' v' = ExponentTy (tyCon0 k') v'
             base = exp k v
     reifyToTypeTerm (TypeTree t) = t
-<<<<<<< HEAD
-    reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") t
-    reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point")  t
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DPoint") t
+    reifyToTypeTerm (AffineSpace t 0)    = TyApp (tyCon0 "Vector") [t]
+    reifyToTypeTerm (AffineSpace t 1)    = TyApp (tyCon0 "Point")  [t]
+    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DPoint") [t]
     -- any other weight is written out, e.g. Affine[t, 2]
-    reifyToTypeTerm (AffineSpace t w) = TyApp (TyApp (tyCon0 "Affine") t) (TyRat w)
-=======
-    reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") [t]
-    reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point") [t]
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DVector") [t]
-    reifyToTypeTerm (AffineSpace t _) = error "Not representable"
->>>>>>> main
+    reifyToTypeTerm (AffineSpace t w) = TyApp (tyCon0 "Affine") [t, TyRat w]
 
 
     -- | Equality on description representations
