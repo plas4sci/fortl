@@ -77,7 +77,13 @@ data DescriptionRepr =
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
    | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
-   | AffineSpace (Type 0) Rational  -- ^ base space and affine weight (Point = 1, Vector = 0, NPoint = -1)
+   | AffineSpace AffineRepr
+   deriving (Eq, Show)
+
+-- | Representation of an affine-space descriptor
+data AffineRepr =
+     Affine (Type 0) Rational  -- ^ weighted point over a base space (Point = 1, Vector = 0, NPoint = -1)
+   | Scalar                    -- ^ a scalar of unknown value, as in a units library
    deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
@@ -112,15 +118,17 @@ instance Representation DescriptionsRepr where
         return $ singleton "Basis" (IndexType t)
 
     computeRepresentation (TyApp (TyCon ZeroP "Vector") [t]) =
-        return $ singleton "Affine" (AffineSpace t 0)
+        return $ singleton "Affine" (AffineSpace (Affine t 0))
     computeRepresentation (TyApp (TyCon ZeroP "Point") [t]) =
-        return $ singleton "Affine" (AffineSpace t 1)
+        return $ singleton "Affine" (AffineSpace (Affine t 1))
     computeRepresentation (TyApp (TyCon ZeroP "NPoint") [t]) =
-        return $ singleton "Affine" (AffineSpace t (-1))
+        return $ singleton "Affine" (AffineSpace (Affine t (-1)))
     computeRepresentation t@(TyApp (TyCon ZeroP "Affine") [space, w]) =
         case w of
-          TyRat r -> return $ singleton "Affine" (AffineSpace space r)
+          TyRat r -> return $ singleton "Affine" (AffineSpace (Affine space r))
           _       -> Left $ CannotComputeDescriptionRepresentation t
+    computeRepresentation (TyCon ZeroP "Scalar") =
+        return $ singleton "Affine" (AffineSpace Scalar)
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -132,16 +140,20 @@ instance Representation DescriptionsRepr where
                  (k:_) -> Left $ OverlappingDescriptionConflict k t1 t2
                  []    -> error "unreachable: overlapping is non-empty here since `all` over [] is True"
 
-    computeRepresentation (ExponentTy t n) = do
+    computeRepresentation e@(ExponentTy t n) = do
         d <- computeRepresentation t
-        return $ fmap (exp n) d
+        traverse (exp n) d
         where
-          exp :: Rational -> DescriptionRepr -> DescriptionRepr
-          exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
-          exp n (TypeTree t)   = TypeTree $ ExponentTy t n
-          exp _ (IndexType t)  = IndexType t  -- exponentiation is no-op for indexed types
-          -- exponentiation scales the weight: Point[t]^2 is a point of weight 2
-          exp n (AffineSpace t w) = AffineSpace t (w * n)
+          exp :: Rational -> DescriptionRepr -> Either TypeError DescriptionRepr
+          exp n (FreeAGroup a) = Right $ FreeAGroup $ fmap (n *) a
+          exp n (TypeTree t)   = Right $ TypeTree $ ExponentTy t n
+          exp _ (IndexType t)  = Right $ IndexType t  -- exponentiation is no-op for indexed types
+          -- weights multiply under products, so exponentiation raises the weight to the power
+          exp _ (AffineSpace Scalar) = Right $ AffineSpace Scalar
+          exp n (AffineSpace (Affine t w)) =
+            case weightPower w n of
+              Just w' -> Right $ AffineSpace (Affine t w')
+              Nothing -> Left $ CannotComputeDescriptionRepresentation e
     computeRepresentation (TyCon ZeroP "1") = return empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -154,8 +166,18 @@ instance Representation DescriptionsRepr where
           combineRepr (IndexType t1) (IndexType t2) = Right $ IndexType (combineIndex t1 t2)
           -- weights multiply, so a scalar of weight c scales a weight w to c * w,
           -- and base spaces combine like indices
-          combineRepr (AffineSpace s1 w1) (AffineSpace s2 w2) = Right $ AffineSpace (combineIndex s1 s2) (w1 * w2)
+          combineRepr (AffineSpace (Affine s1 w1)) (AffineSpace (Affine s2 w2)) =
+            Right $ AffineSpace (Affine (combineIndex s1 s2) (w1 * w2))
+          -- a scalar of unknown value leaves a scalar a scalar, and a weight 0 at weight 0,
+          -- but its effect on any other weight is unknown
+          combineRepr (AffineSpace Scalar) (AffineSpace Scalar) = Right $ AffineSpace Scalar
+          combineRepr (AffineSpace Scalar) (AffineSpace a)      = scaleByUnknown a
+          combineRepr (AffineSpace a) (AffineSpace Scalar)      = scaleByUnknown a
           combineRepr _ _                             = error "Mismatched description representation types in product"
+          scaleByUnknown a@(Affine s w)
+            | s == unitDescription = Right $ AffineSpace Scalar
+            | w == 0               = Right $ AffineSpace a
+          scaleByUnknown _ = Left $ CannotComputeDescriptionRepresentation (ProdTy t1 t2)
     computeRepresentation (SumTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -190,18 +212,62 @@ instance Representation DescriptionsRepr where
             else
                 Left $ DescriptionKeyMismatch (keys d2) (keys d1)
 
--- | Multiply the affine weight of any affine-space component by a factor
-scaleAffineWeight :: Rational -> DescriptionsRepr -> DescriptionsRepr
-scaleAffineWeight c = Data.Map.Lazy.map scale
-  where
-    scale (AffineSpace t w) = AffineSpace t (c * w)
-    scale v                 = v
+-- | Product of two index types, such as the species of a Species descriptor
+-- or the base space of an affine space: it is idempotent (S * S = S) with
+-- unit 1, and a mismatch is preserved for a later equality check
+combineIndex :: Type 0 -> Type 0 -> Type 0
+combineIndex t1 t2
+  | t1 == tyCon0 "1" = t2
+  | t2 == tyCon0 "1" = t1
+  | t1 == t2         = t1
+  | otherwise        = ProdTy t1 t2
 
--- | The affine weight of a description, if it has an affine-space component
-descriptionAffineWeight :: Type 0 -> Maybe Rational
-descriptionAffineWeight t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
-  Right repr | Just (AffineSpace _ w) <- Map.lookup "Affine" repr -> Just w
+-- | An affine weight raised to a rational power, when that is itself a
+-- rational: the weight must be 1, or the power an integer (negative powers
+-- of 0 are undefined), or the weight 0 with a positive power
+weightPower :: Rational -> Rational -> Maybe Rational
+weightPower w n
+  | w == 1                  = Just 1
+  | denominator n == 1, n >= 0 = Just (w ^ numerator n)
+  | denominator n == 1, w /= 0 = Just (w ^^ numerator n)
+  | w == 0, n > 0           = Just 0
+  | otherwise               = Nothing
+
+-- | The description of a numeric constant c: the scalar of weight c, i.e. the
+-- weighted point over the trivial space 1, written Affine[1, c]
+scalarDescription :: Rational -> Type 0
+scalarDescription c = reifyToTypeTerm (singleton "Affine" (AffineSpace (Affine unitDescription c)))
+
+-- | The description a numeric constant c takes beside an operand of `+` or
+-- `-` with the given description: the same description, except that an
+-- affine-space component becomes the scalar of weight c, since adding a
+-- constant adds its weight
+adoptConstant :: Rational -> Type 0 -> Either TypeError (Type 0)
+adoptConstant c d = do
+  repr <- computeRepresentation d :: Either TypeError DescriptionsRepr
+  let adopt (AffineSpace _) = AffineSpace (Affine unitDescription c)
+      adopt v               = v
+  Right $ reifyToTypeTerm (Data.Map.Lazy.map adopt repr)
+
+-- | The affine-space component of a description
+descriptionAffine :: Type 0 -> Maybe AffineRepr
+descriptionAffine t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
+  Right repr | Just (AffineSpace a) <- Map.lookup "Affine" repr -> Just a
   _ -> Nothing
+
+-- | Whether a description is that of a scalar: either a Scalar of unknown
+-- value, or a weighted point over the trivial space 1, such as Affine[1, 1/2]
+descriptionIsScalar :: Type 0 -> Bool
+descriptionIsScalar t = case descriptionAffine t of
+  Just Scalar       -> True
+  Just (Affine s _) -> s == unitDescription
+  Nothing           -> False
+
+-- | The affine weight of a description, if it has a weighted affine-space component
+descriptionAffineWeight :: Type 0 -> Maybe Rational
+descriptionAffineWeight t = case descriptionAffine t of
+  Just (Affine _ w) -> Just w
+  _                 -> Nothing
 
 -- | Negate the grade of any affine-space ("Point"/"Vector") component of a
 -- description, leaving every other component unchanged. Used to implement
@@ -210,7 +276,7 @@ descriptionAffineWeight t = case computeRepresentation t :: Either TypeError Des
 negateAffineGrades :: DescriptionsRepr -> DescriptionsRepr
 negateAffineGrades = Data.Map.Lazy.map negOne
   where
-    negOne (AffineSpace t n) = AffineSpace t (negate n)
+    negOne (AffineSpace (Affine t n)) = AffineSpace (Affine t (negate n))
     negOne v                 = v
 
 -- | Combine two description representations for `+`/`-`
@@ -232,9 +298,13 @@ combineDescriptionsForAddSub op d1 d2
 
     combineKey "Affine" v1 =
       case (v1, d2' ! "Affine") of
-        (AffineSpace t1 w1, AffineSpace t2 w2)
+        (AffineSpace (Affine t1 w1), AffineSpace (Affine t2 w2))
           | t1 /= t2  -> Left mismatchErr
-          | otherwise -> Right $ AffineSpace t1 (w1 + w2)
+          | otherwise -> Right $ AffineSpace (Affine t1 (w1 + w2))
+        -- a scalar of unknown value absorbs the weight of a scalar of known weight
+        (AffineSpace Scalar, AffineSpace Scalar) -> Right v1
+        (AffineSpace Scalar, AffineSpace (Affine t _)) | t == unitDescription -> Right v1
+        (AffineSpace (Affine t _), AffineSpace Scalar) | t == unitDescription -> Right (AffineSpace Scalar)
         _ -> Left mismatchErr
     combineKey k v1
       | v1 == d2' ! k = Right v1
@@ -251,7 +321,7 @@ descriptionHasAffine t = case computeRepresentation t :: Either TypeError Descri
 -- | Whether a description is that of a Point in an affine space
 descriptionIsPoint :: Type 0 -> Bool
 descriptionIsPoint t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
-  Right repr | Just (AffineSpace _ 1) <- Map.lookup "Affine" repr -> True
+  Right repr | Just (AffineSpace (Affine _ 1)) <- Map.lookup "Affine" repr -> True
   _ -> False
 
 -- | The component of a description built from the given descriptor
@@ -305,11 +375,14 @@ instance Representation DescriptionRepr where
             exp k' v' = ExponentTy (tyCon0 k') v'
             base = exp k v
     reifyToTypeTerm (TypeTree t) = t
-    reifyToTypeTerm (AffineSpace t 0)    = TyApp (tyCon0 "Vector") [t]
-    reifyToTypeTerm (AffineSpace t 1)    = TyApp (tyCon0 "Point")  [t]
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "NPoint") [t]
+    reifyToTypeTerm (AffineSpace Scalar) = tyCon0 "Scalar"
+    -- a scalar of known weight, over the trivial space, is always written out
+    reifyToTypeTerm (AffineSpace (Affine t w)) | t == unitDescription = TyApp (tyCon0 "Affine") [t, TyRat w]
+    reifyToTypeTerm (AffineSpace (Affine t 0))    = TyApp (tyCon0 "Vector") [t]
+    reifyToTypeTerm (AffineSpace (Affine t 1))    = TyApp (tyCon0 "Point")  [t]
+    reifyToTypeTerm (AffineSpace (Affine t (-1))) = TyApp (tyCon0 "NPoint") [t]
     -- any other weight is written out, e.g. Affine[t, 2]
-    reifyToTypeTerm (AffineSpace t w) = TyApp (tyCon0 "Affine") [t, TyRat w]
+    reifyToTypeTerm (AffineSpace (Affine t w)) = TyApp (tyCon0 "Affine") [t, TyRat w]
 
 
     -- | Equality on description representations
@@ -330,10 +403,10 @@ instance Representation DescriptionRepr where
         if t1 == t2
             then Right ()
             else Left $ DescriptionEqualityFailure t2 t1  -- reuse error: shows expected vs actual species
-    reprEquality (AffineSpace t1 n1) (IsSpec (AffineSpace t2 n2)) =
-        if t1 == t2 && n1 == n2
+    reprEquality (AffineSpace a1) (IsSpec (AffineSpace a2)) =
+        if a1 == a2
             then Right ()
-            else Left $ DescriptionEqualityFailure (reifyToTypeTerm (AffineSpace t2 n2)) (reifyToTypeTerm (AffineSpace t1 n1))
+            else Left $ DescriptionEqualityFailure (reifyToTypeTerm (AffineSpace a2)) (reifyToTypeTerm (AffineSpace a1))
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
 

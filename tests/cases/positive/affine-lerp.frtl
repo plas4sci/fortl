@@ -1,9 +1,9 @@
 """
-Linear interpolation: a Vector can be scaled by any dimensionless scalar,
-so p + t * (q - p) is a Point for a variable t.
+Linear interpolation. A scalar t of weight 1/4 has type Affine[1, 1/4]: 1.0 - t
+is a scalar of weight 3/4, and the weights of the two terms sum to 1.
 """
 p : Float[Unit[s] & Point[Time]] = 10.0
 q : Float[Unit[s] & Point[Time]] = 4.0
-t : Float[1] = 0.25
-r : Float[Unit[s] & Point[Time]] = p + t * (q - p)
+t : Float[Affine[1, 1/4]] = 0.25
+r : Float[Unit[s] & Point[Time]] = (1.0 - t) * p + t * q
 it = r

@@ -41,6 +41,10 @@ desc2 = tyCon2 "Descriptor"
 
 -- ]
 
+-- | The kind of type-level rationals such as the weight in Affine[T, 1/2]
+ratKind :: Type 1
+ratKind = tyCon1 "Rational"
+
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
@@ -65,10 +69,11 @@ typeConstructors = [
   , ("Basis"    , FunTy [type0] (tyCon1 "BasisType")) -- TODO: type0 should be the open type Bases here
   , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
   -------
-  , ("Point",     FunTy [type0] (tyCon1 "AffineTy"))
-  , ("Vector",    FunTy [type0] (tyCon1 "AffineTy"))
-  , ("NPoint",    FunTy [type0] (tyCon1 "AffineTy"))
-  , ("Affine",    FunTy [type0] (FunTy [type0] (tyCon1 "AffineTy"))) -- Affine[space, weight]
+  , ("Point",     FunTy [type0] (tyCon1 "AffineSpace"))
+  , ("Vector",    FunTy [type0] (tyCon1 "AffineSpace"))
+  , ("NPoint",    FunTy [type0] (tyCon1 "AffineSpace"))
+  , ("Scalar",    tyCon1 "AffineSpace")
+  , ("Affine",    FunTy [type0, ratKind] (tyCon1 "AffineSpace")) -- Affine[space, weight]
   , ("None"     , type0)
     -- The standard 7 SI base dimensions
   , ("T"        , dimensionBase) -- Time
@@ -125,8 +130,9 @@ kindConstructors = [
   , ("SpeciesType", desc2)
   , ("BasisType" , desc2)
   , ("Dim"      , desc2)
-  , ("Base"     , desc2) -- The base Descriptor (bottom)
+  , ("AffineSpace", desc2)
   -- Products of descriptors
+  , ("Base"     , desc2) -- The base Descriptor (bottom)
   , ("&"        , FunTy [desc2, desc2] desc2)
   ]
 

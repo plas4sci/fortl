@@ -13,6 +13,7 @@ module Lang.Syntax where
 
 import qualified Data.Set as Set
 import Numeric (showFFloat)
+import Data.Ratio (numerator, denominator)
 import GHC.TypeLits
 
 data Phase = Parsed | Desugared
@@ -282,6 +283,20 @@ tyVar = TyVar
 tyCon0 :: Identifier -> Type 0
 tyCon0 id = TyCon ZeroP id
 
+-- | The rational denoted by a type-level numeral expression: a literal, a
+-- numeral such as 2 or -1, or products and integer powers of these, so that
+-- 1/2 (parsed as 1 * 2^-1) is a half
+rationalOfType :: Type 0 -> Maybe Rational
+rationalOfType (TyRat r) = Just r
+rationalOfType (TyCon ZeroP s)
+  | not (null s), all (`elem` "-0123456789.eE") s, any (`elem` "0123456789") s = Just (rationalOfDecimal s)
+rationalOfType (ProdTy t1 t2) = (*) <$> rationalOfType t1 <*> rationalOfType t2
+rationalOfType (ExponentTy t n)
+  | denominator n == 1 = do
+      r <- rationalOfType t
+      if r == 0 && n < 0 then Nothing else Just (r ^^ numerator n)
+rationalOfType _ = Nothing
+
 -- | Exact value of a decimal numeral such as "-1.5", "2" or "5.67e-8"
 rationalOfDecimal :: String -> Rational
 rationalOfDecimal str = sign * (fromInteger (read (intPart <> fracPart)) / 10 ^ length fracPart) * 10 ^^ expo
@@ -301,7 +316,8 @@ rationalOfDecimal str = sign * (fromInteger (read (intPart <> fracPart)) / 10 ^ 
 -- | Exact value of the shortest decimal that identifies a Float, so that
 -- 0.1 is 1/10 rather than its binary expansion
 rationalOfFloat :: Float -> Rational
-rationalOfFloat f = rationalOfDecimal (showFFloat Nothing f "")
+rationalOfFloat f = 
+  rationalOfDecimal (showFFloat Nothing f "")
 
 tyCon1 :: Identifier -> Type 1
 tyCon1 id = TyCon (SuccP ZeroP) id

@@ -257,6 +257,7 @@ TypeAtom
   | TYVAR            { \opts -> TyVar $ tyVarString $1 }
   | '(' Type ')'     { \opts -> $2 opts }
   | INT              { \opts -> tyCon0 $ let (TokenInt _ x) = $1 in x }
+  | FLOAT            { \opts -> let (TokenFloat _ x) = $1 in TyRat (rationalOfDecimal x) }
   | '?'              { \opts -> tyCon0 "?" }
 
 Juxt :: { [Option] -> Expr }

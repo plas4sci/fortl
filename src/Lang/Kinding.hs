@@ -26,6 +26,12 @@ checkKind (FunTy ts t2) k = do
 -- :k Float : {d : Desc} -> d -> Type
 -- U[m] : UoM
 -- therefore elaborate to Float[{UoM}][U[m]]
+-- Type-level rationals: numerals and fractions elaborate to a rational literal
+checkKind t k
+  | k == ratKind = case rationalOfType t of
+      Just r  -> return (TyRat r)
+      Nothing -> Left $ KindMismatch k type0 (Just t)
+
 checkKind t@(TyApp t1 ts) k = do
   (t1', k1) <- synthKind t1
   case k1 of
