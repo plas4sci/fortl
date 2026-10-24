@@ -463,6 +463,17 @@ synth_ gamma (Lift e d) = do
   (d', kd) <- synthKind d
   _ <- checkSort kd desc2
 
+  -- A scalar of known weight, Affine[1, w], has the value w, so it can only
+  -- be given to a constant of that value (a Point, Vector or Scalar can be
+  -- given to anything, since their values are not fixed by their weights)
+  case descriptionAffine d' of
+    Just (Affine s w) | s == unitDescription ->
+      case constantScalar e of
+        Just c  -> checkScalarValue c d'
+        Nothing -> Left $ ContextualError $ "Only a constant can be labelled with the scalar type "
+                     <> pprint (scalarDescription w) <> ", since its value must be " <> pprint (TyRat w)
+    _ -> Right ()
+
   -- Infer the expression being lifted; lift only applies to Float-indexed values.
   t <- synth gamma e
   case isGradableType t of

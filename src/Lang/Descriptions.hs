@@ -186,8 +186,8 @@ instance Representation DescriptionsRepr where
           combineRepr (AffineSpace a) (AffineSpace Scalar)      = scaleByUnknown a
           combineRepr _ _                             = error "Mismatched description representation types in product"
           scaleByUnknown a@(Affine s w)
+            | w == 0               = Right $ AffineSpace a            -- a scalar scales a vector to a vector
             | s == unitDescription = Right $ AffineSpace Scalar
-            | w == 0               = Right $ AffineSpace a
           scaleByUnknown _ = Left $ AffineSpaceProductUndefined t1 t2
     computeRepresentation (SumTy t1 t2) = do
         d1 <- computeRepresentation t1
