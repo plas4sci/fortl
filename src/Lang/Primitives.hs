@@ -26,6 +26,28 @@ stringTy t = TyApp (ImplicitTyApp (tyCon0 "String") (tyCon1 "Base")) [t]
 boolTy :: Type 0 -> Type 0
 boolTy t = TyApp (ImplicitTyApp (tyCon0 "Bool") (tyCon1 "Base")) [t]
 
+-- | Smart constructors for the descriptors of graded types
+unitTy, dimensionTy, quantityTy, speciesTy, basisTy :: Type 0 -> Type 0
+unitTy t      = TyApp (tyCon0 "Unit") [t]
+dimensionTy t = TyApp (tyCon0 "Dimension") [t]
+quantityTy t  = TyApp (tyCon0 "Quantity") [t]
+speciesTy t   = TyApp (tyCon0 "Species") [t]
+basisTy t     = TyApp (tyCon0 "Basis") [t]
+
+-- | The quantity of angles
+angleQuantity :: Type 0
+angleQuantity = quantityTy (tyCon0 "Angle")
+
+-- | Affine-space descriptors over a base space: the names for the weights
+-- 1, 0 and -1, and the general form Affine[space, weight]
+pointTy, vectorTy, npointTy :: Type 0 -> Type 0
+pointTy t  = TyApp (tyCon0 "Point") [t]
+vectorTy t = TyApp (tyCon0 "Vector") [t]
+npointTy t = TyApp (tyCon0 "NPoint") [t]
+
+affineTy :: Type 0 -> Rational -> Type 0
+affineTy t w = TyApp (tyCon0 "Affine") [t, TyRat w]
+
 desc :: Type 1
 desc = tyCon1 "Descriptor"
 

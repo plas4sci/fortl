@@ -13,7 +13,7 @@ import qualified Data.Map.Lazy as Map
 import Data.Map.Lazy
 import Lang.TypeError
 import Data.List (sort, intersect)
-import Lang.Primitives (rewriteSI)
+import Lang.Primitives
 import Data.Ratio (numerator, denominator)
 
 unitDescription :: Type 0
@@ -388,12 +388,12 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm (TypeTree t) = t
     reifyToTypeTerm (AffineSpace Scalar) = tyCon0 "Scalar"
     -- a scalar of known weight, over the trivial space, is always written out
-    reifyToTypeTerm (AffineSpace (Affine t w)) | t == unitDescription = TyApp (tyCon0 "Affine") [t, TyRat w]
-    reifyToTypeTerm (AffineSpace (Affine t 0))    = TyApp (tyCon0 "Vector") [t]
-    reifyToTypeTerm (AffineSpace (Affine t 1))    = TyApp (tyCon0 "Point")  [t]
-    reifyToTypeTerm (AffineSpace (Affine t (-1))) = TyApp (tyCon0 "NPoint") [t]
+    reifyToTypeTerm (AffineSpace (Affine t w)) | t == unitDescription = affineTy t w
+    reifyToTypeTerm (AffineSpace (Affine t 0))    = vectorTy t
+    reifyToTypeTerm (AffineSpace (Affine t 1))    = pointTy t
+    reifyToTypeTerm (AffineSpace (Affine t (-1))) = npointTy t
     -- any other weight is written out, e.g. Affine[t, 2]
-    reifyToTypeTerm (AffineSpace (Affine t w)) = TyApp (tyCon0 "Affine") [t, TyRat w]
+    reifyToTypeTerm (AffineSpace (Affine t w)) = affineTy t w
 
 
     -- | Equality on description representations

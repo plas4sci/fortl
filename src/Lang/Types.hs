@@ -852,15 +852,6 @@ assert :: Bool -> a -> Either a ()
 assert True _ = Right ()
 assert False x = Left x
 
--- | Helpers for the trigonometric primitives
-unitTy, dimensionTy, quantityTy :: Type 0 -> Type 0
-unitTy t      = TyApp (tyCon0 "Unit") [t]
-dimensionTy t = TyApp (tyCon0 "Dimension") [t]
-quantityTy t  = TyApp (tyCon0 "Quantity") [t]
-
-angleQuantity :: Type 0
-angleQuantity = quantityTy (tyCon0 "Angle")
-
 -- | A description component is either absent or equal to one of the given ones
 absentOrEqual :: Maybe (Type 0) -> [Type 0] -> Bool
 absentOrEqual Nothing  _   = True
@@ -896,13 +887,13 @@ checkScalarValue c d = case descriptionAffine d of
 --   liftLiteral (UoM & AffineSpace) l = 1 & Affine[1, l]
 liftLiteral :: Type 1 -> Rational -> Either TypeError (Type 0)
 liftLiteral (WithTy d1 d2) l = WithTy <$> liftLiteral d1 l <*> liftLiteral d2 l
-liftLiteral (TyCon _ "AffineSpace") l = Right $ TyApp (tyCon0 "Affine") [tyCon0 "1", TyRat l]
+liftLiteral (TyCon _ "AffineSpace") l = Right $ affineTy (tyCon0 "1") l
 -- the other components are the dimensionless element of the kind's descriptor
 liftLiteral (TyCon _ "UoM") _         = Right $ unitTy (tyCon0 "1")
 liftLiteral (TyCon _ "Dim") _         = Right $ dimensionTy (tyCon0 "1")
 liftLiteral (TyCon _ "KoQ") _         = Right $ quantityTy (tyCon0 "1")
-liftLiteral (TyCon _ "SpeciesType") _ = Right $ TyApp (tyCon0 "Species") [tyCon0 "1"]
-liftLiteral (TyCon _ "BasisType") _   = Right $ TyApp (tyCon0 "Basis") [tyCon0 "1"]
+liftLiteral (TyCon _ "SpeciesType") _ = Right $ speciesTy (tyCon0 "1")
+liftLiteral (TyCon _ "BasisType") _   = Right $ basisTy (tyCon0 "1")
 liftLiteral (TyCon _ _) _ = Right $ tyCon0 "1"
 liftLiteral t _ = Left $ ContextualError $ "Cannot lift literal for type " <> pprint t
 
