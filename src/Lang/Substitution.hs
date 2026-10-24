@@ -135,6 +135,8 @@ instance SubstituteType 0 where
 
   substituteType (TyRat r) s = TyRat r
 
+  substituteType (NegTy t1) s = NegTy (substituteType t1 s)
+
 
 instance SubstituteType 1 where
   substituteType (ImplicitFunTy var t1 t2) s =

@@ -95,6 +95,10 @@ checkKind (ProdTy t1 t2) k = do
   t2' <- checkKind t2 k
   return $ ProdTy t1' t2'
 
+checkKind (NegTy t) k = do
+  t' <- checkKind t k
+  return $ NegTy t'
+
 checkKind (ExponentTy t n) k = do
   t' <- checkKind t k
   return $ ExponentTy t' n
@@ -228,6 +232,10 @@ synthKind (SumTy t1 t2) = do
 
 synthKind t@(TyRat _) = return (t, type0)
 
+synthKind (NegTy t) = do
+  (t', k) <- synthKind t
+  return (NegTy t', k)
+
 synthKind (ExponentTy t n) = do
  (t', k) <- synthKind t
  return (ExponentTy t' n, k)
@@ -292,6 +300,16 @@ kindEquality t1 (IsSpec t2) =
       case break (== k) ks' of
         (before, _ : after) -> sameComponents ks (before ++ after)
         (_, [])             -> False
+
+-- | The kind with the components of both kinds, keeping the order of the
+-- larger when one contains the other
+joinKinds :: Type 1 -> Type 1 -> Type 1
+joinKinds k1 k2
+  | all (`elem` cs2) cs1 = k2
+  | otherwise            = foldr1 WithTy (cs1 ++ filter (`notElem` cs1) cs2)
+  where
+    cs1 = withComponents k1
+    cs2 = withComponents k2
 
 -- | Flatten a (nested) product of descriptor kinds into its components
 withComponents :: Type 1 -> [Type 1]

@@ -1,0 +1,1 @@
+tests/cases/negative/affine-scalar-scales-point.frtl:7:12: The product of Scalar and Unit[s] & Point[Time] is not defined for affine spaces: a position can only be scaled by a scalar of known weight

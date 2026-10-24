@@ -1,0 +1,10 @@
+"""
+A Scalar of unknown value cannot scale a Point: the weight would be unknown.
+"""
+def scale (p, t) -> Float[Unit[s] & Point[Time]]:
+  p : Float[Unit[s] & Point[Time]]
+  t : Float[Scalar]
+  return t * p
+
+a : Float[Unit[s] & Point[Time]] = 10.0
+it = scale(a, 0.5)

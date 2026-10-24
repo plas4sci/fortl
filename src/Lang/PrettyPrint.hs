@@ -121,6 +121,8 @@ instance PrettyPrint (Type i) where
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (WithTy t1 t2) =
       bracket_pprint t1 ++ " & " ++ bracket_pprint t2
+    pprint (NegTy t1) =
+      "-" ++ bracket_pprint t1
     pprint (ExponentTy t1 1) =
       bracket_pprint t1
     pprint (ExponentTy t1 q) =

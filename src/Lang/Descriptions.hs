@@ -150,11 +150,19 @@ instance Representation DescriptionsRepr where
           exp _ (IndexType t)  = Right $ IndexType t  -- exponentiation is no-op for indexed types
           -- weights multiply under products, so exponentiation raises the weight to the power
           exp _ (AffineSpace Scalar) = Right $ AffineSpace Scalar
+          -- a position (over a space other than 1) can only be raised to the power 1,
+          -- so it cannot be squared or be a divisor
+          exp n (AffineSpace a@(Affine t _))
+            | t /= unitDescription = if n == 1 then Right (AffineSpace a)
+                                     else Left $ AffineSpacePowerUndefined e
           exp n (AffineSpace (Affine t w)) =
             case weightPower w n of
               Just w' -> Right $ AffineSpace (Affine t w')
-              Nothing -> Left $ CannotComputeDescriptionRepresentation e
+              Nothing -> Left $ AffineSpacePowerUndefined e
     computeRepresentation (TyCon ZeroP "1") = return empty
+    -- the additive inverse negates an affine weight and, as under `+`, leaves
+    -- every other component alone
+    computeRepresentation (NegTy t) = negateAffineGrades <$> computeRepresentation t
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -166,8 +174,11 @@ instance Representation DescriptionsRepr where
           combineRepr (IndexType t1) (IndexType t2) = Right $ IndexType (combineIndex t1 t2)
           -- weights multiply, so a scalar of weight c scales a weight w to c * w,
           -- and base spaces combine like indices
-          combineRepr (AffineSpace (Affine s1 w1)) (AffineSpace (Affine s2 w2)) =
-            Right $ AffineSpace (Affine (combineIndex s1 s2) (w1 * w2))
+          -- and at least one factor must be a scalar: two positions cannot be multiplied
+          combineRepr (AffineSpace (Affine s1 w1)) (AffineSpace (Affine s2 w2))
+            | s1 == unitDescription || s2 == unitDescription =
+                Right $ AffineSpace (Affine (combineIndex s1 s2) (w1 * w2))
+            | otherwise = Left $ AffineSpaceProductUndefined t1 t2
           -- a scalar of unknown value leaves a scalar a scalar, and a weight 0 at weight 0,
           -- but its effect on any other weight is unknown
           combineRepr (AffineSpace Scalar) (AffineSpace Scalar) = Right $ AffineSpace Scalar
@@ -177,7 +188,7 @@ instance Representation DescriptionsRepr where
           scaleByUnknown a@(Affine s w)
             | s == unitDescription = Right $ AffineSpace Scalar
             | w == 0               = Right $ AffineSpace a
-          scaleByUnknown _ = Left $ CannotComputeDescriptionRepresentation (ProdTy t1 t2)
+          scaleByUnknown _ = Left $ AffineSpaceProductUndefined t1 t2
     computeRepresentation (SumTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2

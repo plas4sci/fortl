@@ -476,7 +476,6 @@ synth_ gamma (Lift e d) = do
               Right $ TyApp (ImplicitTyApp (tyCon0 baseType) liftedKind) [lifted']
     _ -> Left $ ContextualError $ "lift expects a gradable type but got " <> pprint t
 
-
 synth_ gamma (StringConst _) =
   Right (tyCon0 "str")
 
@@ -487,79 +486,91 @@ synth_ gamma (UnOp op e) =
       case isGradableNumericType t of
         Nothing -> Left (ExpectingNumericType t)
         Just (baseType, gradeType, d) -> do
-          repr <- computeRepresentation d
-          d' <- normalisationByEvaluation (reifyToTypeTerm (negateAffineGrades repr))
+          d' <- normalisationByEvaluation (NegTy d)
           Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) [d']
     UnOpNot -> do
       t <- synth gamma e
       assert (isJust $ isGradableBooleanType t) (ExpectingBooleanType t)
       Right t
 
-synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] =
-  case synth gamma e1 of
-    Left err -> Left $ BinaryOperatorTypeError op err
-    Right t1 ->
-      case isGradableBooleanType t1 of
-        Nothing -> Left $ ExpectingBooleanType t1
-        Just (baseType, gradeType1, d1) ->
-          case synth gamma e2 of
-            Left err -> Left $ BinaryOperatorTypeError op err
-            Right t2 ->
-              case isGradableBooleanType t2 of
-                Nothing -> Left $ ExpectingBooleanType t2
-                Just (baseType', gradeType2, d2) ->
-                  if baseType /= baseType'
-                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
-                    else do
-                      () <- kindEquality gradeType1 (IsSpec gradeType2)
-                      case descriptionEquality d1 (IsSpec d2) of
-                        Right () -> do
-                          d1 <- normalisationByEvaluation d1
-                          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [d1]
-                        Left err -> Left $ BinaryOperatorDescriptionMismatch op d1 d2
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] = do
+  -- Synth both sides
+  t1 <- synth gamma e1
+  t2 <- synth gamma e2
+  -- Check that we have gradable boolean types
+  (baseType1, desc1, g1) <- tryM (isGradableBooleanType t1) (Left $ ExpectingBooleanType t1)
+  (baseType2, desc2, g2) <- tryM (isGradableBooleanType t2) (Left $ ExpectingBooleanType t2)
+  -- Check base types agree
+  assert (baseType1 == baseType2) (BinaryOperatorTypeError op (BaseTypeMismatch baseType1 baseType2))
+  -- Check that the descriptor kinds and the grades match
+  kindEquality desc1 (IsSpec desc2)
+  assert (isRight (descriptionEquality g1 (IsSpec g2))) (BinaryOperatorDescriptionMismatch op g1 g2)
+  g <- normalisationByEvaluation g1
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType1) desc1) [g]
 
-synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] =
-  case synth gamma e1 of
-    Left err -> Left $ BinaryOperatorTypeError op err
-    Right t1 ->
-      case isGradableNumericType t1 of
-        Nothing -> Left $ ExpectingNumericType t1
-        Just (baseType, gradeType1, d1) ->
-          case synth gamma e2 of
-            Left err -> Left $ BinaryOperatorTypeError op err
-            Right t2 ->
-              case isGradableNumericType t2 of
-                Nothing -> Left $ ExpectingNumericType t2
-                Just (baseType', gradeType2, d2) ->
-                  if baseType /= baseType'
-                    then Left $ BinaryOperatorTypeError op (BaseTypeMismatch baseType baseType')
-                    else do
-                      case op of
-                          BinOpExp ->
-                            case e2 of
-                              NumFloat n -> do
-                                () <- rejectAffineScaling op d1
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) [ExponentTy d1 (rationalOfFloat n)]
-                              _ -> error "Bug"
-                          _-> do
-                            (gradeType, d1', d2') <- adaptOperands op e1 gradeType1 d1 e2 gradeType2 d2
-                            case op of
-                              BinOpTimes -> do
-                                d <- normalisationByEvaluation (ProdTy d1' d2')
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) [d]
-                              BinOpDivide -> do
-                                d <- normalisationByEvaluation (ProdTy d1' (reciprocalType d2'))
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) [d]
-                              -- Plus/Minus: combine descriptions key-by-key, additively
-                              -- for an affine-space ("Point"/"Vector") component,
-                              -- otherwise requiring an exact match as before
-                              _        -> do
-                                d1repr <- computeRepresentation d1'
-                                d2repr <- computeRepresentation d2'
-                                combined <- combineDescriptionsForAddSub op d1repr d2repr
-                                combined' <- coherenceChecks combined
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) [(reifyToTypeTerm combined')]
-
+-- Binary operators that are numerical
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] = do
+  -- Synth both sides
+  t1 <- synth gamma e1
+  t2 <- synth gamma e2
+  -- Check that we have gradable numeric types
+  (baseType1, desc1, g1) <- tryM (isGradableNumericType t1) (Left $ ExpectingNumericType t1)
+  (baseType2, desc2, g2) <- tryM (isGradableNumericType t2) (Left $ ExpectingNumericType t2)
+  -- Check base types agree
+  assert (baseType1 == baseType2) (BinaryOperatorTypeError op (BaseTypeMismatch baseType1 baseType2))
+  -- Check that the descriptor kinds (desc1 and desc2) match, unless a side
+  -- is a literal, which takes its grade from the other side's kind
+  -- A scalar scaling a value has a kind of its own, which is joined to the other's.
+  case (constantScalar e1, constantScalar e2) of
+    (Nothing, Nothing)
+      | isScaling && (descriptionIsScalar g1 || descriptionIsScalar g2
+                      || descriptionHasAffine g1 /= descriptionHasAffine g2) -> Right ()
+      | otherwise -> kindEquality desc1 (IsSpec desc2)
+    _                  -> Right ()
+  -- If either side is a literal then recompute its grade
+  -- (note if both are literals we end up with the base grade, w.l.o.g.)
+  (g1, desc1) <- case constantScalar e1 of
+                  Nothing -> return (g1, desc1)
+                  -- literal based on the other descriptor
+                  Just r1 -> do
+                    g1' <- liftLiteral desc2 r1
+                    -- now use the desc2 as the descriptor for this literal
+                    return (g1', desc2)
+            
+  (g2, desc2) <- case constantScalar e2 of
+                  Nothing -> return (g2, desc2)
+                  Just r2 -> do
+                    g2' <- liftLiteral desc1 r2
+                    return (g2', desc1)
+  -- An operand without an affine-space part beside one with, if not a
+  -- literal, has not said that it is a scalar
+  when (isScaling && descriptionHasAffine g1 /= descriptionHasAffine g2) $
+    Left $ AffineSpaceScalingUnsupported op (if descriptionHasAffine g1 then g1 else g2)
+      "the other operand has no affine-space part; a number of unknown value should be declared as Float[Scalar]"
+  g <- case op of
+        BinOpExp ->
+          case e2 of
+            NumFloat n -> do
+              () <- rejectAffineScaling op g1
+              normalisationByEvaluation (ExponentTy g1 (rationalOfFloat n))
+            _ -> error "Bug"
+        BinOpTimes  -> normalisationByEvaluation (ProdTy g1 g2)
+        -- the ratio of two Vectors over the same space is a Scalar of unknown value
+        BinOpDivide | Just s <- vectorSpace g1, Just s == vectorSpace g2 -> do
+          q1 <- dropAffine g1
+          q2 <- dropAffine g2
+          normalisationByEvaluation (WithTy (ProdTy q1 (reciprocalType q2)) (tyCon0 "Scalar"))
+        BinOpDivide -> normalisationByEvaluation (ProdTy g1 (reciprocalType g2))
+        BinOpPlus   -> normalisationByEvaluation (SumTy g1 g2)
+        BinOpMinus  -> normalisationByEvaluation (SumTy g1 (NegTy g2))
+        _           -> Left $ ContextualError $ "Unexpected operator " <> pprint op
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType1) (if isScaling then joinKinds desc1 desc2 else desc1)) [g]
+  where
+    isScaling = op `elem` [BinOpTimes, BinOpDivide]
+    -- the base space of a Vector, other than the scalars' trivial space
+    vectorSpace d = case descriptionAffine d of
+      Just (Affine s 0) | s /= unitDescription -> Just s
+      _                                        -> Nothing
 
 {-
 
@@ -724,6 +735,14 @@ errorToString (BaseTypeMismatch expected actual) =
 errorToString (DimensionAndUnitIncoherence dimension unit) =
   "Incoherence between grade " <> pprint dimension <> " and " <> pprint unit
 
+errorToString (AffineSpaceProductUndefined t1 t2) =
+  "The product of " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
+  <> " is not defined for affine spaces: a position can only be scaled by a scalar of known weight"
+
+errorToString (AffineSpacePowerUndefined t) =
+  "The power " <> pprint (normalise t) <> " is not defined for affine spaces: a position cannot be "
+  <> "squared or inverted, and a scalar's weight needs an integer power (and 0 has no inverse)"
+
 errorToString (AffineSpaceScalingUnsupported op t reason) =
   "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
   <> ": " <> reason
@@ -818,6 +837,7 @@ normaliseType (WithTy t1 (WithTy t2 t3)) = do
      t   <- normaliseType (WithTy t1 t2)
      return $ WithTy t t3'
 normaliseType (WithTy t1 t2) = (<$$>) WithTy (normaliseType t1) (normaliseType t2)
+normaliseType (NegTy t) = NegTy <$> normaliseType t
 normaliseType (ExponentTy t n) = (<$$>) ExponentTy (normaliseType t) (return n)
 normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
 
@@ -827,7 +847,6 @@ normaliseType t = Right t  -- Base case: TyCon, TyVar, etc.
   x <- mx
   y <- my
   return $ f x y
-
 
 assert :: Bool -> a -> Either a ()
 assert True _ = Right ()
@@ -861,82 +880,6 @@ rejectAffineScaling op d
       Left $ AffineSpaceScalingUnsupported op d "affine-space values (Point/Vector/NPoint) cannot be raised to a power"
   | otherwise               = Right ()
 
--- adaptOperandsAlt :: BinOp -> Expr -> Type 1 -> Type 0 -> Expr -> Type 1 -> Type 0
---               -> Either TypeError (Type 1, Type 0, Type 0)          
--- adaptOperandsAlt op (constantScalar -> Just r1) d1 g1 e2 d2 g2
---   | op `elem` [BinOpPlus, BinOpMinus] = 
-
-
-
--- | Adapt the operands of `+`, `-`, `*` or `/` before their descriptions are
--- combined, returning the grade kind of the result and the two descriptions.
---
--- A numeric constant beside an affine-space operand is synthesised as a
--- scalar of that value, i.e. as Affine[1, c], the weighted point over the
--- trivial space 1, whatever the operator. Combining the descriptions then
--- does the rest: weights add under `+`/`-` (over the same base space, so a
--- constant cannot be added to a position) and multiply under `*`/`/`, so
--- (p + q) * 0.5 has weight 2 * 1/2 = 1 and 1.0 - t for a scalar t of weight
--- 1/4 has weight 3/4.
---
--- The remaining checks are for products: two positions cannot be
--- multiplied, a position cannot be a divisor, and a Scalar of unknown value
--- can only scale a weight of 0.
-adaptOperands :: BinOp -> Expr -> Type 1 -> Type 0 -> Expr -> Type 1 -> Type 0
-              -> Either TypeError (Type 1, Type 0, Type 0)
-adaptOperands op e1 k1 d1 e2 k2 d2
-  -- a constant added to or subtracted from a value adopts its description
-  | isAdditive, Just c <- constantScalar e1, Nothing <- constantScalar e2 = do
-      d1' <- adoptConstant c d2
-      Right (k2, d1', d2)
-  | isAdditive, Nothing <- constantScalar e1, Just c <- constantScalar e2 = do
-      d2' <- adoptConstant c d1
-      Right (k1, d1, d2')
-  | not aff1 && not aff2 = kindEquality k1 (IsSpec k2) >> Right (k1, d1, d2)
-  | otherwise = do
-      let d1' = asScalar e1 d1 aff2
-          d2' = asScalar e2 d2 aff1
-      when (op `elem` [BinOpTimes, BinOpDivide]) $ do
-        assert (not (op == BinOpDivide && constantScalar e2 == Just 0)) $
-          AffineSpaceScalingUnsupported op d1 "division by zero"
-        assert (not (isPosition d1' && isPosition d2')) $
-          AffineSpaceScalingUnsupported op d1 "affine-space values cannot be multiplied together"
-        assert (not (op == BinOpDivide && isPosition d2')) $
-          AffineSpaceScalingUnsupported op d2 "affine-space values cannot be divisors"
-        assert (not (unknownBeside d1' d2' || unknownBeside d2' d1')) $
-          AffineSpaceScalingUnsupported op d1
-            "a Point or NPoint can only be scaled by a numeric constant or a scalar of known weight, since a Scalar changes its weight by an unknown amount"
-        unknownScalar e1 d1 d2
-        unknownScalar e2 d2 d1
-      -- the result takes the kind of the affine-space operand, preferring
-      -- that of a position, which also describes units, to that of a scalar
-      let kind | aff1 && aff2 = if descriptionIsScalar d1 then k2 else k1
-               | aff1         = k1
-               | otherwise    = k2
-      Right (kind, d1', d2')
-  where
-    isAdditive = op `elem` [BinOpPlus, BinOpMinus]
-    aff1 = descriptionHasAffine d1
-    aff2 = descriptionHasAffine d2
-    isPosition d = descriptionHasAffine d && not (descriptionIsScalar d)
-
-    -- a constant with no affine-space part of its own, beside an operand
-    -- that has one, is a scalar of its value
-    asScalar e d otherAffine = case constantScalar e of
-      Just c | otherAffine && not (descriptionHasAffine d) -> scalarDescription c
-      _                                                    -> d
-
-    -- a Scalar of unknown value beside a position with a weight other than 0
-    unknownBeside d other = descriptionAffine d == Just Scalar && isPosition other
-                              && descriptionAffineWeight other /= Just 0
-
-    -- a non-constant operand with no affine-space part at all has not said
-    -- what it is, where a scalar would be tagged Scalar
-    unknownScalar e d otherD
-      | descriptionHasAffine d || isJust (constantScalar e) = Right ()
-      | otherwise = Left $ AffineSpaceScalingUnsupported op otherD
-          "the other operand has no affine-space part; a number of unknown value should be declared as Float[Scalar]"
-
 -- | A constant checked at a scalar type, Affine[1, w], must have the value w;
 -- at any other type it is just a value
 checkScalarValue :: Rational -> Type 0 -> Either TypeError ()
@@ -946,24 +889,22 @@ checkScalarValue c d = case descriptionAffine d of
       <> " of the scalar type " <> pprint (scalarDescription w)
   _ -> Right ()
 
-
--- Assumptions: we have normalise the types so that WithTy is right associated
--- `liftLiteral d l` takes a descriptor type `d` and computes a grade `g : d`
--- based on a lifting of the literal `l`.
--- For example for `liftLiteral AffineSpace l = Affine[1, l]
+-- `liftLiteral d l` takes a descriptor kind `d` and computes a grade `g : d`
+-- based on a lifting of the literal `l`: the scalar of weight `l` for an
+-- affine space component, and the unit (a dimensionless number) for any
+-- other component. For example,
+--   liftLiteral (UoM & AffineSpace) l = 1 & Affine[1, l]
 liftLiteral :: Type 1 -> Rational -> Either TypeError (Type 0)
-liftLiteral (WithTy d1 d2) l = do
-  -- Check we have a descriptor
-  _ <- checkSort d2 desc2
-  -- Recurse on the left operand of the WithTy
-  g1 <- liftLiteral d1 l
-  -- Compute the grade for the right operand
-  let g2 = case d2 of 
-            (TyCon _ "AffineSpace") -> TyApp (tyCon0 "Affine") [tyCon0 "1", TyRat l]
-            _                       -> tyCon0 "1"
-  return (WithTy g1 g2)
-liftLiteral (TyCon _ "1") _ = Right $ tyCon0 "1"
-liftLiteral t _             = Left $ ContextualError $ "Cannot lift literal for type " <> pprint t
+liftLiteral (WithTy d1 d2) l = WithTy <$> liftLiteral d1 l <*> liftLiteral d2 l
+liftLiteral (TyCon _ "AffineSpace") l = Right $ TyApp (tyCon0 "Affine") [tyCon0 "1", TyRat l]
+-- the other components are the dimensionless element of the kind's descriptor
+liftLiteral (TyCon _ "UoM") _         = Right $ unitTy (tyCon0 "1")
+liftLiteral (TyCon _ "Dim") _         = Right $ dimensionTy (tyCon0 "1")
+liftLiteral (TyCon _ "KoQ") _         = Right $ quantityTy (tyCon0 "1")
+liftLiteral (TyCon _ "SpeciesType") _ = Right $ TyApp (tyCon0 "Species") [tyCon0 "1"]
+liftLiteral (TyCon _ "BasisType") _   = Right $ TyApp (tyCon0 "Basis") [tyCon0 "1"]
+liftLiteral (TyCon _ _) _ = Right $ tyCon0 "1"
+liftLiteral t _ = Left $ ContextualError $ "Cannot lift literal for type " <> pprint t
 
 -- | The value of a numeric expression built only from literals
 constantScalar :: Expr -> Maybe Rational
@@ -980,3 +921,7 @@ constantScalar (BinOp op e1 e2) = do
     BinOpDivide | c2 /= 0 -> Just (c1 / c2)
     _           -> Nothing
 constantScalar _ = Nothing
+
+tryM :: Monad m => Maybe a -> m a -> m a
+tryM Nothing error = error
+tryM (Just x) _    = return x

@@ -83,6 +83,7 @@ import Lang.Options
 %left '/'
 %left '*'
 %right not
+%right NEG
 %%
 
 Program :: { (Program 'Parsed, [Option]) }
@@ -220,6 +221,7 @@ Type
   | Type '/' Type         { \opts -> ProdTy ($1 opts) (ExponentTy ($3 opts) (-1)) }
   | Type '[' '{' Kind '}' ']' { \opts -> ImplicitTyApp ($1 opts) ($4 opts) }
   | Type '[' ManyTypesMore ']' { \opts -> TyApp ($1 opts) ($3 opts) }
+  | '-' Type %prec NEG    { \opts -> NegTy ($2 opts) }
   | TypeAtom              { \opts -> $1 opts }
 
 ManyTypes :: { [Option] -> [Type 0] }

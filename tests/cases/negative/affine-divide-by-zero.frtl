@@ -1,0 +1,2 @@
+a : Float[Unit[s] & Point[Time]] = 10.0
+it = a / 0.0

@@ -4,6 +4,6 @@ is a scalar of weight 3/4, and the weights of the two terms sum to 1.
 """
 p : Float[Unit[s] & Point[Time]] = 10.0
 q : Float[Unit[s] & Point[Time]] = 4.0
-t : Float[Affine[1, 1/4]] = 0.25
+t : Float[Unit[1] & Affine[1, 1/4]] = 0.25
 r : Float[Unit[s] & Point[Time]] = (1.0 - t) * p + t * q
 it = r

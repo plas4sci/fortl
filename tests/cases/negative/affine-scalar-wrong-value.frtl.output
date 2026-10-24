@@ -1,0 +1,1 @@
+tests/cases/negative/affine-scalar-wrong-value.frtl:4:29: The constant 1/2 does not have the weight 1/4 of the scalar type Affine[1, 1/4]

@@ -1,0 +1,14 @@
+"""
+A Scalar is a number of unknown value. It can scale a
+Vector (weight 0), so linear interpolation p + t * (q - p) works for any t,
+including a parameter whose value is not known statically.
+"""
+def lerp (p, q, t) -> Float[Unit[s] & Point[Time]]:
+  p : Float[Unit[s] & Point[Time]]
+  q : Float[Unit[s] & Point[Time]]
+  t : Float[Scalar]
+  return p + t * (q - p)
+
+a : Float[Unit[s] & Point[Time]] = 10.0
+b : Float[Unit[s] & Point[Time]] = 4.0
+it = lerp(a, b, 0.25)

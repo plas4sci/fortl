@@ -155,6 +155,7 @@ markTypeVars typeParams = go
     go (ExponentTy t n)      = ExponentTy (go t) n
     go t@(TyVar _)           = t
     go t@(TyRat _)           = t
+    go (NegTy t)             = NegTy (go t)
     go (Forall v t)
       | v `elem` typeParams  = Forall v t
       | otherwise            = Forall v (go t)

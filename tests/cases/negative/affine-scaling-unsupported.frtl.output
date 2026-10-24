@@ -1,1 +1,1 @@
-tests/cases/negative/affine-scaling-unsupported.frtl:3:8: Cannot use * with the affine-space value Point[Time]: affine-space values cannot be multiplied together
+tests/cases/negative/affine-scaling-unsupported.frtl:3:8: The product of Point[Time] and Point[Time] is not defined for affine spaces: a position can only be scaled by a scalar of known weight

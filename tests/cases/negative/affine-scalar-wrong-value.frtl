@@ -1,0 +1,5 @@
+"""
+A constant at a scalar type Affine[1, w] must have the value w.
+"""
+t : Float[Affine[1, 1/4]] = 0.5
+it = t
