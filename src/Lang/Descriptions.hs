@@ -76,11 +76,11 @@ data DescriptionRepr =
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
    | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
-   | AffineSpace (Type 0) Int
+   | AffineSpace (Type 0) Rational  -- ^ base space and affine weight (Point = 1, Vector = 0, DPoint = -1)
    deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
-type AGroupRepr = Map Identifier Float
+type AGroupRepr = Map Identifier Rational
 
 -- | Internal representation of groups of descriptions
 instance Representation DescriptionsRepr where
@@ -131,11 +131,12 @@ instance Representation DescriptionsRepr where
         d <- computeRepresentation t
         return $ fmap (exp n) d
         where
-          exp :: Float -> DescriptionRepr -> DescriptionRepr
+          exp :: Rational -> DescriptionRepr -> DescriptionRepr
           exp n (FreeAGroup a) = FreeAGroup $ fmap (n *) a
           exp n (TypeTree t)   = TypeTree $ ExponentTy t n
           exp _ (IndexType t)  = IndexType t  -- exponentiation is no-op for indexed types
-          exp _ (AffineSpace t n) = AffineSpace t n
+          -- exponentiation scales the weight: Point[t]^2 is a point of weight 2
+          exp n (AffineSpace t w) = AffineSpace t (w * n)
     computeRepresentation (TyCon ZeroP "1") = return empty
     computeRepresentation (ProdTy t1 t2) = do
         d1 <- computeRepresentation t1
@@ -274,7 +275,7 @@ instance Representation DescriptionRepr where
             computeFreeAGroupRepr' (TyCon ZeroP c) = singleton c 1.0
             computeFreeAGroupRepr' t = error $ "Not well kinded unit " <> pprint t
 
-            scale :: Float -> AGroupRepr -> AGroupRepr
+            scale :: Rational -> AGroupRepr -> AGroupRepr
             scale n = fmap (n *)
 
     -- | Reify a description representation back to a type term

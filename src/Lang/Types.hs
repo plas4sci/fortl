@@ -15,7 +15,8 @@ import Lang.Descriptions
 import Lang.TypeHelpers
 import Lang.TypeError
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromMaybe)
+import qualified Data.Map as Map
 import Data.Either (isRight)
 
 -- Infer the type of an entire program
@@ -781,14 +782,9 @@ errorToString (BaseTypeMismatch expected actual) =
 errorToString (DimensionAndUnitIncoherence dimension unit) =
   "Incoherence between grade " <> pprint dimension <> " and " <> pprint unit
 
-errorToString (AffineSpaceCombinationUndefined op t1 t2) =
-  "Combining " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
-  <> " via " <> pprint op
-  <> " is not defined for affine spaces (the result would fall outside {DPoint, Vector, Point})"
-
-errorToString (AffineSpaceScalingUnsupported op t) =
+errorToString (AffineSpaceScalingUnsupported op t reason) =
   "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
-  <> ": affine-space values (Point/Vector/DPoint) cannot be scaled"
+  <> ": " <> reason
 
 errorToString (KindMismatch expectedK actualK (Just t)) =
   "For " <> pprint (normalise t) <> ", expecting kind " <> pprint expectedK

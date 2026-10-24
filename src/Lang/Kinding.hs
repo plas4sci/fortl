@@ -220,6 +220,8 @@ synthKind (SumTy t1 t2) = do
   (t1', t2', k) <- synthCheckPair t1 t2
   return $ (SumTy t1' t2', k) 
 
+synthKind t@(TyRat _) = return (t, type0)
+
 synthKind (ExponentTy t n) = do
  (t', k) <- synthKind t
  return (ExponentTy t' n, k)
