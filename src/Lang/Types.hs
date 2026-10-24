@@ -180,7 +180,11 @@ check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc))
   case op of
     UnOpNegate -> do
       assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
-      check gamma e ty
+      -- negating an affine-space value negates its weight (-Point is a
+      -- DPoint), so the operand does not have the expected type itself
+      if descriptionHasAffine desc
+        then synth gamma (UnOp op e) >>= \ty' -> typeEquality ty (IsSpec ty')
+        else check gamma e ty
     UnOpNot -> do
       assert (isJust $ isGradableBooleanType ty) (ExpectingBooleanType ty)
       check gamma e ty
@@ -224,19 +228,17 @@ check_ gamma (BinOp op e1 e2) ty@(isGradableType -> Just (baseType, gradeType, d
                   case e2 of
                     NumFloat n -> do
                       () <- rejectAffineScaling op d1
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n) (IsSpec ty)
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 (rationalOfFloat n)) (IsSpec ty)
                     _ -> error "Bug"
                 _ -> do
-                  kindEquality gradeType1 (IsSpec gradeType2)
+                  gradeType <- scaledGradeKind op gradeType1 d1 gradeType2 d2
                   case op of
                     BinOpTimes  -> do
-                      () <- rejectAffineScaling op d1
-                      () <- rejectAffineScaling op d2
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 d2) (IsSpec ty)
+                      d <- scaleDescription op e1 d1 e2 d2
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) d) (IsSpec ty)
                     BinOpDivide -> do
-                      () <- rejectAffineScaling op d1
-                      () <- rejectAffineScaling op d2
-                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ProdTy d1 (reciprocalType d2)) (IsSpec ty)
+                      d <- scaleDescription op e1 d1 e2 d2
+                      typeEquality (TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) d) (IsSpec ty)
             Right t2  -> Left $ ExpectingNumericType t2
         Right t1  -> Left $ ExpectingNumericType t1
   where
@@ -542,8 +544,12 @@ synth_ gamma (UnOp op e) =
   case op of
     UnOpNegate -> do
       t <- synth gamma e
-      assert (isJust $ isGradableNumericType t) (ExpectingNumericType t)
-      Right t
+      case isGradableNumericType t of
+        Nothing -> Left (ExpectingNumericType t)
+        Just (baseType, gradeType, d) -> do
+          repr <- computeRepresentation d
+          d' <- normalisationByEvaluation (reifyToTypeTerm (negateAffineGrades repr))
+          Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) d'
     UnOpNot -> do
       t <- synth gamma e
       assert (isJust $ isGradableBooleanType t) (ExpectingBooleanType t)
@@ -593,21 +599,17 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                             case e2 of
                               NumFloat n -> do
                                 () <- rejectAffineScaling op d1
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 n
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) $ ExponentTy d1 (rationalOfFloat n)
                               _ -> error "Bug"
                           _-> do
-                            () <- kindEquality gradeType1 (IsSpec gradeType2)
+                            gradeType <- scaledGradeKind op gradeType1 d1 gradeType2 d2
                             case op of
                               BinOpTimes -> do
-                                () <- rejectAffineScaling op d1
-                                () <- rejectAffineScaling op d2
-                                d <- normalisationByEvaluation (ProdTy d1 d2)
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                                d <- scaleDescription op e1 d1 e2 d2 >>= normalisationByEvaluation
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) d
                               BinOpDivide -> do
-                                () <- rejectAffineScaling op d1
-                                () <- rejectAffineScaling op d2
-                                d <- normalisationByEvaluation (ProdTy d1 (reciprocalType d2))
-                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType1) d
+                                d <- scaleDescription op e1 d1 e2 d2 >>= normalisationByEvaluation
+                                Right $ TyApp (ImplicitTyApp (tyCon0 baseType) gradeType) d
                               -- Plus/Minus: combine descriptions key-by-key, additively
                               -- for an affine-space ("Point"/"Vector") component,
                               -- otherwise requiring an exact match as before
@@ -904,9 +906,71 @@ floatWithDescription d = do
   d' <- normalisationByEvaluation d
   checkKind (TyApp (tyCon0 "Float") d') type0
 
--- | Affine-space (Point/Vector/DPoint) values cannot be scaled: reject
--- `*`, `/` and `^` when the description involves one.
+-- | Affine-space (Point/Vector/DPoint) values cannot be raised to a power:
+-- reject `^` when the description involves one.
 rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
 rejectAffineScaling op d
-  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d
+  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d "affine-space values (Point/Vector/DPoint) cannot be raised to a power"
   | otherwise               = Right ()
+
+-- | Computes the description of `e1 * e2` or `e1 / e2` given the operand descriptions.
+
+-- Without affine-space components this is just the product of the
+-- descriptions. An affine-space operand can only be scaled by a
+-- dimensionless scalar, and its weight is multiplied by that scalar: a
+-- Vector (weight 0) is unchanged by any scalar, but any other weight
+-- depends on the scalar's value, so the scalar must be a numeric constant,
+-- e.g. (p + q) * 0.5 is a weight-1 Point when p and q are Points.
+scaleDescription :: BinOp -> Expr -> Type 0 -> Expr -> Type 0 -> Either TypeError (Type 0)
+scaleDescription op e1 d1 e2 d2
+  | not aff1 && not aff2 = Right plain
+  | aff1 && aff2         = Left $ AffineSpaceScalingUnsupported op d1 "affine-space values cannot be multiplied together"
+  | op == BinOpDivide && aff2 =
+      Left $ AffineSpaceScalingUnsupported op d2 "affine-space values cannot be divisors"
+  | otherwise = do
+      scalarRepr <- computeRepresentation scalarD :: Either TypeError DescriptionsRepr
+      assert (all (== FreeAGroup Map.empty) (Map.elems scalarRepr)) $
+        AffineSpaceScalingUnsupported op affD "the scalar must be dimensionless"
+      affRepr <- computeRepresentation affD
+      let w = fromMaybe 0 (descriptionAffineWeight affD)
+      factor <- case constantScalar scalarE of
+        Just c | op == BinOpDivide, c == 0 -> Left $ AffineSpaceScalingUnsupported op affD "division by zero"
+               | op == BinOpDivide         -> Right (1 / c)
+               | otherwise                 -> Right c
+        Nothing | w == 0    -> Right 1
+                | otherwise -> Left $ AffineSpaceScalingUnsupported op affD
+                    "a Point or DPoint can only be scaled by a numeric constant, since the scalar changes its weight"
+      Right $ reifyToTypeTerm (scaleAffineWeight factor affRepr)
+  where
+    aff1 = descriptionHasAffine d1
+    aff2 = descriptionHasAffine d2
+    plain | op == BinOpDivide = ProdTy d1 (reciprocalType d2)
+          | otherwise         = ProdTy d1 d2
+    (affD, scalarD, scalarE) | aff1      = (d1, d2, e2)
+                             | otherwise = (d2, d1, e1)
+
+-- | The grade kind of the result of a binary arithmetic operator. The
+-- operands must have the same kind, except that a scalar multiplying or
+-- dividing an affine-space value has its own, unrelated kind and the result
+-- takes the kind of the affine-space operand.
+scaledGradeKind :: BinOp -> Type 1 -> Type 0 -> Type 1 -> Type 0 -> Either TypeError (Type 1)
+scaledGradeKind op k1 d1 k2 d2
+  | op `elem` [BinOpTimes, BinOpDivide], descriptionHasAffine d1 = Right k1
+  | op `elem` [BinOpTimes, BinOpDivide], descriptionHasAffine d2 = Right k2
+  | otherwise = kindEquality k1 (IsSpec k2) >> Right k1
+
+-- | The value of a numeric expression built only from literals
+constantScalar :: Expr -> Maybe Rational
+constantScalar (NumFloat n)   = Just (rationalOfFloat n)
+constantScalar (NumInteger n) = Just (fromInteger n)
+constantScalar (UnOp UnOpNegate e) = negate <$> constantScalar e
+constantScalar (BinOp op e1 e2) = do
+  c1 <- constantScalar e1
+  c2 <- constantScalar e2
+  case op of
+    BinOpPlus   -> Just (c1 + c2)
+    BinOpMinus  -> Just (c1 - c2)
+    BinOpTimes  -> Just (c1 * c2)
+    BinOpDivide | c2 /= 0 -> Just (c1 / c2)
+    _           -> Nothing
+constantScalar _ = Nothing

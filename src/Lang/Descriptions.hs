@@ -116,6 +116,10 @@ instance Representation DescriptionsRepr where
         return $ singleton "Affine" (AffineSpace t 1)
     computeRepresentation (TyApp (TyCon ZeroP "DPoint") t) =
         return $ singleton "Affine" (AffineSpace t (-1))
+    computeRepresentation t@(TyApp (TyApp (TyCon ZeroP "Affine") space) w) =
+        case w of
+          TyRat r -> return $ singleton "Affine" (AffineSpace space r)
+          _       -> Left $ CannotComputeDescriptionRepresentation t
     computeRepresentation (WithTy t1 t2) = do
         d1 <- computeRepresentation t1
         d2 <- computeRepresentation t2
@@ -186,6 +190,19 @@ instance Representation DescriptionsRepr where
             else
                 Left $ DescriptionKeyMismatch (keys d2) (keys d1)
 
+-- | Multiply the affine weight of any affine-space component by a factor
+scaleAffineWeight :: Rational -> DescriptionsRepr -> DescriptionsRepr
+scaleAffineWeight c = Data.Map.Lazy.map scale
+  where
+    scale (AffineSpace t w) = AffineSpace t (c * w)
+    scale v                 = v
+
+-- | The affine weight of a description, if it has an affine-space component
+descriptionAffineWeight :: Type 0 -> Maybe Rational
+descriptionAffineWeight t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
+  Right repr | Just (AffineSpace _ w) <- Map.lookup "Affine" repr -> Just w
+  _ -> Nothing
+
 -- | Negate the grade of any affine-space ("Point"/"Vector") component of a
 -- description, leaving every other component unchanged. Used to implement
 -- subtraction as addition of a negated second operand, e.g.
@@ -196,13 +213,12 @@ negateAffineGrades = Data.Map.Lazy.map negOne
     negOne (AffineSpace t n) = AffineSpace t (negate n)
     negOne v                 = v
 
--- | Combine two description representations for `+`/`-` (BinOpPlus negates
--- neither side; BinOpMinus negates the affine grade of the second side
+-- | Combine two description representations for `+`/`-`
+-- (BinOpMinus negates the affine weight of the second side
 -- first). Every key must either match exactly -- ordinary units,
 -- quantities, species, basis descriptions are unaffected by `+`/`-` and
--- must simply agree -- or be the "Affine" key, whose grade combines
--- additively (Vector = 0, Point = 1), rejecting any result outside
--- {DPoint = -1, Vector = 0, Point = 1} (e.g. Point + Point).
+-- must simply agree -- or be the "Affine" key, whose weight combines
+-- additively (Vector = 0, Point = 1).
 combineDescriptionsForAddSub :: BinOp -> DescriptionsRepr -> DescriptionsRepr -> Either TypeError DescriptionsRepr
 combineDescriptionsForAddSub op d1 d2
     | keys d1 /= keys d2 = Left mismatchErr
@@ -216,19 +232,17 @@ combineDescriptionsForAddSub op d1 d2
 
     combineKey "Affine" v1 =
       case (v1, d2' ! "Affine") of
-        (AffineSpace t1 n1, AffineSpace t2 n2)
-          | t1 /= t2                  -> Left mismatchErr
-          | n1 + n2 `elem` [-1, 0, 1] -> Right $ AffineSpace t1 (n1 + n2)
-          | otherwise ->
-              Left $ AffineSpaceCombinationUndefined op (reifyToTypeTerm v1) (reifyToTypeTerm (d2 ! "Affine"))
+        (AffineSpace t1 w1, AffineSpace t2 w2)
+          | t1 /= t2  -> Left mismatchErr
+          | otherwise -> Right $ AffineSpace t1 (w1 + w2)
         _ -> Left mismatchErr
     combineKey k v1
       | v1 == d2' ! k = Right v1
       | otherwise      = Left mismatchErr
 
 -- | Whether a (not-yet-normalised) description type has an affine-space
--- ("Point"/"Vector") component. Affine-space values cannot be scaled, so
--- this guards `*`, `/` and `^`.
+-- ("Point"/"Vector") component. This guards `*`, `/` and `^`, where
+-- affine-space values can be scaled only in limited ways.
 descriptionHasAffine :: Type 0 -> Bool
 descriptionHasAffine t = case computeRepresentation t :: Either TypeError DescriptionsRepr of
   Right repr -> member "Affine" repr
@@ -294,7 +308,8 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm (AffineSpace t 0) = TyApp (tyCon0 "Vector") t
     reifyToTypeTerm (AffineSpace t 1) = TyApp (tyCon0 "Point")  t
     reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DPoint") t
-    reifyToTypeTerm (AffineSpace t _) = error "Not representable"
+    -- any other weight is written out, e.g. Affine[t, 2]
+    reifyToTypeTerm (AffineSpace t w) = TyApp (TyApp (tyCon0 "Affine") t) (TyRat w)
 
 
     -- | Equality on description representations
