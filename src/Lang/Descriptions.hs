@@ -76,7 +76,7 @@ data DescriptionRepr =
      FreeAGroup AGroupRepr
    | TypeTree (Type 0)
    | IndexType (Type 0)   -- ^ Exact-match index (e.g. Species): preserved through all ops, never combined
-   | AffineSpace (Type 0) Rational  -- ^ base space and affine weight (Point = 1, Vector = 0, DPoint = -1)
+   | AffineSpace (Type 0) Rational  -- ^ base space and affine weight (Point = 1, Vector = 0, NPoint = -1)
    deriving (Eq, Show)
 
 -- | Internal free representation of abelian groups
@@ -114,7 +114,7 @@ instance Representation DescriptionsRepr where
         return $ singleton "Affine" (AffineSpace t 0)
     computeRepresentation (TyApp (TyCon ZeroP "Point") [t]) =
         return $ singleton "Affine" (AffineSpace t 1)
-    computeRepresentation (TyApp (TyCon ZeroP "DPoint") [t]) =
+    computeRepresentation (TyApp (TyCon ZeroP "NPoint") [t]) =
         return $ singleton "Affine" (AffineSpace t (-1))
     computeRepresentation t@(TyApp (TyApp (TyCon ZeroP "Affine") space) w) =
         case w of
@@ -175,7 +175,7 @@ instance Representation DescriptionsRepr where
             -- constructor, so re-applying it reconstructs the source
             -- syntax. "Affine" is purely internal bookkeeping: its value
             -- already reifies to the complete type (Point[t]/Vector[t]/
-            -- DPoint[t]), so it must be spliced in as-is, not re-wrapped
+            -- NPoint[t]), so it must be spliced in as-is, not re-wrapped
             -- as e.g. "Affine[Point[t]]".
             wrapKey "Affine" v' = reifyToTypeTerm v'
             wrapKey k'        v' = TyApp (tyCon0 k') [reifyToTypeTerm v']
@@ -206,7 +206,7 @@ descriptionAffineWeight t = case computeRepresentation t :: Either TypeError Des
 -- | Negate the grade of any affine-space ("Point"/"Vector") component of a
 -- description, leaving every other component unchanged. Used to implement
 -- subtraction as addition of a negated second operand, e.g.
--- Vector(0) - Point(1) = Vector(0) + Point(-1) = DPoint(-1).
+-- Vector(0) - Point(1) = Vector(0) + Point(-1) = NPoint(-1).
 negateAffineGrades :: DescriptionsRepr -> DescriptionsRepr
 negateAffineGrades = Data.Map.Lazy.map negOne
   where
@@ -307,7 +307,7 @@ instance Representation DescriptionRepr where
     reifyToTypeTerm (TypeTree t) = t
     reifyToTypeTerm (AffineSpace t 0)    = TyApp (tyCon0 "Vector") [t]
     reifyToTypeTerm (AffineSpace t 1)    = TyApp (tyCon0 "Point")  [t]
-    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "DPoint") [t]
+    reifyToTypeTerm (AffineSpace t (-1)) = TyApp (tyCon0 "NPoint") [t]
     -- any other weight is written out, e.g. Affine[t, 2]
     reifyToTypeTerm (AffineSpace t w) = TyApp (tyCon0 "Affine") [t, TyRat w]
 

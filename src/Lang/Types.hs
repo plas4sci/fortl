@@ -181,7 +181,7 @@ check_ gamma (UnOp op e) ty@(isGradableType -> Just (baseType, gradeType, desc))
     UnOpNegate -> do
       assert (isJust $ isGradableNumericType ty) (ExpectingNumericType ty)
       -- negating an affine-space value negates its weight (-Point is a
-      -- DPoint), so the operand does not have the expected type itself
+      -- NPoint), so the operand does not have the expected type itself
       if descriptionHasAffine desc
         then synth gamma (UnOp op e) >>= \ty' -> typeEquality ty (IsSpec ty')
         else check gamma e ty
@@ -906,11 +906,11 @@ floatWithDescription d = do
   d' <- normalisationByEvaluation d
   checkKind (TyApp (tyCon0 "Float") [d']) type0
 
--- | Affine-space (Point/Vector/DPoint) values cannot be raised to a power:
+-- | Affine-space (Point/Vector/NPoint) values cannot be raised to a power:
 -- reject `^` when the description involves one.
 rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
 rejectAffineScaling op d
-  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d "affine-space values (Point/Vector/DPoint) cannot be raised to a power"
+  | descriptionHasAffine d = Left $ AffineSpaceScalingUnsupported op d "affine-space values (Point/Vector/NPoint) cannot be raised to a power"
   | otherwise               = Right ()
 
 -- | Computes the description of `e1 * e2` or `e1 / e2` given the operand descriptions.
@@ -939,7 +939,7 @@ scaleDescription op e1 d1 e2 d2
                | otherwise                 -> Right c
         Nothing | w == 0    -> Right 1
                 | otherwise -> Left $ AffineSpaceScalingUnsupported op affD
-                    "a Point or DPoint can only be scaled by a numeric constant, since the scalar changes its weight"
+                    "a Point or NPoint can only be scaled by a numeric constant, since the scalar changes its weight"
       Right $ reifyToTypeTerm (scaleAffineWeight factor affRepr)
   where
     aff1 = descriptionHasAffine d1

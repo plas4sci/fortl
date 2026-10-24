@@ -1,8 +1,8 @@
 """
 Vector - Point is the one affine-space combination that produces a grade
-outside {Vector, Point} (-1, i.e. a "DPoint"). 
+outside {Vector, Point} (-1, i.e. a "NPoint"). 
 """
 x : Float[Unit[s] & Point[Time]] = 10.0
 y : Float[Unit[s] & Vector[Time]] = 5.0
-dv : Float[Unit[s] & DPoint[Time]] = y - x
+dv : Float[Unit[s] & NPoint[Time]] = y - x
 it = dv
