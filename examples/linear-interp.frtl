@@ -1,0 +1,40 @@
+# Affine-space tutorial
+
+"""
+Linear interpolation of two points `p` and `q`
+with a weight scalar `t`:
+"""
+p : Float[Unit[s] & Point[Time]] = 10.0
+q : Float[Unit[s] & Point[Time]] = 4.0
+"""The scalar t=0.25 has weight 1/4 tracked in its type"""
+t : Float[Unit[1] & Affine[1, 1/4]] = 0.25
+"""
+Affine[1, 1/4]: 1.0 - t is a scalar of weight 3/4,
+and the weights of the two terms sum to 1, hence we get
+back a point from the linear interpolation.
+"""
+r : Float[Unit[s] & Point[Time]] = (1.0 - t) * p + t * q
+it1 = r
+
+"""However, we may not be able to statically resolve the
+parameter, and so in this case we can fall back to the Scalar
+construction, where Scalar : AffineSpace"""
+"""
+A Scalar is a scalar number of unknown value. It can scale a
+Vector (weight 0), so linear interpolation p + t * (q - p)
+works for any t, including a parameter whose value is not
+known statically.
+"""
+def lerp (p, q, t) -> Float[Unit[s] & Point[Time]]:
+  p : Float[Unit[s] & Point[Time]]
+  q : Float[Unit[s] & Point[Time]]
+  t : Float[Scalar]
+  return p + t * (q - p)
+
+a : Float[Unit[s] & Point[Time]] = 10.0
+b : Float[Unit[s] & Point[Time]] = 4.0
+it2 = lerp(a, b, 0.25)
+
+# The two results are the same here, but may not be for all
+# floating points
+it = (it1, it2)
