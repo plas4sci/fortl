@@ -5,6 +5,22 @@ module Lang.Primitives where
 
 import Lang.Syntax
 
+-- Built in functions
+
+-- TODO:
+-- add sqrt
+--   ("sqrt", ImpliftFunTy "d" desc2 (ImplicitFunTy "u"
+--              FunTY (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (TyVar "u"))
+--                    (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (ExponentTy (TyVar "u") 0.5)
+
+builtinFunctions :: [(Identifier, Type 0)]
+builtinFunctions = [
+    ("ones", FunTy [tyCon0 "int"] (TyApp (tyCon0 "array") (tyCon0 "float")))
+  , ("zeros", FunTy [tyCon0 "int"] (TyApp (tyCon0 "array") (tyCon0 "float")))
+ ]
+
+-- Some smart constructors for building various key types
+
 type0 :: Type 1
 type0 = tyCon1 "Type"
 
@@ -13,6 +29,8 @@ type1 = tyCon2 "Type"
 
 natTy :: Type 0
 natTy = tyCon0 "Nat"
+
+-- Smart constructors for graded types
 
 floatTy :: Type 0 -> Type 0
 floatTy t = TyApp (ImplicitTyApp (tyCon0 "Float") (tyCon1 "Base")) [t]
@@ -32,15 +50,7 @@ desc = tyCon1 "Descriptor"
 desc2 :: Type 2
 desc2 = tyCon2 "Descriptor"
 
--- TODO:
--- prims :: [(Identifier, Type 0)]
--- prims = [
---   ("sqrt", ImpliftFunTy "d" desc2 (ImplicitFunTy "u"
---              FunTY (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (TyVar "u"))
---                    (TyApp (ImplicitTyApp (tyCon0 "Float") (TyVar d)) (ExponentTy (TyVar "u") 0.5)
-
--- ]
-
+-- Built-in data constructor names, pair with their types
 dataConstructors :: [(Identifier, Type 0)]
 dataConstructors = [
     ("None"     , tyCon0 "None")
@@ -50,8 +60,10 @@ dataConstructors = [
 
 typeConstructors :: [(Identifier, Type 1)]
 typeConstructors = [
+     -- Arrays
+    ("array"    , FunTy [type0] type0)
      -- Graded float
-    ("Float"    , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
+  , ("Float"    , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded integer
   , ("Integer"  , ImplicitFunTy "d" desc2 (FunTy [tyVar "d"] type0))
      -- Graded string
