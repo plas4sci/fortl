@@ -274,10 +274,10 @@ data Type (n :: Nat) where
     -- TODO: make just a type constructor
     ExponentTy :: Type 0 -> Rational -> Type 0
 
-    -- Additive inverse of a description, e.g. the weight of -Point[T] is -1
+    -- Additive inverse of a description, e.g. the weight of -Point is -1
     NegTy :: Type 0 -> Type 0
 
-    -- Exact rational literals, e.g. the weight in Affine[Time, 1/2]
+    -- Exact rational literals, e.g. the weight in Affine[1/2]
     TyRat :: Rational -> Type 0
 
 tyVar :: Identifier -> Type l

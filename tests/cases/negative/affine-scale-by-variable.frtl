@@ -1,6 +1,6 @@
 """
 Scaling a Point by a non-constant changes its weight by an unknown amount.
 """
-x : Float[Unit[s] & Point[Time]] = 10.0
+x : Float[Unit[s] & Point] = 10.0
 k : Float[1] = 0.5
 it = x * k

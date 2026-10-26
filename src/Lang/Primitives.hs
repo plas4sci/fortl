@@ -38,15 +38,16 @@ basisTy t     = TyApp (tyCon0 "Basis") [t]
 angleQuantity :: Type 0
 angleQuantity = quantityTy (tyCon0 "Angle")
 
--- | Affine-space descriptors over a base space: the names for the weights
--- 1, 0 and -1, and the general form Affine[space, weight]
-pointTy, vectorTy, npointTy :: Type 0 -> Type 0
-pointTy t  = TyApp (tyCon0 "Point") [t]
-vectorTy t = TyApp (tyCon0 "Vector") [t]
-npointTy t = TyApp (tyCon0 "NPoint") [t]
+-- | Affine-space descriptors: the names for the weights 1, 0 and -1, the
+-- general form Affine[weight], and a scalar of known value Scalar[c]
+pointTy, vectorTy, npointTy :: Type 0
+pointTy  = tyCon0 "Point"
+vectorTy = tyCon0 "Vector"
+npointTy = tyCon0 "NPoint"
 
-affineTy :: Type 0 -> Rational -> Type 0
-affineTy t w = TyApp (tyCon0 "Affine") [t, TyRat w]
+affineTy, scalarTy :: Rational -> Type 0
+affineTy w = TyApp (tyCon0 "Affine") [TyRat w]
+scalarTy c = TyApp (tyCon0 "Scalar") [TyRat c]
 
 desc :: Type 1
 desc = tyCon1 "Descriptor"
@@ -63,7 +64,7 @@ desc2 = tyCon2 "Descriptor"
 
 -- ]
 
--- | The kind of type-level rationals such as the weight in Affine[T, 1/2]
+-- | The kind of type-level rationals such as the weight in Affine[1/2]
 ratKind :: Type 1
 ratKind = tyCon1 "Rational"
 
@@ -91,11 +92,11 @@ typeConstructors = [
   , ("Basis"    , FunTy [type0] (tyCon1 "BasisType")) -- TODO: type0 should be the open type Bases here
   , ("Dimension", FunTy [dimensionBase] (tyCon1 "Dim"))
   -------
-  , ("Point",     FunTy [type0] (tyCon1 "AffineSpace"))
-  , ("Vector",    FunTy [type0] (tyCon1 "AffineSpace"))
-  , ("NPoint",    FunTy [type0] (tyCon1 "AffineSpace"))
-  , ("Scalar",    tyCon1 "AffineSpace")
-  , ("Affine",    FunTy [type0, ratKind] (tyCon1 "AffineSpace")) -- Affine[space, weight]
+  , ("Point",     tyCon1 "AffineSpace")
+  , ("Vector",    tyCon1 "AffineSpace")
+  , ("NPoint",    tyCon1 "AffineSpace")
+  , ("Affine",    FunTy [ratKind] (tyCon1 "AffineSpace")) -- Affine[weight]
+  , ("Scalar",    FunTy [ratKind] (tyCon1 "AffineSpace")) -- Scalar[value]
   , ("None"     , type0)
     -- The standard 7 SI base dimensions
   , ("T"        , dimensionBase) -- Time

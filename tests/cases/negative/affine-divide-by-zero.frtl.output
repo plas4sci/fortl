@@ -1,1 +1,1 @@
-tests/cases/negative/affine-divide-by-zero.frtl:2:8: The power (Unit[1] & Affine[1, 0])^-1 is not defined for affine spaces: a position cannot be squared or inverted, and a scalar's weight needs an integer power (and 0 has no inverse)
+tests/cases/negative/affine-divide-by-zero.frtl:2:8: The power (Unit[1] & Scalar[0])^-1 is not defined for affine spaces: a position cannot be squared or inverted, and a scalar's value needs an integer power (and 0 has no inverse)

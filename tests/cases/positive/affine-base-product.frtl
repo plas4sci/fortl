@@ -1,7 +1,6 @@
 """
-Base spaces combine like indices with 1 as the unit, so a scalar times a
-point over Time is over Time again, with the weights multiplied.
+A known scalar times a Point multiplies the weight.
 """
-a : Float[Unit[s] & (Point[Time] * Affine[1, 1/2])] = 3.0
-b : Float[Unit[s] & Affine[Time, 1/2]] = a
+a : Float[Unit[s] & (Point * Scalar[1/2])] = 3.0
+b : Float[Unit[s] & Affine[1/2]] = a
 it = b

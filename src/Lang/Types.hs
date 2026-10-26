@@ -177,7 +177,7 @@ check_ gamma (Pair e1 e2) (ProdTy t1 t2) = do
   check gamma e2 t2
 
 -- A numeric expression built only from literals is itself a literal, so it
--- can be checked at any numeric type, e.g. x : Point[Time] = 3.0 * 2.0
+-- can be checked at any numeric type, e.g. x : Float[Unit[s] & Point] = 3.0 * 2.0
 check_ gamma e ty@(isGradableNumericType -> Just (_, _, desc))
   | isCompound e, Just c <- constantScalar e =
       normalisationByEvaluation desc >> checkScalarValue c desc
@@ -346,7 +346,7 @@ synth_ gamma (App (Var f) [e]) | f `elem` ["sin", "cos", "tan"] = do
   t <- synth gamma e
   case isGradableNumericType t of
     Just ("Float", _, d) -> do
-      assert (not (descriptionHasAffine d) || descriptionIsScalar d) $
+      assert (not (descriptionHasAffine d) || descriptionIsScalar d || descriptionAffineWeight d == Just 0) $
         ContextualError $ f <> " cannot be applied to an affine-space (Point/Vector) value " <> pprint t
       units      <- descriptionComponent "Unit" d
       dimensions <- descriptionComponent "Dimension" d
@@ -463,11 +463,11 @@ synth_ gamma (Lift e d) = do
   (d', kd) <- synthKind d
   _ <- checkSort kd desc2
 
-  -- A scalar of known weight, Affine[1, w], has the value w, so it can only
-  -- be given to a constant of that value (a Point, Vector or Scalar can be
-  -- given to anything, since their values are not fixed by their weights)
+  -- A scalar of known value, Scalar[w], can only be given to a constant of
+  -- that value (a Point or Vector can be given to anything, since their
+  -- values are not fixed by their weights)
   case descriptionAffine d' of
-    Just (Affine s w) | s == unitDescription ->
+    Just (Scalar w) ->
       case constantScalar e of
         Just c  -> checkScalarValue c d'
         Nothing -> Left $ ContextualError $ "Only a constant can be labelled with the scalar type "
@@ -534,8 +534,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
   -- A scalar scaling a value has a kind of its own, which is joined to the other's.
   case (constantScalar e1, constantScalar e2) of
     (Nothing, Nothing)
-      | isScaling && (descriptionIsScalar g1 || descriptionIsScalar g2
-                      || descriptionHasAffine g1 /= descriptionHasAffine g2) -> Right ()
+      | isScaling && (descriptionHasAffine g1 || descriptionHasAffine g2) -> Right ()
       | otherwise -> kindEquality desc1 (IsSpec desc2)
     _                  -> Right ()
   -- If either side is a literal then recompute its grade
@@ -557,7 +556,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
   -- literal, has not said that it is a scalar
   when (isScaling && descriptionHasAffine g1 /= descriptionHasAffine g2) $
     Left $ AffineSpaceScalingUnsupported op (if descriptionHasAffine g1 then g1 else g2)
-      "the other operand has no affine-space part; a number of unknown value should be declared as Float[Scalar]"
+      "the other operand has no affine-space part; a number that does not depend on an origin should be declared as a Vector, e.g. Float[Vector]"
   g <- case op of
         BinOpExp ->
           case e2 of
@@ -566,11 +565,6 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
               normalisationByEvaluation (ExponentTy g1 (rationalOfFloat n))
             _ -> error "Bug"
         BinOpTimes  -> normalisationByEvaluation (ProdTy g1 g2)
-        -- the ratio of two Vectors over the same space is a Scalar of unknown value
-        BinOpDivide | Just s <- vectorSpace g1, Just s == vectorSpace g2 -> do
-          q1 <- dropAffine g1
-          q2 <- dropAffine g2
-          normalisationByEvaluation (WithTy (ProdTy q1 (reciprocalType q2)) (tyCon0 "Scalar"))
         BinOpDivide -> normalisationByEvaluation (ProdTy g1 (reciprocalType g2))
         BinOpPlus   -> normalisationByEvaluation (SumTy g1 g2)
         BinOpMinus  -> normalisationByEvaluation (SumTy g1 (NegTy g2))
@@ -578,10 +572,6 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
   return $ TyApp (ImplicitTyApp (tyCon0 baseType1) (if isScaling then joinKinds desc1 desc2 else desc1)) [g]
   where
     isScaling = op `elem` [BinOpTimes, BinOpDivide]
-    -- the base space of a Vector, other than the scalars' trivial space
-    vectorSpace d = case descriptionAffine d of
-      Just (Affine s 0) | s /= unitDescription -> Just s
-      _                                        -> Nothing
 
 {-
 
@@ -748,11 +738,11 @@ errorToString (DimensionAndUnitIncoherence dimension unit) =
 
 errorToString (AffineSpaceProductUndefined t1 t2) =
   "The product of " <> pprint (normalise t1) <> " and " <> pprint (normalise t2)
-  <> " is not defined for affine spaces: a position can only be scaled by a scalar of known weight"
+  <> " is not defined for affine spaces: a position can only be scaled by a scalar of known value"
 
 errorToString (AffineSpacePowerUndefined t) =
   "The power " <> pprint (normalise t) <> " is not defined for affine spaces: a position cannot be "
-  <> "squared or inverted, and a scalar's weight needs an integer power (and 0 has no inverse)"
+  <> "squared or inverted, and a scalar's value needs an integer power (and 0 has no inverse)"
 
 errorToString (AffineSpaceScalingUnsupported op t reason) =
   "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)
@@ -878,16 +868,16 @@ floatWithDescription d = do
 -- reject `^` when the description involves one.
 rejectAffineScaling :: BinOp -> Type 0 -> Either TypeError ()
 rejectAffineScaling op d
-  | descriptionHasAffine d && not (descriptionIsScalar d) =
+  | descriptionHasAffine d && not (descriptionIsScalar d) && descriptionAffineWeight d /= Just 0 =
       Left $ AffineSpaceScalingUnsupported op d "affine-space values (Point/Vector/NPoint) cannot be raised to a power"
   | otherwise               = Right ()
 
--- | A constant checked at a scalar type, Affine[1, w], must have the value w;
+-- | A constant checked at a scalar type, Scalar[w], must have the value w;
 -- at any other type it is just a value
 checkScalarValue :: Rational -> Type 0 -> Either TypeError ()
 checkScalarValue c d = case descriptionAffine d of
-  Just (Affine s w) | s == unitDescription, w /= c ->
-    Left $ ContextualError $ "The constant " <> pprint (TyRat c) <> " does not have the weight " <> pprint (TyRat w)
+  Just (Scalar w) | w /= c ->
+    Left $ ContextualError $ "The constant " <> pprint (TyRat c) <> " does not have the value " <> pprint (TyRat w)
       <> " of the scalar type " <> pprint (scalarDescription w)
   _ -> Right ()
 
@@ -895,10 +885,10 @@ checkScalarValue c d = case descriptionAffine d of
 -- based on a lifting of the literal `l`: the scalar of weight `l` for an
 -- affine space component, and the unit (a dimensionless number) for any
 -- other component. For example,
---   liftLiteral (UoM & AffineSpace) l = 1 & Affine[1, l]
+--   liftLiteral (UoM & AffineSpace) l = Unit[1] & Scalar[l]
 liftLiteral :: Type 1 -> Rational -> Either TypeError (Type 0)
 liftLiteral (WithTy d1 d2) l = WithTy <$> liftLiteral d1 l <*> liftLiteral d2 l
-liftLiteral (TyCon _ "AffineSpace") l = Right $ affineTy (tyCon0 "1") l
+liftLiteral (TyCon _ "AffineSpace") l = Right $ scalarTy l
 -- the other components are the dimensionless element of the kind's descriptor
 liftLiteral (TyCon _ "UoM") _         = Right $ unitTy (tyCon0 "1")
 liftLiteral (TyCon _ "Dim") _         = Right $ dimensionTy (tyCon0 "1")

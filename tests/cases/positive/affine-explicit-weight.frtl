@@ -1,11 +1,11 @@
 """
-Affine[T, w] is the general affine-space type with weight w. Weights 1, 0 and
+Affine[w] is the general affine-space type with weight w. Weights 1, 0 and
 -1 are also written Point, Vector and NPoint, and weights can be any rational.
 """
-a : Float[Unit[s] & Point[Time]] = 10.0
-b : Float[Unit[s] & Point[Time]] = 4.0
-sum : Float[Unit[s] & Affine[Time, 2]] = a + b
-half : Float[Unit[s] & Affine[Time, 1/2]] = sum * 0.25
-back : Float[Unit[s] & Affine[Time, 1]] = half * 2.0
-neg : Float[Unit[s] & Affine[Time, -1]] = -a
+a : Float[Unit[s] & Point] = 10.0
+b : Float[Unit[s] & Point] = 4.0
+sum : Float[Unit[s] & Affine[2]] = a + b
+half : Float[Unit[s] & Affine[1/2]] = sum * 0.25
+back : Float[Unit[s] & Affine[1]] = half * 2.0
+neg : Float[Unit[s] & Affine[-1]] = -a
 it = (back, neg)

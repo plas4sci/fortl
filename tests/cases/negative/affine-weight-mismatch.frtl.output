@@ -1,1 +1,1 @@
-tests/cases/negative/affine-weight-mismatch.frtl:6:38: Description equality failed between Point[Time] and Affine[Time, 2]
+tests/cases/negative/affine-weight-mismatch.frtl:6:32: Description equality failed between Point and Affine[2]

@@ -1,9 +1,9 @@
 """
-Linear interpolation. A scalar t of weight 1/4 has type Affine[1, 1/4]: 1.0 - t
-is a scalar of weight 3/4, and the weights of the two terms sum to 1.
+Linear interpolation. A scalar t of weight 1/4 has type Scalar[1/4]: 1.0 - t
+is the scalar 3/4, and the weights of the two terms sum to 1.
 """
-p : Float[Unit[s] & Point[Time]] = 10.0
-q : Float[Unit[s] & Point[Time]] = 4.0
-t : Float[Unit[1] & Affine[1, 1/4]] = 0.25
-r : Float[Unit[s] & Point[Time]] = (1.0 - t) * p + t * q
+p : Float[Unit[s] & Point] = 10.0
+q : Float[Unit[s] & Point] = 4.0
+t : Float[Unit[1] & Scalar[1/4]] = 0.25
+r : Float[Unit[s] & Point] = (1.0 - t) * p + t * q
 it = r

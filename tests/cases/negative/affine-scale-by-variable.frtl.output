@@ -1,1 +1,1 @@
-tests/cases/negative/affine-scale-by-variable.frtl:6:8: Cannot use * with the affine-space value Unit[s] & Point[Time]: the other operand has no affine-space part; a number of unknown value should be declared as Float[Scalar]
+tests/cases/negative/affine-scale-by-variable.frtl:6:8: Cannot use * with the affine-space value Unit[s] & Point: the other operand has no affine-space part; a number that does not depend on an origin should be declared as a Vector, e.g. Float[Vector]
