@@ -127,7 +127,7 @@ check_ gamma (Var x) ty =
   case lookup x gamma <|> lookup x dataConstructors of
     Nothing -> Left $ VariableNotFound x
     Just t ->
-      case typeEquality ty (IsSpec t) of
+      case typeSubsumption t (IsSpec ty) of
         Right () -> Right ()
         Left err -> Left $ TypeCheckFailure t ty (let ?srcFile = "" in errorToString err)
 
@@ -150,7 +150,7 @@ check_ gamma (Sig e tyA) ty =
   case checkKind tyA type0 of
     Left err -> Left err
     Right tyA' ->
-      case typeEquality ty (IsSpec tyA') of
+      case typeSubsumption tyA' (IsSpec ty) of
         Right () -> check_ gamma e tyA'
         Left err -> Left $ TypeCheckFailure tyA' ty (let ?srcFile = "" in errorToString err)
 
@@ -187,19 +187,19 @@ check_ gamma e ty@(isGradableNumericType -> Just (_, _, desc))
     isCompound _          = False
 
 -- Operators have their type synthesised from their operands and compared
-check_ gamma e@(BinOp {}) ty = synth gamma e >>= \ty' -> typeEquality ty' (IsSpec ty)
-check_ gamma e@(UnOp {})  ty = synth gamma e >>= \ty' -> typeEquality ty' (IsSpec ty)
+check_ gamma e@(BinOp {}) ty = synth gamma e >>= \ty' -> typeSubsumption ty' (IsSpec ty)
+check_ gamma e@(UnOp {})  ty = synth gamma e >>= \ty' -> typeSubsumption ty' (IsSpec ty)
 
 check_ gamma (Pair _ _) t = Left $ NonProductTypeToPair t
 
 check_ gamma (Fst e) t =
   case synth gamma e of
-    Right (ProdTy t1 t2) -> typeEquality t1 (IsSpec t)
+    Right (ProdTy t1 t2) -> typeSubsumption t1 (IsSpec t)
     _ -> Left $ ExpectingProductType e t
 
 check_ gamma (Snd e) t =
   case synth gamma e of
-    Right (ProdTy t1 t2) -> typeEquality t2 (IsSpec t)
+    Right (ProdTy t1 t2) -> typeSubsumption t2 (IsSpec t)
     _ -> Left $ ExpectingProductType e t
 
 check_ gamma (Case e (x,e1) (y,e2)) t =
@@ -230,7 +230,7 @@ check_ gamma expr tyA =
   case synth gamma expr of
     Left err -> Left $ ChainedError err (CannotSynthType expr)
     Right tyA' ->
-      case typeEquality tyA' (IsSpec tyA) of
+      case typeSubsumption tyA' (IsSpec tyA) of
         Right () -> Right ()
         Left err -> Left $ ChainedError err (TypeMismatch tyA tyA')
 
@@ -622,20 +622,34 @@ checkAbsParams _ _ = Left $ ContextualError "Function abstraction has the wrong 
 
 -- Ask if two types are equal, where the second one is taken as the specification
 -- i.e., it already has some constraints associated with it.
+-- | Whether types are compared for equality, or for subsumption of the first
+-- (actual) type by the second (expected) one
+data TypeRelation = Equal | Subsumed deriving Eq
+
 typeEquality :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
-typeEquality (isGradableNumericType -> Just (baseType1, gradeType1, d1))
+typeEquality = typeRelation Equal
+
+-- | `typeSubsumption actual (IsSpec expected)`: the actual type can be used
+-- where the expected one is, e.g. Scalar[c] where a Vector is expected
+typeSubsumption :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
+typeSubsumption = typeRelation Subsumed
+
+typeRelation :: TypeRelation -> Type 0 -> Specificational (Type 0) -> Either TypeError ()
+typeRelation rel (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
   if baseType1 == baseType2
     then do
       () <- kindEquality gradeType1 (IsSpec gradeType2)
-      descriptionEquality d1 (IsSpec d2)
+      if rel == Subsumed
+        then descriptionSubsumption d1 (IsSpec d2)
+        else descriptionEquality d1 (IsSpec d2)
 
     else Left $ BaseTypeMismatch baseType1 baseType2
-typeEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
-  (typeEquality t1 (IsSpec t1') >> typeEquality t2 (IsSpec t2')) <|>
-  (typeEquality t1 (IsSpec t2') >> typeEquality t2 (IsSpec t1'))
+typeRelation rel (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
+  (typeRelation rel t1 (IsSpec t1') >> typeRelation rel t2 (IsSpec t2')) <|>
+  (typeRelation rel t1 (IsSpec t2') >> typeRelation rel t2 (IsSpec t1'))
 
-typeEquality t1 (IsSpec t2) =
+typeRelation _ t1 (IsSpec t2) =
   if t1 == t2
     then Right ()
     else

@@ -26,12 +26,24 @@ descriptionEquality t1 (IsSpec t2) = do
     d2 <- computeRepresentation t2 :: Either TypeError DescriptionsRepr
     d1 `reprEquality` (IsSpec d2)
 
+-- | Subsumption on descriptions: the first can be used where the second is
+-- expected, e.g. Scalar[c] where a Vector is expected
+descriptionSubsumption :: Type 0 -> Specificational (Type 0) -> Either TypeError ()
+descriptionSubsumption t1 (IsSpec t2) = do
+    d1 <- computeRepresentation t1 :: Either TypeError DescriptionsRepr
+    d2 <- computeRepresentation t2 :: Either TypeError DescriptionsRepr
+    d1 `reprSubsumption` (IsSpec d2)
+
 -- # Representations class
 
 class Representation a where
     computeRepresentation :: Type 0 -> Either TypeError a
     reifyToTypeTerm       :: a -> Type 0
     reprEquality          :: a -> Specificational a -> Either TypeError ()
+    -- | The preorder of a descriptor's grades, where a less informative
+    -- grade is higher; by default only equal grades are related
+    reprSubsumption       :: a -> Specificational a -> Either TypeError ()
+    reprSubsumption = reprEquality
 
 -- | Normalize a description type by computing its representation the reifying
 normalisationByEvaluation :: Type 0 -> Either TypeError (Type 0)
@@ -221,6 +233,13 @@ instance Representation DescriptionsRepr where
             else
                 Left $ DescriptionKeyMismatch (keys d2) (keys d1)
 
+    -- | Subsumption on descriptions is component-wise
+    reprSubsumption :: DescriptionsRepr -> Specificational DescriptionsRepr -> Either TypeError ()
+    reprSubsumption d1 (IsSpec d2) =
+        if keys d1 == keys d2
+            then mapM_ (\((_k1, u1), (_k2, u2)) -> reprSubsumption u1 (IsSpec u2)) (zip (assocs d1) (assocs d2))
+            else Left $ DescriptionKeyMismatch (keys d2) (keys d1)
+
 -- | Product of two index types, such as the species of a Species descriptor:
 -- it is idempotent (S * S = S) with
 -- unit 1, and a mismatch is preserved for a later equality check
@@ -265,6 +284,12 @@ descriptionAffineWeight t = case descriptionAffine t of
   Just (Affine w) -> Just w
   _               -> Nothing
 
+-- | The grade immediately above an affine-space grade in the subsumption
+-- order, if there is one: a known scalar Scalar[c] is below Vector
+weakenAffine :: DescriptionRepr -> Maybe DescriptionRepr
+weakenAffine (AffineSpace (Scalar _)) = Just (AffineSpace (Affine 0))
+weakenAffine _                        = Nothing
+
 -- | Negate the grade of any affine-space ("Point"/"Vector") component of a
 -- description, leaving every other component unchanged. Used to implement
 -- subtraction as addition of a negated second operand, e.g.
@@ -293,14 +318,20 @@ combineDescriptionsForAddSub op d1 d2
     -- naturally for `-` too.
     mismatchErr = BinaryOperatorDescriptionMismatch op (reifyToTypeTerm d1) (reifyToTypeTerm d2)
 
-    combineKey "Affine" v1 =
-      case (v1, d2' ! "Affine") of
-        (AffineSpace (Affine w1), AffineSpace (Affine w2)) -> Right $ AffineSpace (Affine (w1 + w2))
-        (AffineSpace (Scalar c1), AffineSpace (Scalar c2)) -> Right $ AffineSpace (Scalar (c1 + c2))
-        -- a Vector of unknown value absorbs a known scalar
-        (AffineSpace (Affine 0), AffineSpace (Scalar _)) -> Right $ AffineSpace (Affine 0)
-        (AffineSpace (Scalar _), AffineSpace (Affine 0)) -> Right $ AffineSpace (Affine 0)
-        _ -> Left mismatchErr
+    -- the sum is defined on grades of the same sort; otherwise an operand is
+    -- weakened along the subsumption order until it is defined, e.g.
+    -- Scalar[c] + Point = Vector + Point = Point
+    combineKey "Affine" v1 = maybe (Left mismatchErr) Right $
+      firstJust [ addAffine a b | (a, b) <- weakenings v1 (d2' ! "Affine") ]
+      where
+        addAffine (AffineSpace (Affine w1)) (AffineSpace (Affine w2)) = Just $ AffineSpace (Affine (w1 + w2))
+        addAffine (AffineSpace (Scalar c1)) (AffineSpace (Scalar c2)) = Just $ AffineSpace (Scalar (c1 + c2))
+        addAffine _ _ = Nothing
+        -- the operands, then each weakened in turn, then both weakened
+        weakenings a b =
+          [(a, b)] ++ [(a', b) | Just a' <- [weakenAffine a]] ++ [(a, b') | Just b' <- [weakenAffine b]]
+                   ++ [(a', b') | Just a' <- [weakenAffine a], Just b' <- [weakenAffine b]]
+        firstJust xs = case [x | Just x <- xs] of { (x:_) -> Just x; [] -> Nothing }
     combineKey k v1
       | v1 == d2' ! k = Right v1
       | otherwise      = Left mismatchErr
@@ -401,6 +432,13 @@ instance Representation DescriptionRepr where
             else Left $ DescriptionEqualityFailure (reifyToTypeTerm (AffineSpace a2)) (reifyToTypeTerm (AffineSpace a1))
     reprEquality _ _ =
         Left MismatchedDescriptionReprTypes
+
+    -- | A known scalar is also a value independent of the origin, so it can
+    -- be used as a Vector, forgetting its value
+    reprSubsumption :: DescriptionRepr -> Specificational DescriptionRepr -> Either TypeError ()
+    reprSubsumption a1@(AffineSpace _) (IsSpec a2@(AffineSpace _))
+      | Just a1' <- weakenAffine a1, a1' == a2 = Right ()
+    reprSubsumption r1 spec = reprEquality r1 spec
 
 
 --------

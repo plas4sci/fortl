@@ -1,0 +1,21 @@
+"""
+A known scalar Scalar[c] is a value independent of the origin, so it is
+below Vector in the subsumption order: it can be used where a Vector is
+expected, and an operator that is not defined on it directly uses it as a
+Vector, e.g. a known number of seconds added to a time Point.
+"""
+def lerp (p, q, t) -> Float[Unit[s] & Point]:
+  p : Float[Unit[s] & Point]
+  q : Float[Unit[s] & Point]
+  t : Float[Vector]
+  return p + t * (q - p)
+
+p : Float[Unit[s] & Point] = 10.0
+q : Float[Unit[s] & Point] = 4.0
+w : Float[Scalar[1/4]] = 0.25
+v : Float[Vector] = w
+
+d : Float[Unit[s] & Scalar[2]] = 2.0
+later : Float[Unit[s] & Point] = p + d
+
+it = (lerp(p, q, w), (v, later))
