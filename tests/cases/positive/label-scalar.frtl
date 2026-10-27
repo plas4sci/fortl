@@ -1,0 +1,8 @@
+"""
+A constant can be labelled as the scalar of its value, and any value can be
+labelled as a Vector.
+"""
+x : Float[1] = 0.5
+t = label(0.25, Scalar[1/4])
+u = label(x, Vector)
+it = (t, u)

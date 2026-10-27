@@ -1,0 +1,7 @@
+"""
+The sum of two Points has weight 2, which is not a Point.
+"""
+x : Float[Unit[s] & Point] = 10.0
+y : Float[Unit[s] & Point] = 4.0
+z : Float[Unit[s] & Point] = x + y
+it = z

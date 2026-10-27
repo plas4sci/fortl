@@ -1,0 +1,1 @@
+tests/cases/negative/affine-divisor.frtl:2:10: The power (Unit[s] & Point)^-1 is not defined for affine spaces: a position cannot be squared or inverted, and a scalar's value needs an integer power (and 0 has no inverse)

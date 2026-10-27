@@ -1,0 +1,9 @@
+"""
+A literal-only expression is itself a literal, so it is a coordinate at a
+Point type, while a constant beside an affine value acts as a scalar.
+"""
+x : Float[Unit[s] & Point] = 3.0 * 2.0 + 1.0
+y : Float[Unit[s] & Point] = -3.0
+a : Float[Unit[s] & Point] = 10.0
+half : Float[Unit[s] & Point] = 0.5 * (a + x)
+it = (x, (y, half))

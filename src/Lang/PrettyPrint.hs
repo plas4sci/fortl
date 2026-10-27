@@ -6,6 +6,7 @@ module Lang.PrettyPrint where
 
 import Lang.Syntax
 import Data.List (intercalate)
+import Data.Ratio (numerator, denominator)
 
 -- Pretty print terms
 class PrettyPrint t where
@@ -93,9 +94,13 @@ instance PrettyPrint (Type i) where
     isLexicallyAtomic (TyVar _) = True
     isLexicallyAtomic (TyApp _ _) = True
     isLexicallyAtomic (ExponentTy _ _) = True
+    isLexicallyAtomic (TyRat _) = True
     isLexicallyAtomic _     = False
 
     pprint (TyCon _ c) = c
+    pprint (TyRat q)
+      | denominator q == 1 = show (numerator q)
+      | otherwise          = show (numerator q) ++ "/" ++ show (denominator q)
     pprint (ImplicitFunTy var tyA tyB) =
       "{" ++ var ++ " : " ++ pprint tyA ++ "} -> " ++ pprint tyB
       
@@ -116,7 +121,16 @@ instance PrettyPrint (Type i) where
     pprint (Forall var t) = "forall " ++ var ++ " . " ++ pprint t
     pprint (WithTy t1 t2) =
       bracket_pprint t1 ++ " & " ++ bracket_pprint t2
+    pprint (NegTy t1) =
+      "-" ++ bracket_pprint t1
     pprint (ExponentTy t1 1) =
       bracket_pprint t1
     pprint (ExponentTy t1 q) =
-      bracket_pprint t1 ++ "^" ++ show q
+      bracket_pprint t1 ++ "^" ++ pprintRational q
+
+-- | Integers print bare and other rationals as a parenthesised fraction,
+-- both of which can be read back as a type-level exponent
+pprintRational :: Rational -> String
+pprintRational q
+  | denominator q == 1 = show (numerator q)
+  | otherwise          = "(" ++ show (numerator q) ++ "/" ++ show (denominator q) ++ ")"

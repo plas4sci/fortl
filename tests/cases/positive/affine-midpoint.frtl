@@ -1,0 +1,8 @@
+"""
+The sum of two Points has weight 2 (Affine[2]), and scaling by a constant
+multiplies the weight, so the midpoint is a Point again.
+"""
+a : Float[Unit[s] & Point] = 10.0
+b : Float[Unit[s] & Point] = 4.0
+mid : Float[Unit[s] & Point] = (a + b) * 0.5
+it = mid

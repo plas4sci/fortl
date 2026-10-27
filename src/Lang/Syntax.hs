@@ -12,6 +12,8 @@
 module Lang.Syntax where
 
 import qualified Data.Set as Set
+import Numeric (showFFloat)
+import Data.Ratio (numerator, denominator)
 import GHC.TypeLits
 
 data Phase = Parsed | Desugared
@@ -270,13 +272,55 @@ data Type (n :: Nat) where
 
     -- For units
     -- TODO: make just a type constructor
-    ExponentTy :: Type 0 -> Float -> Type 0
+    ExponentTy :: Type 0 -> Rational -> Type 0
+
+    -- Additive inverse of a description, e.g. the weight of -Point is -1
+    NegTy :: Type 0 -> Type 0
+
+    -- Exact rational literals, e.g. the weight in Affine[1/2]
+    TyRat :: Rational -> Type 0
 
 tyVar :: Identifier -> Type l
 tyVar = TyVar
 
 tyCon0 :: Identifier -> Type 0
 tyCon0 id = TyCon ZeroP id
+
+-- | The rational denoted by a type-level numeral expression: a literal, a
+-- numeral such as 2 or -1, or products and integer powers of these, so that
+-- 1/2 (parsed as 1 * 2^-1) is a half
+rationalOfType :: Type 0 -> Maybe Rational
+rationalOfType (TyRat r) = Just r
+rationalOfType (TyCon ZeroP s)
+  | not (null s), all (`elem` "-0123456789.eE") s, any (`elem` "0123456789") s = Just (rationalOfDecimal s)
+rationalOfType (ProdTy t1 t2) = (*) <$> rationalOfType t1 <*> rationalOfType t2
+rationalOfType (ExponentTy t n)
+  | denominator n == 1 = do
+      r <- rationalOfType t
+      if r == 0 && n < 0 then Nothing else Just (r ^^ numerator n)
+rationalOfType _ = Nothing
+
+-- | Exact value of a decimal numeral such as "-1.5", "2" or "5.67e-8"
+rationalOfDecimal :: String -> Rational
+rationalOfDecimal str = sign * (fromInteger (read (intPart <> fracPart)) / 10 ^ length fracPart) * 10 ^^ expo
+  where
+    (sign, unsigned) = case str of
+      '-':rest -> (-1, rest)
+      _        -> (1, str)
+    (mantissa, expPart) = break (`elem` "eE") unsigned
+    (intPart, fracPart') = break (== '.') mantissa
+    fracPart = drop 1 fracPart'
+    expo :: Integer
+    expo = case expPart of
+      _:'+':e -> read e
+      _:e     -> read e
+      []      -> 0
+
+-- | Exact value of the shortest decimal that identifies a Float, so that
+-- 0.1 is 1/10 rather than its binary expansion
+rationalOfFloat :: Float -> Rational
+rationalOfFloat f = 
+  rationalOfDecimal (showFFloat Nothing f "")
 
 tyCon1 :: Identifier -> Type 1
 tyCon1 id = TyCon (SuccP ZeroP) id
@@ -349,6 +393,8 @@ instance {-# OVERLAPS #-} Term (Type 0) where
   boundVars (Forall var t) = var `Set.insert` boundVars t
   boundVars (WithTy t1 t2) = boundVars t1 `Set.union` boundVars t2
   boundVars (ExponentTy t1 _) = boundVars t1
+  boundVars (NegTy t1)     = boundVars t1
+  boundVars (TyRat _)      = Set.empty
 
   freeVars (FunTy ts t2)  = Set.unions (map freeVars ts) `Set.union` freeVars t2
   freeVars (ProdTy t1 t2) = freeVars t1 `Set.union` freeVars t2
@@ -360,6 +406,8 @@ instance {-# OVERLAPS #-} Term (Type 0) where
   freeVars (Forall var t) = var `Set.delete` freeVars t
   freeVars (WithTy t1 t2) = freeVars t1 `Set.union` freeVars t2
   freeVars (ExponentTy t1 _) = freeVars t1
+  freeVars (NegTy t1)     = freeVars t1
+  freeVars (TyRat _)      = Set.empty
 
   mkVar = TyVar
 

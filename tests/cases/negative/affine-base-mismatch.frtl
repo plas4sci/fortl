@@ -1,3 +1,7 @@
-x : Float[Point[Time]] = 10.0
-y : Float[Vector[Length]] = 5.0
+"""
+The space of a Point or Vector is given by its other components, so a time
+Point and a length Vector do not combine.
+"""
+x : Float[Unit[s] & Point] = 10.0
+y : Float[Unit[m] & Vector] = 5.0
 it = x + y

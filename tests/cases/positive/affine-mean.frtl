@@ -1,0 +1,8 @@
+"""
+A mean of three Points: weight 3 divided by the constant 3.0 is weight 1.
+"""
+a : Float[Unit[s] & Point] = 10.0
+b : Float[Unit[s] & Point] = 4.0
+c : Float[Unit[s] & Point] = 1.0
+m : Float[Unit[s] & Point] = (a + b + c) / 3.0
+it = m

@@ -1,0 +1,1 @@
+tests/cases/negative/affine-scalar-scales-point.frtl:8:12: The product of Vector and Unit[s] & Point is not defined for affine spaces: a position can only be scaled by a scalar of known value
