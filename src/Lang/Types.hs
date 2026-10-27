@@ -16,7 +16,6 @@ import Lang.TypeHelpers
 import Lang.TypeError
 
 import Data.Maybe (isJust)
-import Control.Monad (when)
 import Data.Either (isRight)
 
 -- Infer the type of an entire program
@@ -529,14 +528,6 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
   (baseType2, desc2, g2) <- tryM (isGradableNumericType t2) (Left $ ExpectingNumericType t2)
   -- Check base types agree
   assert (baseType1 == baseType2) (BinaryOperatorTypeError op (BaseTypeMismatch baseType1 baseType2))
-  -- Check that the descriptor kinds (desc1 and desc2) match, unless a side
-  -- is a literal, which takes its grade from the other side's kind
-  -- A scalar scaling a value has a kind of its own, which is joined to the other's.
-  case (constantScalar e1, constantScalar e2) of
-    (Nothing, Nothing)
-      | isScaling && (descriptionHasAffine g1 || descriptionHasAffine g2) -> Right ()
-      | otherwise -> kindEquality desc1 (IsSpec desc2)
-    _                  -> Right ()
   -- If either side is a literal then recompute its grade
   -- (note if both are literals we end up with the base grade, w.l.o.g.)
   (g1, desc1) <- case constantScalar e1 of
@@ -552,11 +543,6 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                   Just r2 -> do
                     g2' <- liftLiteral desc1 r2
                     return (g2', desc1)
-  -- An operand without an affine-space part beside one with, if not a
-  -- literal, has not said that it is a scalar
-  when (isScaling && descriptionHasAffine g1 /= descriptionHasAffine g2) $
-    Left $ AffineSpaceScalingUnsupported op (if descriptionHasAffine g1 then g1 else g2)
-      "the other operand has no affine-space part; a number that does not depend on an origin should be declared as a Vector, e.g. Float[Vector]"
   g <- case op of
         BinOpExp ->
           case e2 of
@@ -569,9 +555,9 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
         BinOpPlus   -> normalisationByEvaluation (SumTy g1 g2)
         BinOpMinus  -> normalisationByEvaluation (SumTy g1 (NegTy g2))
         _           -> Left $ ContextualError $ "Unexpected operator " <> pprint op
-  return $ TyApp (ImplicitTyApp (tyCon0 baseType1) (if isScaling then joinKinds desc1 desc2 else desc1)) [g]
-  where
-    isScaling = op `elem` [BinOpTimes, BinOpDivide]
+  -- the kind of the result is that of its description
+  (g', desc) <- synthKind g
+  return $ TyApp (ImplicitTyApp (tyCon0 baseType1) desc) [g']
 
 {-
 
@@ -639,7 +625,7 @@ typeRelation rel (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
   if baseType1 == baseType2
     then do
-      () <- kindEquality gradeType1 (IsSpec gradeType2)
+      -- the kinds follow from the descriptions
       if rel == Subsumed
         then descriptionSubsumption d1 (IsSpec d2)
         else descriptionEquality d1 (IsSpec d2)

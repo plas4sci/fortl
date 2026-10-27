@@ -301,16 +301,6 @@ kindEquality t1 (IsSpec t2) =
         (before, _ : after) -> sameComponents ks (before ++ after)
         (_, [])             -> False
 
--- | The kind with the components of both kinds, keeping the order of the
--- larger when one contains the other
-joinKinds :: Type 1 -> Type 1 -> Type 1
-joinKinds k1 k2
-  | all (`elem` cs2) cs1 = k2
-  | otherwise            = foldr1 WithTy (cs1 ++ filter (`notElem` cs1) cs2)
-  where
-    cs1 = withComponents k1
-    cs2 = withComponents k2
-
 -- | Flatten a (nested) product of descriptor kinds into its components
 withComponents :: Type 1 -> [Type 1]
 withComponents (WithTy t1 t2) = withComponents t1 ++ withComponents t2
