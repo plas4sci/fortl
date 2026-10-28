@@ -1,0 +1,133 @@
+---
+title: "Unit-checked inversion of borehole temperatures"
+subtitle: "A worked example in fortl"
+author: "Dominic Orchard"
+date: 2026-10-27
+abstract: |
+  We estimate the geothermal gradient and surface temperature from four
+  borehole temperature measurements by linear least squares, and use the
+  recovered gradient to infer surface heat flow. Every intermediate
+  quantity carries its units in its type, so fortl's type checker confirms
+  that the inversion is dimensionally consistent before anything is run.
+---
+
+# Introduction
+
+Inverse problems are a rich source of unit errors: the normal equations of
+a least-squares fit mix entries with *different* units, and it is easy to
+lose track of which is which. In this note we work through a small
+inversion in fortl, where each quantity is typed with its unit of measure.
+
+The code cells below run as the article is rendered, like a notebook: each
+cell sees the definitions made in earlier cells, and under each cell we show
+the type that fortl infers and the value it computes.
+
+# Data
+
+A borehole has thermistors at four depths:
+
+```{.fortl}
+z1 : Float[Unit[m]] = 100.0
+z2 : Float[Unit[m]] = 200.0
+z3 : Float[Unit[m]] = 300.0
+z4 : Float[Unit[m]] = 400.0
+```
+
+and records the following (noisy) temperatures:
+
+```{.fortl}
+t1 : Float[Unit[K]] = 285.7
+t2 : Float[Unit[K]] = 288.1
+t3 : Float[Unit[K]] = 290.6
+t4 : Float[Unit[K]] = 293.2
+```
+
+The data are plotted in @fig-fit, together with the fitted model derived
+below.
+
+![Borehole temperature measurements (points) and the least-squares fit
+$T(z) = T_0 + G z$ (line).](figures/borehole-fit.svg){#fig-fit width=70%}
+
+# Forward model and normal equations
+
+We model temperature as linear in depth,
+$$
+T(z) = T_0 + G\,z,
+$$
+with unknown surface temperature $T_0$ and geothermal gradient $G$.
+Minimising the squared misfit gives the normal equations
+$$
+\begin{pmatrix} n & \Sigma z \\ \Sigma z & \Sigma z^2 \end{pmatrix}
+\begin{pmatrix} T_0 \\ G \end{pmatrix}
+=
+\begin{pmatrix} \Sigma T \\ \Sigma zT \end{pmatrix}.
+$$
+The matrix entries have units $1$, $\mathrm{m}$ and $\mathrm{m}^2$, and the
+right-hand side has units $\mathrm{K}$ and $\mathrm{m\,K}$. In fortl, each
+of these sums gets its own type:
+
+```{.fortl}
+n : Float[Unit[1]] = 4.0
+
+sum_z   : Float[Unit[m]]     = z1 + z2 + z3 + z4
+sum_zz  : Float[Unit[m^2]]   = z1*z1 + z2*z2 + z3*z3 + z4*z4
+sum_t   : Float[Unit[K]]     = t1 + t2 + t3 + t4
+sum_zt  : Float[Unit[m * K]] = z1*t1 + z2*t2 + z3*t3 + z4*t4
+```
+
+# Solving by Cramer's rule
+
+The determinant has units $\mathrm{m}^2$:
+
+```{.fortl}
+det : Float[Unit[m^2]] = n * sum_zz - sum_z * sum_z
+```
+
+and Cramer's rule then gives the gradient and the surface temperature.
+The type checker confirms that they come out in $\mathrm{K/m}$ and
+$\mathrm{K}$ respectively:
+
+```{.fortl}
+grad : Float[Unit[K / m]] = (n * sum_zt - sum_z * sum_t) / det
+```
+
+```{.fortl}
+t0 : Float[Unit[K]] = (sum_zz * sum_t - sum_z * sum_zt) / det
+```
+
+## What a unit error looks like
+
+Suppose we mix up the terms in the numerator for the gradient. Fortl
+rejects the definition before running anything. (This cell is marked
+`error=true`, so the failure is expected and shown in amber.)
+
+```{.fortl error=true}
+bad_grad : Float[Unit[K / m]] = (n * sum_zz - sum_z * sum_t) / det
+```
+
+# Heat flow
+
+Fourier's law gives the surface heat flow $q = k\,G$ in terms of the
+thermal conductivity $k$ of the host rock:
+
+```{.fortl}
+conductivity : Float[Unit[J / (s * m * K)]] = 3.0
+heat_flow : Float[Unit[J / (s * m^2)]] = conductivity * grad
+```
+
+that is, about $75\ \mathrm{mW\,m^{-2}}$, a typical continental value.
+
+# The full program
+
+The complete inversion, including a residual check, lives in the
+repository. The excerpt below is taken straight from that file, so the
+article can't drift from the code. The result shown underneath comes from
+running the whole file:
+
+```{.fortl file="../examples/geotherm-inversion.frtl" lines="50-63"}
+```
+
+Individual bindings can also be picked out of a file, here the RMS misfit:
+
+```{.fortl file="../examples/geotherm-inversion.frtl" show="rms_misfit" echo=false}
+```

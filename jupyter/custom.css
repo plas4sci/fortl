@@ -1,0 +1,30 @@
+/* LaTeX-like markdown cells in JupyterLab (needs --LabApp.custom_css=True).
+   Latin Modern is installed as a user font in ~/Library/Fonts. */
+:root {
+  --jp-content-font-family: "Latin Modern Roman", "CMU Serif", Georgia, serif;
+}
+
+.jp-RenderedMarkdown {
+  font-family: "Latin Modern Roman", "CMU Serif", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.jp-RenderedMarkdown p,
+.jp-RenderedMarkdown li {
+  font-family: "Latin Modern Roman", "CMU Serif", Georgia, serif;
+  font-size: 16px;
+}
+.jp-RenderedMarkdown p {
+  text-align: justify;
+  hyphens: auto;
+}
+.jp-RenderedMarkdown h1,
+.jp-RenderedMarkdown h2,
+.jp-RenderedMarkdown h3 {
+  font-family: "Latin Modern Roman", "CMU Serif", Georgia, serif;
+  font-weight: bold;
+}
+.jp-RenderedMarkdown h1 {
+  font-weight: normal;
+  text-align: center;
+}

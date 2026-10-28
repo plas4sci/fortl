@@ -1,0 +1,32 @@
+project:
+  type: default
+  output-dir: _output
+
+# fortl cells are handled by the filter, not by a Jupyter/knitr engine
+engine: markdown
+
+filters:
+  - fortl
+
+fortl:
+  command: fortl
+  repo-root: ..
+  repo-url: https://github.com/plas4sci/fortl/blob/main/
+
+format:
+  html:
+    theme: cosmo
+    css: paper.css
+    resources:
+      - fonts/
+    toc: true
+    number-sections: true
+    syntax-definitions:
+      - _extensions/fortl/fortl.xml
+    highlight-style: github
+  pdf:
+    documentclass: article
+    number-sections: true
+    syntax-definitions:
+      - _extensions/fortl/fortl.xml
+    highlight-style: github

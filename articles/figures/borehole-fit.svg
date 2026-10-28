@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<rect width="100%" height="100%" fill="white"/>
+<line x1="70.0" y1="20" x2="70.0" y2="305" stroke="#eee"/>
+<text x="70.0" y="323" text-anchor="middle" fill="#444">283</text>
+<line x1="135.0" y1="20" x2="135.0" y2="305" stroke="#eee"/>
+<text x="135.0" y="323" text-anchor="middle" fill="#444">285</text>
+<line x1="200.0" y1="20" x2="200.0" y2="305" stroke="#eee"/>
+<text x="200.0" y="323" text-anchor="middle" fill="#444">287</text>
+<line x1="265.0" y1="20" x2="265.0" y2="305" stroke="#eee"/>
+<text x="265.0" y="323" text-anchor="middle" fill="#444">289</text>
+<line x1="330.0" y1="20" x2="330.0" y2="305" stroke="#eee"/>
+<text x="330.0" y="323" text-anchor="middle" fill="#444">291</text>
+<line x1="395.0" y1="20" x2="395.0" y2="305" stroke="#eee"/>
+<text x="395.0" y="323" text-anchor="middle" fill="#444">293</text>
+<line x1="460.0" y1="20" x2="460.0" y2="305" stroke="#eee"/>
+<text x="460.0" y="323" text-anchor="middle" fill="#444">295</text>
+<line x1="70" y1="20.0" x2="460" y2="20.0" stroke="#eee"/>
+<text x="62" y="24.0" text-anchor="end" fill="#444">0</text>
+<line x1="70" y1="83.3" x2="460" y2="83.3" stroke="#eee"/>
+<text x="62" y="87.3" text-anchor="end" fill="#444">100</text>
+<line x1="70" y1="146.7" x2="460" y2="146.7" stroke="#eee"/>
+<text x="62" y="150.7" text-anchor="end" fill="#444">200</text>
+<line x1="70" y1="210.0" x2="460" y2="210.0" stroke="#eee"/>
+<text x="62" y="214.0" text-anchor="end" fill="#444">300</text>
+<line x1="70" y1="273.3" x2="460" y2="273.3" stroke="#eee"/>
+<text x="62" y="277.3" text-anchor="end" fill="#444">400</text>
+<rect x="70" y="20" width="390" height="285" fill="none" stroke="#888"/>
+<line x1="74.9" y1="20.0" x2="440.5" y2="305.0" stroke="#2c6fbb" stroke-width="2"/>
+<circle cx="157.7" cy="83.3" r="5" fill="#c0392b"/>
+<circle cx="235.8" cy="146.7" r="5" fill="#c0392b"/>
+<circle cx="317.0" cy="210.0" r="5" fill="#c0392b"/>
+<circle cx="401.5" cy="273.3" r="5" fill="#c0392b"/>
+<text x="265.0" y="348" text-anchor="middle" fill="#222">Temperature T (K)</text>
+<text transform="translate(20 162.5) rotate(-90)" text-anchor="middle" fill="#222">Depth z (m)</text>
+<text x="84.9" y="32.7" fill="#2c6fbb">T(z) = T₀ + G z</text>
+</svg>

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fortl-kernel"
+version = "0.1.0"
+description = "A Jupyter kernel for fortl"
+requires-python = ">=3.9"
+dependencies = ["ipykernel>=6", "jupyter_client>=7", "pygments"]
+
+[tool.setuptools]
+packages = ["fortl_kernel"]
+
+[tool.setuptools.package-data]
+fortl_kernel = ["*.png"]

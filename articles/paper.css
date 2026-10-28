@@ -1,0 +1,75 @@
+/* LaTeX-like typography for HTML output, using Latin Modern (GUST Font License) */
+
+@font-face {
+  font-family: "Latin Modern Roman";
+  src: url("fonts/lmroman10-regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Latin Modern Roman";
+  src: url("fonts/lmroman10-bold.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Latin Modern Roman";
+  src: url("fonts/lmroman10-italic.otf") format("opentype");
+  font-weight: normal;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Latin Modern Roman";
+  src: url("fonts/lmroman10-bolditalic.otf") format("opentype");
+  font-weight: bold;
+  font-style: italic;
+}
+
+body,
+h1, h2, h3, h4, h5, h6,
+.title, .subtitle, .quarto-title-meta, .abstract,
+#TOC, .sidebar nav, figcaption {
+  font-family: "Latin Modern Roman", "CMU Serif", "Computer Modern Serif", Georgia, serif;
+}
+
+body {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: #111;
+}
+
+main p {
+  text-align: justify;
+  hyphens: auto;
+}
+
+h1, h2, h3, h4 {
+  font-weight: bold;
+  color: #111;
+}
+
+/* Section numbers in the same colour as the heading, as in LaTeX */
+.header-section-number {
+  color: inherit;
+}
+
+h1.title {
+  font-weight: normal;
+  text-align: center;
+}
+
+.quarto-title .subtitle {
+  text-align: center;
+}
+
+/* The abstract as an indented, smaller block */
+div.abstract {
+  margin: 1.5rem 3rem;
+  font-size: 0.95em;
+}
+div.abstract-title {
+  text-align: center;
+  font-weight: bold;
+  text-transform: none;
+  font-size: 1em;
+}

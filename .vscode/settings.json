@@ -1,0 +1,5 @@
+{
+  // LaTeX-like text in notebook markdown cells (font from articles/fonts, installed in ~/Library/Fonts)
+  "notebook.markup.fontFamily": "'Latin Modern Roman', 'CMU Serif', Georgia, serif",
+  "notebook.markup.fontSize": 16
+}

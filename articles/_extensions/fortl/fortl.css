@@ -1,0 +1,48 @@
+.fortl-cell {
+  margin: 1.25rem 0;
+}
+
+.fortl-cell > div.sourceCode,
+.fortl-cell > pre {
+  margin-bottom: 0;
+}
+
+.fortl-file {
+  font-size: 0.85em;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-bottom: none;
+  border-radius: 0.25rem 0.25rem 0 0;
+  background: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+.fortl-file + div.sourceCode {
+  margin-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.fortl-output pre {
+  margin-top: 0;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-left: 3px solid;
+  border-radius: 0 0 0.25rem 0.25rem;
+  background: transparent;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.fortl-ok pre {
+  border-left-color: #2e8b57;
+}
+
+.fortl-error pre {
+  border-left-color: #c0392b;
+  color: #c0392b;
+}
+
+.fortl-expected-error pre {
+  border-left-color: #d68910;
+  color: #9a6408;
+}

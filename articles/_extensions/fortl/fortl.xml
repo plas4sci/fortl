@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language>
+<!-- KDE syntax definition for fortl, used by pandoc/Quarto for highlighting -->
+<language name="fortl" section="Scientific" version="1" kateversion="5.0"
+          extensions="*.frtl" mimetype="text/x-fortl" author="fortl" license="BSD">
+  <highlighting>
+    <list name="keywords">
+      <item>lambda</item>
+      <item>if</item>
+      <item>else</item>
+      <item>and</item>
+      <item>or</item>
+      <item>not</item>
+      <item>let</item>
+      <item>in</item>
+      <item>case</item>
+      <item>of</item>
+      <item>fix</item>
+      <item>import</item>
+      <item>from</item>
+      <item>return</item>
+      <item>forall</item>
+      <item>data</item>
+    </list>
+    <list name="constants">
+      <item>True</item>
+      <item>False</item>
+      <item>None</item>
+    </list>
+    <list name="builtins">
+      <item>sqrt</item>
+      <item>fst</item>
+      <item>snd</item>
+      <item>inl</item>
+      <item>inr</item>
+      <item>cast</item>
+      <item>lift</item>
+    </list>
+    <contexts>
+      <context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+        <StringDetect attribute="Docstring" context="Docstring" String="&quot;&quot;&quot;"/>
+        <DetectChar attribute="String" context="String" char="&quot;"/>
+        <DetectChar attribute="Comment" context="Comment" char="#"/>
+        <keyword attribute="Keyword" context="#stay" String="keywords"/>
+        <keyword attribute="Constant" context="#stay" String="constants"/>
+        <keyword attribute="Builtin" context="#stay" String="builtins"/>
+        <RegExpr attribute="Type" context="#stay" String="\b[A-Z][A-Za-z0-9_']*"/>
+        <RegExpr attribute="Definition" context="#stay" String="^[a-z_][A-Za-z0-9_']*(?=\s*[:=])" column="0"/>
+        <Float attribute="Float" context="#stay"/>
+        <Int attribute="Decimal" context="#stay"/>
+        <AnyChar attribute="Operator" context="#stay" String="+-*/^&amp;=:|"/>
+      </context>
+      <context name="Docstring" attribute="Docstring" lineEndContext="#stay">
+        <StringDetect attribute="Docstring" context="#pop" String="&quot;&quot;&quot;"/>
+      </context>
+      <context name="String" attribute="String" lineEndContext="#stay">
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context name="Comment" attribute="Comment" lineEndContext="#pop"/>
+    </contexts>
+    <itemDatas>
+      <itemData name="Normal Text" defStyleNum="dsNormal"/>
+      <itemData name="Keyword" defStyleNum="dsKeyword"/>
+      <itemData name="Constant" defStyleNum="dsConstant"/>
+      <itemData name="Builtin" defStyleNum="dsBuiltIn"/>
+      <itemData name="Type" defStyleNum="dsDataType"/>
+      <itemData name="Definition" defStyleNum="dsFunction"/>
+      <itemData name="Float" defStyleNum="dsFloat"/>
+      <itemData name="Decimal" defStyleNum="dsDecVal"/>
+      <itemData name="Operator" defStyleNum="dsOperator"/>
+      <itemData name="String" defStyleNum="dsString"/>
+      <itemData name="Docstring" defStyleNum="dsDocumentation"/>
+      <itemData name="Comment" defStyleNum="dsComment"/>
+    </itemDatas>
+  </highlighting>
+  <general>
+    <comments>
+      <comment name="singleLine" start="#"/>
+    </comments>
+    <keywords casesensitive="1"/>
+  </general>
+</language>
