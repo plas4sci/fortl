@@ -1,0 +1,8 @@
+def array_id(x : array[float]) -> array[float]:
+  return x
+
+def getMinimum(x) -> float:
+  x : array[float]
+  return min(x)
+
+it = (getMinimum(range(0, 10, 2)))

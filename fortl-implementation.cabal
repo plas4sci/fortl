@@ -38,7 +38,7 @@ library
       Paths_fortl_implementation
   hs-source-dirs:
       src
-  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Werror=incomplete-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
   build-depends:
       array
     , base >=4.10 && <5
@@ -73,7 +73,7 @@ executable fortl
       Paths_fortl_implementation
   hs-source-dirs:
       src
-  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.Frontend
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Werror=incomplete-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.Frontend
   build-tools:
       alex
     , happy
@@ -112,7 +112,7 @@ executable fortli
       Paths_fortl_implementation
   hs-source-dirs:
       src
-  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.REPL
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Werror=incomplete-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.REPL
   build-tools:
       alex
     , happy
@@ -135,7 +135,7 @@ test-suite fortl-golden
       Paths_fortl_implementation
   hs-source-dirs:
       tests
-  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Werror=incomplete-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
   build-depends:
       Diff
     , array
