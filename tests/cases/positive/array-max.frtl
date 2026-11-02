@@ -1,0 +1,8 @@
+def array_id(x : array[float]) -> array[float]:
+  return x
+
+def getMaximum(x) -> float:
+  x : array[float]
+  return max(x)
+
+it = (getMaximum(range(0, 10, 2)))

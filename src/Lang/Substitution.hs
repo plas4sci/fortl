@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 
-
 module Lang.Substitution where
 
 import Lang.Syntax
@@ -55,6 +54,9 @@ substituteExpr (Pair e1 e2) s =
 
 substituteExpr (Fst e) s = Fst $ substituteExpr e s
 substituteExpr (Snd e) s = Snd $ substituteExpr e s
+
+substituteExpr (Subscript e1 e2) s =
+  Subscript (substituteExpr e1 s) (substituteExpr e2 s)
 
 substituteExpr (Case e (x,e1) (y,e2)) s =
   let e' = substituteExpr e s

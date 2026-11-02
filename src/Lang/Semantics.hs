@@ -3,49 +3,62 @@
 
 module Lang.Semantics where
 
-import Lang.Syntax
+import Data.Array
+import qualified Data.Map.Lazy as Map
 import Lang.Options
 import Lang.PrettyPrint
 import Lang.Primitives (dataConstructors)
-import qualified Data.Map.Lazy as Map
+import Lang.Syntax
+
 -- import Debug.Trace
 
--- **************************************
 -- ** Evaluation context and values
--- ***************************************
 
 -- Result of evaluating is a value which is either a (normal form) expression
 -- or a function closure
-data Value =
-    VClosure   { closureParams :: [Identifier], closureBody :: [Def 'Desugared], closureEnv :: Env }
-  | VPrimitive { primitiveName :: String, primitiveFunc :: [Value] -> Either String Value }
+data Value
+  = VClosure {closureParams :: [Identifier], closureBody :: [Def 'Desugared], closureEnv :: Env}
+  | VPrimitive {primitiveName :: String, primitiveFunc :: [Value] -> Either String Value}
+  | VArray {arrayData :: Array Integer Float}
   | ValExpr Expr
 
 instance PrettyPrint Value where
   pprint (ValExpr e) = pprint e
   pprint (VPrimitive name _) = "<primitive:" ++ name ++ ">"
   pprint (VClosure params _ _) = "<function/" ++ show (length params) ++ ">"
+  pprint (VArray arr) = "<array:" ++ show (elems arr) ++ ">"
+
+-- pprint (VArray arr) = "<array:" ++ show arr ++ ">"
 
 -- | Project a normal-form expression out of a value
 -- (closures have no expression form)
 valueToExpr :: Value -> Either String Expr
 valueToExpr (ValExpr e) = Right e
-valueToExpr VClosure{}  = Left "Cannot use a function value here"
-valueToExpr VPrimitive{} = Left "Cannot use a primitive value here"
+valueToExpr VClosure {} = Left "Cannot use a function value here"
+valueToExpr VPrimitive {} = Left "Cannot use a primitive value here"
+valueToExpr VArray {} = Left "Cannot use an array here"
 
 -- Environment
 data Env = Env
-    { bindings :: Map.Map Identifier Value
-    , parent   :: Maybe Env
-    }
+  { bindings :: Map.Map Identifier Value,
+    parent :: Maybe Env
+  }
 
 primitives :: [(Identifier, Value)]
-primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
-              , ("sin", VPrimitive "sin" (floatFunc1 "sin" sin))
-              , ("cos", VPrimitive "cos" (floatFunc1 "cos" cos))
-              , ("tan", VPrimitive "tan" (floatFunc1 "tan" tan))
-              , ("atan2", VPrimitive "atan2" atan2Func)
-              , ("to_SI", VPrimitive "to_SI" idFunc)]
+primitives =
+  [ ("sqrt", VPrimitive "sqrt" sqrtFunc),
+    ("ones", VPrimitive "ones" onesFunc),
+    ("zeros", VPrimitive "zeros" zerosFunc),
+    ("range", VPrimitive "range" rangeFunc),
+    ("len", VPrimitive "len" lenfunc),
+    ("max", VPrimitive "max" maxfunc),
+    ("min", VPrimitive "min" minfunc),
+    ("sin", VPrimitive "sin" (floatFunc1 "sin" sin)),
+    ("cos", VPrimitive "cos" (floatFunc1 "cos" cos)),
+    ("tan", VPrimitive "tan" (floatFunc1 "tan" tan)),
+    ("atan2", VPrimitive "atan2" atan2Func),
+    ("to_SI", VPrimitive "to_SI" idFunc)
+  ]
   where
     floatFunc1 _ f [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ f n
     floatFunc1 name _ _ = Left $ "fortl bug: " <> name <> " expects a single float argument"
@@ -54,10 +67,35 @@ primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
     atan2Func _ = Left "fortl bug: atan2 expects two float arguments"
 
     idFunc [x] = Right x
-    idFunc _   = Left "fortl bug: identity(conversion) expects a single argument"
+    idFunc _ = Left "fortl bug: identity(conversion) expects a single argument"
 
     sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
-    sqrtFunc _ = Left "fortl bug: sqrt expects a single float argument" 
+    sqrtFunc _ = Left "fortl bug: sqrt expects a single float argument"
+
+    onesFunc [ValExpr (NumInteger n)] = Right $ VArray (listArray (0, n) [1 | _ <- [0 .. n]])
+    onesFunc _ = Left "ones expects a single float argument"
+
+    zerosFunc [ValExpr (NumInteger n)] = Right $ VArray (listArray (0, n) [0 | _ <- [0 .. n]])
+    zerosFunc _ = Left "zeros expects a single float argument"
+
+    lenfunc [VArray arr] = Right $ ValExpr $ NumInteger $ toInteger $ length arr
+    lenfunc _ = Left "len expects a single array argument"
+
+    maxfunc [VArray arr] = Right $ ValExpr $ NumFloat $ maximum arr
+    maxfunc _ = Left "max expects a single array argument"
+
+    minfunc [VArray arr] = Right $ ValExpr $ NumFloat $ minimum arr
+    minfunc _ = Left "min expects a single array argument"
+
+    rangeFunc [ValExpr (NumInteger start), ValExpr (NumInteger end), ValExpr (NumInteger step)] =
+      Right $ VArray (listArray (0, (end - start - 1) `div` step) [fromIntegral i | i <- [start, start + step .. end - 1]])
+    rangeFunc _ = Left "Range expects two or three integer arguments"
+
+-- rangeFunc [ValExpr (NumInteger start), ValExpr (NumInteger end)] =
+--   rangeFunc [ValExpr (NumInteger start), ValExpr (NumInteger end), ValExpr (NumInteger 1)]
+-- rangeFunc [ValExpr (NumInteger end)] =
+--   rangeFunc [ValExpr (NumInteger 0), ValExpr (NumInteger end), ValExpr (NumInteger 1)]
+-- rangeFunc _ = Left "Range expects two or three integer arguments"
 
 -- Empty env (at top of lexical scope)
 emptyEnv :: Env
@@ -75,59 +113,47 @@ lookupBinding name env =
     Nothing ->
       case parent env of
         Just outer -> lookupBinding name outer
-        Nothing    -> Left $ "Unbound variable: " ++ name
+        Nothing -> Left $ "Unbound variable: " ++ name
 
--- **************************************
 -- ** Interpreter for definitions
--- ***************************************
 
 -- Evaluate a program to normal form
 interpret :: [Option] -> Program 'Desugared -> (Env, Value)
 interpret opts program =
   let (env, v) = interpretDefs emptyEnv opts program
-  in
-    -- prefer the `it` binding if there is one, else the value produced
-    -- by the last definition (e.g. an explicit `return`)
-    case lookupBinding "it" env of
-      Right v' -> (env, v')
-      Left _   -> (env, v)
-
+   in -- prefer the `it` binding if there is one, else the value produced
+      -- by the last definition (e.g. an explicit `return`)
+      case lookupBinding "it" env of
+        Right v' -> (env, v')
+        Left _ -> (env, v)
 
 -- Interpret the definitions, including building an environment
 -- for the rest of the program
 interpretDefs :: Env -> [Option] -> Program 'Desugared -> (Env, Value)
-
-interpretDefs env opts ((ValDef (VarLhs id _) e):defs) =
+interpretDefs env opts ((ValDef (VarLhs id _) e) : defs) =
   case bigStep env opts e of
     Right v -> interpretDefs (bindHere id v env) opts defs
     Left err -> error err
-
-interpretDefs env opts ((FunDefElaborated id _typeParams params _ body):defs) =
+interpretDefs env opts ((FunDefElaborated id _typeParams params _ body) : defs) =
   -- Make a closure capturing the environment and proceed
   -- (type parameters are erased at runtime: type application only affects
   -- typechecking, not evaluation)
   let env' = bindHere id (VClosure (map fst params) body env) env
-  in interpretDefs env' opts defs
-
+   in interpretDefs env' opts defs
 -- Return expression
-interpretDefs env opts ((Return e):defs) =
+interpretDefs env opts ((Return e) : defs) =
   case bigStep env opts e of
     Right v -> (env, v)
     Left err -> error err
-
 -- TODO: work out what handling we need here
-interpretDefs env opts (TypeDef{}:defs)   = interpretDefs env opts defs
-interpretDefs env opts (DataDef{}:defs)   = interpretDefs env opts defs
-interpretDefs env opts (ImportDef{}:defs) = interpretDefs env opts defs
-
+interpretDefs env opts (TypeDef {} : defs) = interpretDefs env opts defs
+interpretDefs env opts (DataDef {} : defs) = interpretDefs env opts defs
+interpretDefs env opts (ImportDef {} : defs) = interpretDefs env opts defs
 interpretDefs env opts [] = (env, ValExpr (Con "None" []))
 
--- **************************************
 -- ** Interpreter for expressions
--- ***************************************
 
 bigStep :: Env -> [Option] -> Expr -> Either String Value
-
 bigStep env opts (App e1 es) = do
   v1 <- bigStep env opts e1
   apply v1 es
@@ -141,7 +167,7 @@ bigStep env opts (App e1 es) = do
           -- Evaluate the arguments
           vs <- mapM (bigStep env opts) es
           -- Make new environment for the closure, binding the parameters to the evaluated arguments
-          let env' = Env { bindings = Map.fromList (zip paramsHere vs), parent = Just capturedEnv }
+          let env' = Env {bindings = Map.fromList (zip paramsHere vs), parent = Just capturedEnv}
           if null paramsRest
             then Right $ snd $ interpretDefs env' opts body
             else Right $ VClosure paramsRest body env'
@@ -151,35 +177,30 @@ bigStep env opts (App e1 es) = do
       | otherwise = do
           let (esHere, esRest) = splitAt (length params) es
           vs <- mapM (bigStep env opts) esHere
-          let env' = Env { bindings = Map.fromList (zip params vs), parent = Just capturedEnv }
+          let env' = Env {bindings = Map.fromList (zip params vs), parent = Just capturedEnv}
           apply (snd (interpretDefs env' opts body)) esRest
-
     apply (VPrimitive _ f) es = do
       vs <- mapM (bigStep env opts) es
       f vs
-
     apply _ _ = Left "Application expects a function"
 
 -- Type application only matters for typechecking; at runtime it is erased
 -- and the underlying (still-curried) function value is returned unchanged.
 bigStep env opts (TyIndex e _tys) = bigStep env opts e
-
 bigStep env opts (Sig e _) = bigStep env opts e
 bigStep env opts (Cast e) = bigStep env opts e
 bigStep env opts (Var x) =
   case lookupBinding x env of
-    Right v  -> Right v
-    Left _   ->
+    Right v -> Right v
+    Left _ ->
       -- If the variable is not bound, check if it is a data constructor
       -- If so, return the constructor with no arguments
       case lookup x dataConstructors of
-        Just _  -> Right (ValExpr (Con x []))
+        Just _ -> Right (ValExpr (Con x []))
         Nothing -> Left $ "Unbound variable: " ++ x
-
 bigStep env opts (Let x e1 e2) = do
   v1 <- bigStep env opts e1
   bigStep (bindHere x v1 env) opts e2
-
 bigStep env opts (Case eg branchl branchr) = do
   error "Not implemented yet"
 --   v <- bigStep env opts eg
@@ -193,13 +214,12 @@ bigStep env opts (Fst e) = do
   case v of
     -- pair components are already in normal form
     ValExpr (Pair e1 _) -> Right $ ValExpr e1
-    _         -> Left "fst expects a pair"
+    _ -> Left "fst expects a pair"
 bigStep env opts (Snd e) = do
   v <- bigStep env opts e
   case v of
     ValExpr (Pair _ e2) -> Right $ ValExpr e2
-    _         -> Left "snd expects a pair"
-
+    _ -> Left "snd expects a pair"
 bigStep env opts (Pair e1 e2) = do
   v1 <- bigStep env opts e1 >>= valueToExpr
   v2 <- bigStep env opts e2 >>= valueToExpr
@@ -211,40 +231,42 @@ bigStep env opts (BinOp op e1 e2) = do
   ValExpr <$> case (v1, v2) of
     (NumFloat n1, NumFloat n2) ->
       case op of
-        BinOpExp    -> return $ NumFloat $ n1 ** n2
-        BinOpPlus   -> return $ NumFloat $ n1 + n2
-        BinOpTimes  -> return $ NumFloat $ n1 * n2
-        BinOpMinus  -> return $ NumFloat $ n1 - n2
-        BinOpDivide -> if n2 /= 0
-                      then return $ NumFloat $ n1 / n2
-                      else Left "Division by zero"
-        BinOpAnd    -> Left "Logical AND is not defined for floats"
-        BinOpOr     -> Left "Logical OR is not defined for floats"
+        BinOpExp -> return $ NumFloat $ n1 ** n2
+        BinOpPlus -> return $ NumFloat $ n1 + n2
+        BinOpTimes -> return $ NumFloat $ n1 * n2
+        BinOpMinus -> return $ NumFloat $ n1 - n2
+        BinOpDivide ->
+          if n2 /= 0
+            then return $ NumFloat $ n1 / n2
+            else Left "Division by zero"
+        BinOpAnd -> Left "Logical AND is not defined for floats"
+        BinOpOr -> Left "Logical OR is not defined for floats"
     (NumInteger n1, NumInteger n2) ->
       case op of
-        BinOpExp    -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
-        BinOpPlus   -> return $ NumInteger $ n1 + n2
-        BinOpTimes  -> return $ NumInteger $ n1 * n2
-        BinOpMinus  -> return $ NumInteger $ n1 - n2
-        BinOpDivide -> if n2 /= 0
-                      then return $ NumInteger $ n1 `div` n2
-                      else Left "Division by zero"
-        BinOpAnd    -> Left "Logical AND is not defined for integers"
-        BinOpOr     -> Left "Logical OR is not defined for integers"
+        BinOpExp -> return $ NumInteger $ floor $ ((fromInteger n1 ** fromInteger n2) :: Float)
+        BinOpPlus -> return $ NumInteger $ n1 + n2
+        BinOpTimes -> return $ NumInteger $ n1 * n2
+        BinOpMinus -> return $ NumInteger $ n1 - n2
+        BinOpDivide ->
+          if n2 /= 0
+            then return $ NumInteger $ n1 `div` n2
+            else Left "Division by zero"
+        BinOpAnd -> Left "Logical AND is not defined for integers"
+        BinOpOr -> Left "Logical OR is not defined for integers"
     (Con b1 [], Con b2 []) ->
       case op of
         BinOpAnd ->
           case (b1, b2) of
-            ("True", "True")   -> return $ Con "True" []
-            ("True", "False")  -> return $ Con "False" []
-            ("False", "True")  -> return $ Con "False" []
+            ("True", "True") -> return $ Con "True" []
+            ("True", "False") -> return $ Con "False" []
+            ("False", "True") -> return $ Con "False" []
             ("False", "False") -> return $ Con "False" []
             _ -> Left "Logical AND operation expects two booleans"
-        BinOpOr  ->
+        BinOpOr ->
           case (b1, b2) of
-            ("True", "True")   -> return $ Con "True" []
-            ("True", "False")  -> return $ Con "True" []
-            ("False", "True")  -> return $ Con "True" []
+            ("True", "True") -> return $ Con "True" []
+            ("True", "False") -> return $ Con "True" []
+            ("False", "True") -> return $ Con "True" []
             ("False", "False") -> return $ Con "False" []
             _ -> Left "Logical OR operation expects two booleans"
         _ -> Left "Binary operation undefined for given inputs"
@@ -255,11 +277,11 @@ bigStep env opts (UnOp op e) = do
     (NumFloat n) ->
       case op of
         UnOpNegate -> return $ NumFloat $ -n
-        UnOpNot    -> Left "Logical NOT is not defined for floats"
+        UnOpNot -> Left "Logical NOT is not defined for floats"
     (NumInteger n) ->
       case op of
         UnOpNegate -> return $ NumInteger $ -n
-        UnOpNot    -> Left "Logical NOT is not defined for integers"
+        UnOpNot -> Left "Logical NOT is not defined for integers"
     (Con b []) ->
       case op of
         UnOpNot ->
@@ -272,9 +294,9 @@ bigStep env opts (UnOp op e) = do
 bigStep env opts (Cond e1 e2 e3) = do
   v2 <- bigStep env opts e2
   case v2 of
-    ValExpr (Con "True" [])  -> bigStep env opts e1
+    ValExpr (Con "True" []) -> bigStep env opts e1
     ValExpr (Con "False" []) -> bigStep env opts e3
-    _              -> Left "Condition expects a boolean"
+    _ -> Left "Condition expects a boolean"
 
 -- Values
 bigStep env opts (NumFloat f) = Right $ ValExpr $ NumFloat f
@@ -287,3 +309,10 @@ bigStep env opts (Abs params body) = Right $ VClosure (map fst params) [Return b
 bigStep env opts (Con c es) = do
   vs <- mapM (\e -> bigStep env opts e >>= valueToExpr) es
   return $ ValExpr $ Con c vs
+bigStep env opts (Subscript e1 e2) = do
+  case bigStep env opts e1 of
+    Right (VArray arr) ->
+      case bigStep env opts e2 of
+        Right (ValExpr (NumInteger n)) -> Right $ ValExpr $ NumFloat (arr ! n)
+        _ -> Left "Subscript should be an integer"
+    _ -> Left "Subscript expects an array"

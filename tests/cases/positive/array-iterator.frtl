@@ -1,0 +1,8 @@
+def array_id(x : array[float]) -> array[float]:
+  return x
+
+def getArray(x) -> float:
+  x : array[float]
+  return x[1]
+
+it = (getArray(range(0, 10, 2)), getArray(range(10, 15, 1)), getArray(range(4, 0, -2)), getArray(range(10, 100, 15)), getArray(range(-5, 5, 1)))

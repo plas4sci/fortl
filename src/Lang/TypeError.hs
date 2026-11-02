@@ -21,6 +21,7 @@ data TypeError
   | ExpectingProductType Expr (Type 0)
   | ExpectingSumType Expr
   | ExpectingPolymorphicType (Type 0)
+  | ExpectingArrayType (Type 0)
   | NonProductTypeToPair (Type 0)
   | FunctionAbstractionTypeMismatch { expectedArg :: Type 0, actualArg :: Type 0 }
   | ExplicitSignatureCheckFailure (Type 0) TypeError

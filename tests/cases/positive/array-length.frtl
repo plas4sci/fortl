@@ -1,0 +1,8 @@
+def array_id(x : array[float]) -> array[float]:
+  return x
+
+def getLength(x) -> int:
+  x : array[float]
+  return len(x)
+
+it = (getLength(range(0, 10, 2)), getLength(range(0, 10, 1)))

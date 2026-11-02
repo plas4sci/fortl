@@ -248,6 +248,7 @@ TypeAtom
 Juxt :: { [Option] -> Expr }
   : Juxt '(' Arguments ')'            { \opts -> App ($1 opts) ($3 opts) }
   | Juxt '(' ')'                      { \opts -> App ($1 opts) [] }
+  | Juxt '[' Expr ']'                 { \opts -> Subscript ($1 opts) ($3 opts) }
   | Juxt '[' ManyTypesMore ']'        { \opts -> MkTyIndex (mkPos $2) ($1 opts) ($3 opts) }
   | cast '(' Atom ')'                 { \opts -> MkCast (mkPos $1) ($3 opts) }
   | Atom                      { $1 }
