@@ -118,7 +118,7 @@ grGolden formatResult file = show file `trace` goldenTest
 
     runInterp :: FilePath -> IO (Either InterpreterError InterpreterResult)
     runInterp fp = do
-      res <- Lang.parseAndCheck False fp
+      res <- Lang.run False fp
       case res of
         Left err -> return $ Left err
         Right (_, _, _, e, _) -> return $ Right e
@@ -143,7 +143,7 @@ pythonExtractionTests = do
 
 pythonExtractionTest :: FilePath -> TestTree
 pythonExtractionTest file = testCase file $ do
-  result <- Lang.parseAndCheck False file
+  result <- Lang.run False file
   case result of
     Left err -> assertFailure $ "fortl failed to typecheck " <> file <> ": " <> err
     Right (parsetree, _, _, normalForm, _) -> do

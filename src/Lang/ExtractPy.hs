@@ -24,7 +24,7 @@ import Data.List (intercalate, isInfixOf)
 -- prints for the same program.
 extractProgram :: Maybe String -> Program 'Parsed -> String
 extractProgram original defs =
-  let body   = concatMap extractDef defs
+  let body   = concatMap (extractDef TopLevel) defs
       whence = case original of
                  Nothing -> "a fortl program"
                  Just filename -> "fortl program " ++ filename
@@ -34,12 +34,24 @@ extractProgram original defs =
       trailer  = ["print(it)"]
   in unlines (header ++ preamble ++ body ++ trailer)
 
-extractDef :: Def 'Parsed -> [String]
-extractDef (ValDef lhs e)   = [extractLhs lhs ++ " = " ++ pyExpr e]
-extractDef (Return e)       = ["it = " ++ pyExpr e]
-extractDef (TypeDef _ _ _)  = []
-extractDef (DataDef _ _ _)  = []
-extractDef (ImportDef spec) = [extractImport spec]
+-- | Whether a definition sits at the top level of the program or inside a
+-- function body: a top-level @return@ sets @it@, whereas inside a @def@ it
+-- is a real Python @return@.
+data Scope = TopLevel | InFunction
+
+extractDef :: Scope -> Def 'Parsed -> [String]
+extractDef _ (ValDef lhs e)   = [extractLhs lhs ++ " = " ++ pyExpr e]
+extractDef TopLevel (Return e)   = ["it = " ++ pyExpr e]
+extractDef InFunction (Return e) = ["return " ++ pyExpr e]
+extractDef _ (FunDef name _ params _ body) =
+  ("def " ++ name ++ "(" ++ intercalate ", " (map fst params) ++ "):")
+  : map ("    " ++) (orPass (concatMap (extractDef InFunction) body))
+  where orPass [] = ["pass"]
+        orPass ls = ls
+extractDef _ (AnnDef _ _)     = []
+extractDef _ (TypeDef _ _ _)  = []
+extractDef _ (DataDef _ _ _)  = []
+extractDef _ (ImportDef spec) = [extractImport spec]
 
 -- | Assignment targets, mirroring the source: a plain variable, or a
 -- (possibly nested) pair, which becomes Python's native tuple unpacking.
@@ -62,21 +74,19 @@ bracketPy e | isLexicallyAtomic e = pyExpr e
 
 -- | Pretty print a fortl expression as Python.
 pyExpr :: Expr -> String
-pyExpr (Abs var _ e)         = "lambda " ++ var ++ ": " ++ pyExpr e
--- Type application/abstraction, signatures, casts and lifts are all
+pyExpr (Abs params e)         = "lambda " ++ intercalate ", " (map fst params) ++ ": " ++ pyExpr e
+pyExpr (App (Var "sqrt") [e]) = "math.sqrt(" ++ pyExpr e ++ ")"
+pyExpr (App e1 es)            = bracketPy e1 ++ "(" ++ intercalate ", " (map pyExpr es) ++ ")"
+pyExpr (Var var)              = var
+-- Type indexing/application, signatures, casts and lifts are all
 -- run-time identities: erase them and keep the underlying term.
-pyExpr (App e1 (TyEmbed _))  = pyExpr e1
-pyExpr (App (Var "sqrt") e2) = "math.sqrt(" ++ pyExpr e2 ++ ")"
-pyExpr (App e1 e2)           = bracketPy e1 ++ "(" ++ pyExpr e2 ++ ")"
-pyExpr (Var var)             = var
-pyExpr (Sig e _)             = pyExpr e
-pyExpr (Cast e)              = pyExpr e
-pyExpr (TyAbs _ e)           = pyExpr e
-pyExpr (TyEmbed _)           = ""
+pyExpr (TyIndex e _)          = pyExpr e
+pyExpr (Sig e _)              = pyExpr e
+pyExpr (Cast e)               = pyExpr e
 -- let becomes an immediately-applied lambda
-pyExpr (GenLet x e1 e2)      = "(lambda " ++ x ++ ": " ++ pyExpr e2 ++ ")(" ++ pyExpr e1 ++ ")"
-pyExpr Zero                  = "0"
-pyExpr Succ                  = "(lambda _n: _n + 1)"
+pyExpr (Let x e1 e2)          = "(lambda " ++ x ++ ": " ++ pyExpr e2 ++ ")(" ++ pyExpr e1 ++ ")"
+pyExpr Zero                   = "0"
+pyExpr Succ                   = "(lambda _n: _n + 1)"
 pyExpr (Pair e1 e2)          = "(" ++ pyExpr e1 ++ ", " ++ pyExpr e2 ++ ")"
 pyExpr (Fst e)                = bracketPy e ++ "[0]"
 pyExpr (Snd e)                = bracketPy e ++ "[1]"

@@ -16,7 +16,8 @@ import Lang.TypeError
 import System.Directory (getCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit
-import System.FilePath    (replaceExtension)
+import System.FilePath    ((</>), replaceExtension)
+import GHC.IO.Exception   (IOErrorType(..), ioe_type)
 
 import Control.Monad (when)
 import Control.Exception (try, IOException)
@@ -49,7 +50,7 @@ main = do
             (fname:rest) -> extractPy fname rest
     -- If we have at least one
     (fname:_) -> do
-      result <- parseAndCheck True fname
+      result <- run True fname
       case result of
         Left _   -> exitFailure
         Right (_, _, _, result, _)  -> do
@@ -60,7 +61,7 @@ main = do
 -- write out an equivalent Python program.
 extractPy :: String -> [String] -> IO ()
 extractPy fname rest = do
-  result <- parseAndCheck True fname
+  result <- run True fname
   case result of
     Left _ -> exitFailure
     Right (parsetree, _, _, _, _) -> do
@@ -71,19 +72,6 @@ extractPy fname rest = do
       putStrLn $ "Wrote Python translation to " <> outPath
       exitSuccess
 
-parseAndCheck :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr, Context))
-parseAndCheck report fname = do
-  -- Check if this is a file
-  exists <- doesPathExist fname
-  if not exists
-    then do
-      putStrLn $ "File `" <> fname <> "` cannot be found."
-      return $ Left "File not found"
-    else do
-      when report $ putStrLn $ "Checking " <> fname <> "..."
-      -- Read the file, parse, and do something...
-      input <- readFile fname
-      case parseProgram fname input of
 tryReadFile :: FilePath -> IO (Either IOException String)
 tryReadFile path = try $ do
   !contents <- readFile path
