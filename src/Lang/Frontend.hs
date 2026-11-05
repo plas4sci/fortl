@@ -82,7 +82,11 @@ run report fname0 = do
     Left e -> do
       case ioe_type e of
         NoSuchThing -> do
-          putStrLn $ "File `" <> fname <> "` (Full path:" <> path <> ") cannot be found."
+          let alsoTried
+                | takeExtension fname /= sourceExtension
+                    = " (also tried `" <> (fname <.> sourceExtension) <> "`)"
+                | otherwise = ""
+          putStrLn $ "File `" <> fname <> "` (Full path:" <> path <> ") cannot be found" <> alsoTried <> "."
           return $ Left "File not found"
         _ -> do
           let msg = show e
