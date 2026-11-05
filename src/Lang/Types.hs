@@ -17,6 +17,7 @@ import Lang.TypeError
 
 import Data.Maybe (isJust)
 import Data.Either (isRight)
+import Data.Bifunctor (first)
 
 -- Infer the type of an entire program
 typeCheckProgram :: Program 'Desugared -> Either TypeError (Context, Type 0)
@@ -543,17 +544,29 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
                   Just r2 -> do
                     g2' <- liftLiteral desc1 r2
                     return (g2', desc1)
-  g <- case op of
+  -- Bring the descriptions to the same components (the exponent of `^` is
+  -- not a description being combined)
+  (a1, a2) <- if op == BinOpExp then return (g1, g2) else alignDescriptions g1 g2
+  let -- report a failure to combine in terms of the descriptions as written,
+      -- rather than with the components that alignment filled in
+      asWritten t | t == a1                 = g1
+                  | t == a2                 = g2
+                  | t == reciprocalType a2  = reciprocalType g2
+                  | otherwise               = t
+      reportAsWritten (AffineSpaceProductUndefined t1 t2) =
+        AffineSpaceProductUndefined (asWritten t1) (asWritten t2)
+      reportAsWritten err = err
+  g <- first reportAsWritten $ case op of
         BinOpExp ->
           case e2 of
             NumFloat n -> do
-              () <- rejectAffineScaling op g1
-              normalisationByEvaluation (ExponentTy g1 (rationalOfFloat n))
+              () <- rejectAffineScaling op a1
+              normalisationByEvaluation (ExponentTy a1 (rationalOfFloat n))
             _ -> error "Bug"
-        BinOpTimes  -> normalisationByEvaluation (ProdTy g1 g2)
-        BinOpDivide -> normalisationByEvaluation (ProdTy g1 (reciprocalType g2))
-        BinOpPlus   -> normalisationByEvaluation (SumTy g1 g2)
-        BinOpMinus  -> normalisationByEvaluation (SumTy g1 (NegTy g2))
+        BinOpTimes  -> normalisationByEvaluation (ProdTy a1 a2)
+        BinOpDivide -> normalisationByEvaluation (ProdTy a1 (reciprocalType a2))
+        BinOpPlus   -> normalisationByEvaluation (SumTy a1 a2)
+        BinOpMinus  -> normalisationByEvaluation (SumTy a1 (NegTy a2))
         _           -> Left $ ContextualError $ "Unexpected operator " <> pprint op
   -- the kind of the result is that of its description
   (g', desc) <- synthKind g
@@ -625,10 +638,12 @@ typeRelation rel (isGradableNumericType -> Just (baseType1, gradeType1, d1))
      (IsSpec (isGradableNumericType -> Just (baseType2, gradeType2, d2))) =
   if baseType1 == baseType2
     then do
-      -- the kinds follow from the descriptions
+      -- compare the descriptions once brought to the same components; the
+      -- kinds follow from the descriptions
+      (d1', d2') <- alignDescriptions d1 d2
       if rel == Subsumed
-        then descriptionSubsumption d1 (IsSpec d2)
-        else descriptionEquality d1 (IsSpec d2)
+        then descriptionSubsumption d1' (IsSpec d2')
+        else descriptionEquality d1' (IsSpec d2')
 
     else Left $ BaseTypeMismatch baseType1 baseType2
 typeRelation rel (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
@@ -743,6 +758,16 @@ errorToString (AffineSpaceProductUndefined t1 t2) =
 errorToString (AffineSpacePowerUndefined t) =
   "The power " <> pprint (normalise t) <> " is not defined for affine spaces: a position cannot be "
   <> "squared or inverted, and a scalar's value needs an integer power (and 0 has no inverse)"
+
+errorToString (DescriptionAlignmentFailure k t other) =
+  "Cannot combine " <> pprint (normalise t) <> " with " <> pprint (normalise other)
+  <> ": the " <> k <> " component of " <> pprint (normalise t)
+  <> " is not determined by the rest of its description" <> hint
+  where
+    hint = case k of
+      "Affine" -> " (declare whether it is a Point or a Vector, e.g. Float[Vector])"
+      "Unit"   -> " (give its unit)"
+      _        -> ""
 
 errorToString (AffineSpaceScalingUnsupported op t reason) =
   "Cannot use " <> pprint op <> " with the affine-space value " <> pprint (normalise t)

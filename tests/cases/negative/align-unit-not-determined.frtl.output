@@ -1,0 +1,1 @@
+tests/cases/negative/align-unit-not-determined.frtl:7:8: Cannot combine Dimension[T] with Unit[m]: the Unit component of Dimension[T] is not determined by the rest of its description (give its unit)

@@ -1,1 +1,1 @@
-tests/cases/negative/affine-scale-by-variable.frtl:6:8: Cannot use * with the affine-space value Unit[s] & Point: the other operand has no affine-space part; a number that does not depend on an origin should be declared as a Vector, e.g. Float[Vector]
+tests/cases/negative/affine-scale-by-variable.frtl:6:8: Cannot combine 1 with Unit[s] & Point: the Affine component of 1 is not determined by the rest of its description (declare whether it is a Point or a Vector, e.g. Float[Vector])

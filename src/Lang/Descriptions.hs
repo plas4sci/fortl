@@ -266,6 +266,45 @@ weightPower w n
 scalarDescription :: Rational -> Type 0
 scalarDescription c = reifyToTypeTerm (singleton "Affine" (AffineSpace (Scalar c)))
 
+-- | Bring two descriptions to the same components before they are
+-- combined or compared: a component that only one of them has is filled in
+-- for the other, but only where it is uniquely determined by the components
+-- that the other does have (see 'uniqueComponent')
+alignDescriptions :: Type 0 -> Type 0 -> Either TypeError (Type 0, Type 0)
+alignDescriptions t1 t2 = do
+    d1 <- computeRepresentation t1 :: Either TypeError DescriptionsRepr
+    d2 <- computeRepresentation t2 :: Either TypeError DescriptionsRepr
+    d1' <- fillFrom t1 t2 d1 (keys d2)
+    d2' <- fillFrom t2 t1 d2 (keys d1)
+    Right (reifyToTypeTerm d1', reifyToTypeTerm d2')
+  where
+    fillFrom t other d ks = Prelude.foldl (\acc k -> acc >>= fill t other k) (Right d) ks
+    fill t other k d
+      | member k d                     = Right d
+      | Just v <- uniqueComponent d k = Right (insert k v d)
+      | otherwise                      = Left $ DescriptionAlignmentFailure k t other
+
+-- | The component `k` of a description that does not have it, when it is
+-- uniquely determined by the components the description does have:
+--
+--  * the Dimension of a value in SI base units, from its Unit
+--  * the identity, for a Unit, Dimension or Quantity of a value with none
+--    of these, which by convention is a dimensionless number
+--  * the identity, for the Species or Basis of a value with no index
+--
+-- Anything else, such as a Unit given only a Dimension, a Quantity given a
+-- Unit, or whether a value is a Point or a Vector, has more than one choice.
+uniqueComponent :: DescriptionsRepr -> Identifier -> Maybe DescriptionRepr
+uniqueComponent d "Dimension"
+  | Just (FreeAGroup u) <- Map.lookup "Unit" d =
+      FreeAGroup . Map.fromListWith (+) <$> mapM (\(sym, n) -> (\dm -> (dm, n)) <$> dimensionOfSIUnit sym) (assocs u)
+uniqueComponent d k
+  | k `elem` physical, not (any (`member` d) physical) = Just (FreeAGroup empty)
+  where physical = ["Unit", "Dimension", "Quantity"]
+uniqueComponent _ k
+  | k `elem` ["Species", "Basis"] = Just (IndexType unitDescription)
+uniqueComponent _ _ = Nothing
+
 -- | The affine-space component of a description
 descriptionAffine :: Type 0 -> Maybe AffineRepr
 descriptionAffine t = case computeRepresentation t :: Either TypeError DescriptionsRepr of

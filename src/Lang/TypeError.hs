@@ -39,6 +39,7 @@ data TypeError
   | AffineSpaceScalingUnsupported BinOp (Type 0) String
   | AffineSpaceProductUndefined (Type 0) (Type 0)
   | AffineSpacePowerUndefined (Type 0)
+  | DescriptionAlignmentFailure Identifier (Type 0) (Type 0)
   
   -- Kinding errors
   | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Maybe (Type 0) }

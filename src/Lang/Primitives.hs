@@ -135,6 +135,11 @@ rewriteSI "U" = "A"
 rewriteSI "Ji" = "cd"
 rewriteSI x = error $ "Unknown SI dimension " <> x
 
+-- | The base dimension of an SI base unit, the inverse of rewriteSI
+dimensionOfSIUnit :: String -> Maybe String
+dimensionOfSIUnit u = lookup u
+  [("s", "T"), ("m", "L"), ("kg", "M"), ("K", "Theta"), ("mol", "N"), ("A", "U"), ("cd", "Ji")]
+
 typeAliases :: [(Identifier, Type 0)]
 typeAliases = [
     ("str", stringTy (tyCon0 "1"))
