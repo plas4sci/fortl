@@ -1,0 +1,5 @@
+"""
+Labelling a constant as a scalar of known weight checks its value.
+"""
+t = label(0.7, Scalar[1/4])
+it = t

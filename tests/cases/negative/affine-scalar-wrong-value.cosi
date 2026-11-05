@@ -1,0 +1,5 @@
+"""
+A constant at a scalar type Scalar[w] must have the value w.
+"""
+t : Float[Scalar[1/4]] = 0.5
+it = t

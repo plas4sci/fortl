@@ -1,0 +1,3 @@
+a : Float[Unit[m] & Dimension[L] & Species[Fox] & Quantity[Length]] = 1.0
+b : Float[Quantity[Length] & Species[Fox] & Unit[m] & Dimension[L]] = a
+it = b

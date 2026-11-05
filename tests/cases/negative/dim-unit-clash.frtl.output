@@ -1,1 +1,0 @@
-tests/cases/negative/dim-unit-clash.frtl:1:37: Incoherence between grade Dimension[T] and Unit[m]

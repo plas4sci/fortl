@@ -48,16 +48,16 @@ primitives = [ ("sqrt", VPrimitive "sqrt" sqrtFunc)
               , ("to_SI", VPrimitive "to_SI" idFunc)]
   where
     floatFunc1 _ f [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ f n
-    floatFunc1 name _ _ = Left $ "fortl bug: " <> name <> " expects a single float argument"
+    floatFunc1 name _ _ = Left $ "cosi bug: " <> name <> " expects a single float argument"
 
     atan2Func [ValExpr (NumFloat y), ValExpr (NumFloat x)] = Right $ ValExpr $ NumFloat $ atan2 y x
-    atan2Func _ = Left "fortl bug: atan2 expects two float arguments"
+    atan2Func _ = Left "cosi bug: atan2 expects two float arguments"
 
     idFunc [x] = Right x
-    idFunc _   = Left "fortl bug: identity(conversion) expects a single argument"
+    idFunc _   = Left "cosi bug: identity(conversion) expects a single argument"
 
     sqrtFunc [ValExpr (NumFloat n)] = Right $ ValExpr $ NumFloat $ sqrt n
-    sqrtFunc _ = Left "fortl bug: sqrt expects a single float argument" 
+    sqrtFunc _ = Left "cosi bug: sqrt expects a single float argument" 
 
 -- Empty env (at top of lexical scope)
 emptyEnv :: Env

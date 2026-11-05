@@ -1,0 +1,12 @@
+"""
+The ratio of two Vectors is a Vector (here a dimensionless one), so
+the position of x along the segment from p to q can be computed and used
+to interpolate again.
+"""
+p : Float[Unit[s] & Point] = 10.0
+q : Float[Unit[s] & Point] = 4.0
+x : Float[Unit[s] & Point] = 7.0
+
+t : Float[Unit[1] & Vector] = (x - p) / (q - p)
+y : Float[Unit[s] & Point] = p + t * (q - p)
+it = (t, y)

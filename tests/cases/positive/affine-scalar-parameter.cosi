@@ -1,0 +1,14 @@
+"""
+A Vector is a value that does not depend on an origin, such as a number of
+unknown value, and Vectors multiply to Vectors, so linear interpolation p + t * (q - p) works for any t,
+including a parameter whose value is not known statically.
+"""
+def lerp (p, q, t) -> Float[Unit[s] & Point]:
+  p : Float[Unit[s] & Point]
+  q : Float[Unit[s] & Point]
+  t : Float[Vector]
+  return p + t * (q - p)
+
+a : Float[Unit[s] & Point] = 10.0
+b : Float[Unit[s] & Point] = 4.0
+it = lerp(a, b, 0.25)

@@ -1,0 +1,1 @@
+tests/cases/negative/species-mismatch-add.cosi:3:30: Expecting descriptions to be the same but got Species[Fox] and Species[Rabbit] for operator +

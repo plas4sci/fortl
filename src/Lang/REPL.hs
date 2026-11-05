@@ -3,7 +3,7 @@
 module Lang.REPL where
 
 import Lang.Syntax
-import Lang.Frontend    (banner, run, ansi_bold, ansi_reset)
+import Lang.Frontend    (banner, run, resolveSourceFile, ansi_bold, ansi_reset)
 import Lang.Parser      (parseExpr, parseType)
 import Lang.PrettyPrint (pprint)
 import Lang.Types       (synth, errorToString, Context)
@@ -34,7 +34,7 @@ data REPLState =
 initialState :: REPLState
 initialState = REPLState {
      currentFile = Nothing
-   , prompt      = "[F]"
+   , prompt      = ""
    , env         = emptyEnv
    , options     = []
    , typingContext = []
@@ -55,18 +55,8 @@ replLoop state = do
             liftIO printHelp
             replLoop state
           'l':' ':path -> do
-            runResult <- liftIO $ run False (trim path)
-            case runResult of
-              Left _ -> do -- run already prints the error message
-                replLoop state
-              Right (ast', opts, env', expr, ctxt) -> do
-                liftIO $ displayResult expr
-                let fileState = FileState { filename = path, ast = ast' }
-                replLoop $ state { currentFile = Just fileState
-                                  , prompt = takeBaseName path
-                                  , env = env'
-                                  , options = opts
-                                  , typingContext = ctxt }
+            state' <- liftIO $ loadFile state (trim path)
+            replLoop state'
 
           'r':_ -> do
             case currentFile state of
@@ -129,11 +119,30 @@ displayResult :: Value -> IO ()
 displayResult e = do
   putStrLn $ pprint e
 
-main :: IO ()
-main = do
+-- | Load (type check and evaluate) a file into the REPL state. On failure the
+-- error has already been printed by 'run' and the state is left unchanged.
+loadFile :: REPLState -> FilePath -> IO REPLState
+loadFile state path0 = do
+  path <- resolveSourceFile path0
+  runResult <- run False path
+  case runResult of
+    Left _ -> return state
+    Right (ast', opts, env', expr, ctxt) -> do
+      displayResult expr
+      let fileState = FileState { filename = path, ast = ast' }
+      return $ state { currentFile = Just fileState
+                     , prompt = takeBaseName path
+                     , env = env'
+                     , options = opts
+                     , typingContext = ctxt }
+
+-- | Start the REPL, optionally loading a file first.
+repl :: Maybe FilePath -> IO ()
+repl mfile = do
   putStrLn $ ansi_bold <> banner <> ansi_reset
   putStrLn "Run :h for help"
-  _ <- runInputT defaultSettings (replLoop initialState)
+  state <- maybe (return initialState) (loadFile initialState) mfile
+  _ <- runInputT defaultSettings (replLoop state)
   return ()
 
 printHelp :: IO ()

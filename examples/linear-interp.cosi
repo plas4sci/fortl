@@ -1,0 +1,41 @@
+# Affine-space tutorial
+
+"""
+Linear interpolation of two points `p` and `q`
+with a weight scalar `t`:
+"""
+p : Float[Unit[s] & Point] = 10.0
+q : Float[Unit[s] & Point] = 4.0
+"""The scalar t = 0.25 has its value tracked in its type"""
+t : Float[Unit[1] & Scalar[1/4]] = 0.25
+"""
+Scalar[1/4]: 1.0 - t is the scalar 3/4,
+and the weights of the two terms sum to 1, hence we get
+back a point from the linear interpolation.
+"""
+r : Float[Unit[s] & Point] = (1.0 - t) * p + t * q
+it1 = r
+
+"""However, we may not be able to statically resolve the
+parameter, and so in this case we can fall back to a Vector:
+a value that does not depend on an origin, such as a number
+of unknown value.
+"""
+"""
+Vectors multiply to Vectors, so linear interpolation
+p + t * (q - p) works for any t, including a parameter
+whose value is not known statically.
+"""
+def lerp (p, q, t) -> Float[Unit[s] & Point]:
+  p : Float[Unit[s] & Point]
+  q : Float[Unit[s] & Point]
+  t : Float[Vector]
+  return p + t * (q - p)
+
+a : Float[Unit[s] & Point] = 10.0
+b : Float[Unit[s] & Point] = 4.0
+it2 = lerp(a, b, 0.25)
+
+# The two results are the same here, but may not be for all
+# floating points
+it = (it1, it2)

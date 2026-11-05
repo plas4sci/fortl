@@ -1,0 +1,3 @@
+x : Float[Point] = 10.0
+y : Float[Point] = 2.0
+it = x * y

@@ -1,0 +1,1 @@
+tests/cases/negative/units-mismatch.cosi:6:38: Expecting descriptor `s^-2 * m` but got `s^-1 * m`

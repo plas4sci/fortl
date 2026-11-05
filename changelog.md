@@ -1,4 +1,8 @@
-# 0.3.0 - WIP
+# 0.4.0 - cosi!
+- Renamed to cosi (COde with Scientific Intent); source files now use the `.cosi` extension
+- Single `cosi` executable: `cosi` starts the REPL, `cosi file` runs a file, `cosi -i file` loads a file into the REPL (the `.cosi` extension may be omitted)
+
+# 0.3.0 beta
 - `String` literals
 - Exponentiation operation on floats (and their `Descriptor` analysis)
 - Scientific notation accepted for floating-point literals
@@ -13,7 +17,7 @@
 # 0.2.0 - PROPL 2026 announcement (June 15, 2026)
 - Pythonic syntax in types
 - Typing now includes implicit types with type dependency (for resolving Float which has kind `{d : Descriptor} -> d -> Type`
-- REPL `fortli`
+- REPL `cosii`
 
 # 0.1.0 - Initial version
 

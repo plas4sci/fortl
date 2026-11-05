@@ -1,0 +1,7 @@
+"""
+2p - q is an affine combination (weights 2 and -1 sum to 1), so it is a Point.
+"""
+p : Float[Unit[s] & Point] = 10.0
+q : Float[Unit[s] & Point] = 4.0
+r : Float[Unit[s] & Point] = 2.0 * p - q
+it = r

@@ -1,0 +1,10 @@
+"""
+A Vector (of unknown value) cannot be used where a scalar of known value is
+expected: subsumption only forgets a value.
+"""
+def quarter(t) -> Float[Scalar[1/4]]:
+  t : Float[Scalar[1/4]]
+  return t
+
+v : Float[Vector] = 0.25
+it = quarter(v)

@@ -1,0 +1,7 @@
+"""
+A variable's value is not known, so it cannot be labelled as a scalar of
+known value; it could be labelled as a Vector instead.
+"""
+x : Float[1] = 0.25
+t = label(x, Scalar[1/4])
+it = t
