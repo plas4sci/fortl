@@ -55,6 +55,7 @@ library:
   - Lang.Parser
   - Lang.PrettyPrint
   - Lang.Frontend
+  - Lang.ExtractPy
   - Lang.Descriptions
   - Lang.TypeHelpers
 
@@ -66,6 +67,7 @@ tests:
     - fortl-implementation
     - strict
     - Diff
+    - process
     - tasty
     - tasty-golden
     - tasty-hunit

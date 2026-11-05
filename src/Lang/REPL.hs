@@ -3,7 +3,7 @@
 module Lang.REPL where
 
 import Lang.Syntax
-import Lang.Frontend    (banner, run, ansi_bold, ansi_reset)
+import Lang.Frontend    (banner, parseAndCheck, ansi_bold, ansi_reset)
 import Lang.Parser      (parseExpr, parseType)
 import Lang.PrettyPrint (pprint)
 import Lang.Types       (synth, errorToString, Context)
@@ -55,7 +55,7 @@ replLoop state = do
             liftIO printHelp
             replLoop state
           'l':' ':path -> do
-            runResult <- liftIO $ run False (trim path)
+            runResult <- liftIO $ parseAndCheck False (trim path)
             case runResult of
               Left _ -> do -- run already prints the error message
                 replLoop state
@@ -74,7 +74,7 @@ replLoop state = do
                 liftIO $ putStrLn "No file loaded. Use :l <path> to load a file."
                 replLoop state
               Just fs -> do
-                runResult <- liftIO $ run False (filename fs)
+                runResult <- liftIO $ parseAndCheck False (filename fs)
                 case runResult of
                   Left err -> do
                     liftIO $ putStrLn err

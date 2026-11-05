@@ -71,11 +71,12 @@ instance PrettyPrint Expr where
 instance PrettyPrint BinOp where
   pprint op =
     case op of
-      BinOpExp -> "^"
+      BinOpExp -> "**"
       BinOpPlus -> "+"
       BinOpMinus -> "-"
       BinOpTimes -> "*"
       BinOpDivide -> "/"
+      BinOpDivideInteger -> "//"
       BinOpAnd -> "and"
       BinOpOr -> "or"
 

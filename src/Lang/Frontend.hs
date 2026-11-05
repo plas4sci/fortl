@@ -8,6 +8,7 @@ import Lang.Parser      (parseProgram)
 import Lang.PrettyPrint (pprint)
 import Lang.Semantics   (interpret, Env, Value)
 import Lang.Desugar     (desugar)
+import Lang.ExtractPy   (extractProgram)
 import Lang.Syntax
 import Lang.Types
 import Lang.TypeError
@@ -15,8 +16,7 @@ import Lang.TypeError
 import System.Directory (getCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit
-import System.FilePath ((</>))
-import GHC.IO.Exception (IOErrorType(..), ioe_type)
+import System.FilePath    (replaceExtension)
 
 import Control.Monad (when)
 import Control.Exception (try, IOException)
@@ -27,6 +27,7 @@ banner = "fortl v0.3.0 - Programming for science"
 helpMessage :: String
 helpMessage = unlines
   [ "Usage: fortl <filename>"
+  , "       fortl <filename> --extract-py [output.py]"
   , "       fortl --help"
   ]
 
@@ -38,15 +39,51 @@ main = do
   case args of
     [] -> putStrLn "Please supply a filename as a command line argument"
     ("--help":_) -> putStr helpMessage
+    -- `--extract-py` may appear anywhere among the arguments, e.g.
+    -- `fortl --extract-py file.frtl` or `fortl file.frtl --extract-py`
+    _ | "--extract-py" `elem` args ->
+          case filter (/= "--extract-py") args of
+            []           -> do
+              putStrLn "Please supply a filename to extract"
+              exitFailure
+            (fname:rest) -> extractPy fname rest
     -- If we have at least one
     (fname:_) -> do
-      result <- run True fname
+      result <- parseAndCheck True fname
       case result of
         Left _   -> exitFailure
         Right (_, _, _, result, _)  -> do
           putStrLn $ pprint result
           exitSuccess
 
+-- | Parse, desugar and typecheck a fortl file, and if it is well-typed,
+-- write out an equivalent Python program.
+extractPy :: String -> [String] -> IO ()
+extractPy fname rest = do
+  result <- parseAndCheck True fname
+  case result of
+    Left _ -> exitFailure
+    Right (parsetree, _, _, _, _) -> do
+      let outPath = case rest of
+                      (out:_) -> out
+                      []      -> replaceExtension fname ".py"
+      writeFile outPath (extractProgram (Just fname) parsetree)
+      putStrLn $ "Wrote Python translation to " <> outPath
+      exitSuccess
+
+parseAndCheck :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Expr, Context))
+parseAndCheck report fname = do
+  -- Check if this is a file
+  exists <- doesPathExist fname
+  if not exists
+    then do
+      putStrLn $ "File `" <> fname <> "` cannot be found."
+      return $ Left "File not found"
+    else do
+      when report $ putStrLn $ "Checking " <> fname <> "..."
+      -- Read the file, parse, and do something...
+      input <- readFile fname
+      case parseProgram fname input of
 tryReadFile :: FilePath -> IO (Either IOException String)
 tryReadFile path = try $ do
   !contents <- readFile path
