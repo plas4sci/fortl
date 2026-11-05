@@ -439,10 +439,10 @@ synth_ gamma (App (Var "to_SI") [e]) = do
     t <- synth gamma e
     case isGradableNumericType t of
       Just ("Float", _, d) -> do
-        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") d)
+        d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") [d])
         -- Re-elaborate `Float[d']` so that its grade kind is computed from the
         -- new description (as for a source annotation), rather than patched
-        (t', _) <- synthKind (TyApp (tyCon0 "Float") d')
+        (t', _) <- synthKind (TyApp (tyCon0 "Float") [d'])
         Right t'
       _ -> Left $ ContextualError $ "to_SI expects a Float argument but got " <> pprint t
 
