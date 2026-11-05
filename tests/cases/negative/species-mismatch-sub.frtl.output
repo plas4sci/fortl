@@ -1,2 +1,1 @@
-tests/cases/negative/species-mismatch-sub.frtl:3:32: Description equality failed between Rabbit and Fox
-Trying to check at Float[{SpeciesType}][Species[Fox]] but got type Float[{SpeciesType}][Species[Rabbit]]
+tests/cases/negative/species-mismatch-sub.frtl:3:30: Expecting descriptions to be the same but got Species[Fox] and Species[Rabbit] for operator +

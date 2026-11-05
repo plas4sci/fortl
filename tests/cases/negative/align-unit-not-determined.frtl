@@ -1,0 +1,7 @@
+"""
+A dimension does not determine a unit, so a value given only a dimension
+cannot be combined with one given a unit.
+"""
+a : Float[Unit[m]] = 4.05
+b : Float[Dimension[T]] = 45.0
+it = a / b

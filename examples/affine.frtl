@@ -9,12 +9,12 @@ ordinary units, they don't need identical types to combine with `+`/`-`:
   Point - Point  = Vector  (the displacement between two points)
 """
 
-x  : Float[Unit[s] & Point[Time]]  = 10.0
-dx : Float[Unit[s] & Vector[Time]] = 5.0
-y  : Float[Unit[s] & Point[Time]]  = 3.0
+x  : Float[Unit[s] & Point]  = 10.0
+dx : Float[Unit[s] & Vector] = 5.0
+y  : Float[Unit[s] & Point]  = 3.0
 
-x_forward    : Float[Unit[s] & Point[Time]]  = x + dx
-x_backward   : Float[Unit[s] & Point[Time]]  = x - dx
-displacement : Float[Unit[s] & Vector[Time]] = x - y
+x_forward    : Float[Unit[s] & Point]  = x + dx
+x_backward   : Float[Unit[s] & Point]  = x - dx
+displacement : Float[Unit[s] & Vector] = x - y
 
 it = (x_forward, (x_backward, displacement))

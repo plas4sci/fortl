@@ -1,0 +1,1 @@
+tests/cases/negative/align-quantity-not-determined.frtl:7:8: Cannot combine Unit[s] with Unit[m] & Quantity[length]: the Quantity component of Unit[s] is not determined by the rest of its description

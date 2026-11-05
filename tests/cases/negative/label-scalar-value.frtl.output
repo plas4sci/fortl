@@ -1,0 +1,1 @@
+tests/cases/negative/label-scalar-value.frtl:4:5: The constant 7/10 does not have the value 1/4 of the scalar type Scalar[1/4]

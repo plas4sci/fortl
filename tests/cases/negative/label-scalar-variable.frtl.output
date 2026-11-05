@@ -1,0 +1,1 @@
+tests/cases/negative/label-scalar-variable.frtl:6:5: Only a constant can be labelled with the scalar type Scalar[1/4], since its value must be 1/4

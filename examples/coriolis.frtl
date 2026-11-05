@@ -3,7 +3,7 @@ hour_length   : Float[Unit[s/hour]] = (60.0 : Float[Unit[min/hour]]) * minute_le
 day_length : Float[Unit[s] & Quantity[sidereal_day]] = label((
      (23.0 : Float[Unit[hour]]) * hour_length
    + (56.0 : Float[Unit[min]]) * minute_length
-   + 4.09 : Float[Unit[s]]), Quantity[sidereal_day])
+   + (4.09 : Float[Unit[s]])), Quantity[sidereal_day])
 
 """Earth's angular rotation rate"""
 π : Float[Unit[1] & Quantity[rad]] = 3.141592358979323

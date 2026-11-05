@@ -1,0 +1,1 @@
+tests/cases/negative/affine-scale-by-variable.frtl:6:8: Cannot combine 1 with Unit[s] & Point: the Affine component of 1 is not determined by the rest of its description (declare whether it is a Point or a Vector, e.g. Float[Vector])

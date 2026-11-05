@@ -1,0 +1,6 @@
+"""
+Negating a Point negates its weight: -p is a NPoint.
+"""
+p : Float[Unit[s] & Point] = 10.0
+n : Float[Unit[s] & NPoint] = -p
+it = n

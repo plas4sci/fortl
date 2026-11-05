@@ -1,0 +1,12 @@
+"""
+Before descriptions are combined or compared they are brought to the same
+components, filling in a missing component only where it is uniquely
+determined: the dimension of a value in SI base units from its unit, and
+the identity for a number with no physical description.
+"""
+a : Float[Unit[m]] = 4.0
+b : Float[Unit[m] & Dimension[L]] = 2.0
+c : Float[Unit[m] & Dimension[L]] = a + b
+d : Float[1] = 3.0
+e : Float[Unit[1]] = d + (1.0 : Float[Unit[1]])
+it = (c, e)

@@ -1,4 +1,4 @@
-x : Float[Unit[s] & Point[Time]] = 10.0
-y : Float[Unit[s] & Point[Time]] = 4.0
-dt : Float[Unit[s] & Vector[Time]] = x - y
+x : Float[Unit[s] & Point] = 10.0
+y : Float[Unit[s] & Point] = 4.0
+dt : Float[Unit[s] & Vector] = x - y
 it = dt

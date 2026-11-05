@@ -1,0 +1,2 @@
+tests/cases/negative/affine-weight-explicit-mismatch.frtl:2:34: Description equality failed between Affine[2] and Point
+Trying to check at Float[{UoM & AffineSpace}][Unit[s] & Affine[2]] but got type Float[{UoM & AffineSpace}][Unit[s] & Point]

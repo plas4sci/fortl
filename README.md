@@ -36,7 +36,7 @@ it : Float[Unit[m / s] & Quantity[length / time]] = (x + y) / t
 ```
 Running `fortl examples/quantity.frtl` produces:
 ```
-Well-typed as Float[{(UoM & KoQ)}][(Unit[(m * s^-1.0)] & Quantity[(length * time^-1.0)])]
+Well-typed as Float[{(UoM & KoQ)}][(Unit[(m * s^-1)] & Quantity[(length * time^-1)])]
 0.75
 ```
 The type checker verifies the units and quantities are consistent, and evaluates the result `(2.0 + 1.0) / 4.0 = 0.75` with inferred type `Float[Unit[m/s] & Quantity[length/time]]`.
@@ -57,7 +57,7 @@ The interactive REPL (`fortli`) supports interactive evaluation and type inferen
 % fortli
 ...
 [F]> :l examples/units.frtl
-Well-typed as Float[{UoM}][Unit[(m * s^-1.0)]]
+Well-typed as Float[{UoM}][Unit[(m * s^-1)]]
 0.25
 units> x
 1.0
