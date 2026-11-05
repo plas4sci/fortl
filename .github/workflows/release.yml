@@ -45,17 +45,18 @@ jobs:
         shell: bash
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            name="fortl-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+            name="cosi-${GITHUB_REF_NAME}-${{ matrix.platform }}"
           else
-            name="fortl-${{ matrix.platform }}-${GITHUB_RUN_ID}"
+            name="cosi-${{ matrix.platform }}-${GITHUB_RUN_ID}"
           fi
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test executables
         shell: bash
         run: |
-          ./bin/fortl examples/quantity.cosi
-          printf ':q\n' | ./bin/fortli
+          ./bin/cosi examples/quantity.cosi
+          printf ':q\n' | ./bin/cosi
+          printf ':q\n' | ./bin/cosi -i examples/quantity
 
       - name: Package (unix)
         if: runner.os != 'Windows'
@@ -63,7 +64,7 @@ jobs:
         run: |
           name="${{ steps.meta.outputs.name }}"
           mkdir -p "dist/$name"
-          cp bin/fortl bin/fortli LICENSE README.md "dist/$name/"
+          cp bin/cosi LICENSE README.md "dist/$name/"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           rm -rf "dist/$name"
 
@@ -73,7 +74,7 @@ jobs:
         run: |
           $name = "${{ steps.meta.outputs.name }}"
           New-Item -ItemType Directory -Force -Path "dist/$name" | Out-Null
-          Copy-Item bin/fortl.exe, bin/fortli.exe, LICENSE, README.md "dist/$name/"
+          Copy-Item bin/cosi.exe, LICENSE, README.md "dist/$name/"
           Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip" -Force
           Remove-Item -Recurse -Force "dist/$name"
 

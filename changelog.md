@@ -1,4 +1,8 @@
-# 0.3.0 - WIP
+# 0.4.0 - cosi!
+- Renamed to cosi (COde with Scientific Intent); source files now use the `.cosi` extension
+- Single `cosi` executable: `cosi` starts the REPL, `cosi file` runs a file, `cosi -i file` loads a file into the REPL (the `.cosi` extension may be omitted)
+
+# 0.3.0 beta
 - `String` literals
 - Exponentiation operation on floats (and their `Descriptor` analysis)
 - Scientific notation accepted for floating-point literals

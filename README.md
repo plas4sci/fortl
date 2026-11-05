@@ -35,7 +35,7 @@ t : Float[Unit[s] & Quantity[time]] = 4.0
 # End result
 it : Float[Unit[m / s] & Quantity[length / time]] = (x + y) / t
 ```
-Running `cosi examples/quantity.cosi` produces:
+Running `cosi examples/quantity.cosi` (or just `cosi examples/quantity`; the `.cosi` extension is optional) produces:
 ```
 Well-typed as Float[{(UoM & KoQ)}][(Unit[(m * s^-1)] & Quantity[(length * time^-1)])]
 0.75
@@ -44,7 +44,7 @@ The type checker verifies the units and quantities are consistent, and evaluates
 
 ### REPL
 
-The interactive REPL (`cosii`) supports interactive evaluation and type inference. You can:
+Running `cosi` with no arguments starts the interactive REPL, which supports interactive evaluation and type inference. `cosi -i path/to/file` loads a file and then drops you into the REPL with its definitions in scope. In the REPL you can:
 
 - **Evaluate an expression** — type any expression and press Enter
 - **Infer a type** — `:t expr` infers the type of an expression; `:k type` infers the kind of a type
@@ -55,9 +55,9 @@ The interactive REPL (`cosii`) supports interactive evaluation and type inferenc
 **Example session:**
 
 ```bash
-% cosii
+% cosi
 ...
-[F]> :l examples/units.cosi
+> :l examples/units.cosi
 Well-typed as Float[{UoM}][Unit[(m * s^-1)]]
 0.25
 units> x
@@ -74,7 +74,7 @@ cosi is written in Haskell and is built with [Stack](https://docs.haskellstack.o
 
 **Install (prebuilt binaries)**:
 
-Download an archive for your platform from the [releases page](https://github.com/plas4sci/cosi/releases), unpack it, and put the `cosi` and `cosii` executables somewhere on your `PATH`. No Haskell toolchain required.
+Download an archive for your platform from the [releases page](https://github.com/plas4sci/cosi/releases), unpack it, and put the `cosi` executable somewhere on your `PATH`. No Haskell toolchain required.
 
 **Install (from source)**:
 
@@ -87,7 +87,7 @@ stack install
 ```
 (The first time it will install the GHC Haskell compiler).
 
-After installing, `cosi` and `cosii` will be available as commands directly.
+After installing, `cosi` will be available as a command directly.
 
 **For developers**:
 

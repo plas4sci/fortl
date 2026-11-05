@@ -12,10 +12,8 @@ import Lang.Syntax
 import Lang.Types
 import Lang.TypeError
 
-import System.Directory (getCurrentDirectory)
-import System.Environment (getArgs)
-import System.Exit
-import System.FilePath ((</>))
+import System.Directory (getCurrentDirectory, doesFileExist)
+import System.FilePath ((</>), (<.>), takeExtension)
 import GHC.IO.Exception (IOErrorType(..), ioe_type)
 
 import Control.Monad (when)
@@ -24,28 +22,20 @@ import Control.Exception (try, IOException)
 banner :: String
 banner = "cosi v0.4.0 - Code with Scientific Intent"
 
-helpMessage :: String
-helpMessage = unlines
-  [ "Usage: cosi <filename>"
-  , "       cosi --help"
-  ]
+-- | Resolve a source file name, allowing the @.cosi@ extension to be omitted:
+-- if @fname@ does not exist but @fname.cosi@ does, use the latter.
+resolveSourceFile :: FilePath -> IO FilePath
+resolveSourceFile fname = do
+  exists <- doesFileExist fname
+  if exists || takeExtension fname == sourceExtension
+    then return fname
+    else do
+      let withExt = fname <.> sourceExtension
+      existsWithExt <- doesFileExist withExt
+      return $ if existsWithExt then withExt else fname
 
-main :: IO ()
-main = do
-  putStrLn banner
-  args <- getArgs
-  -- Get command line args
-  case args of
-    [] -> putStrLn "Please supply a filename as a command line argument"
-    ("--help":_) -> putStr helpMessage
-    -- If we have at least one
-    (fname:_) -> do
-      result <- run True fname
-      case result of
-        Left _   -> exitFailure
-        Right (_, _, _, result, _)  -> do
-          putStrLn $ pprint result
-          exitSuccess
+sourceExtension :: String
+sourceExtension = ".cosi"
 
 tryReadFile :: FilePath -> IO (Either IOException String)
 tryReadFile path = try $ do
@@ -53,7 +43,8 @@ tryReadFile path = try $ do
   return contents
 
 run :: Bool -> String -> IO (Either String (Program 'Parsed, [Option], Env, Value, Context))
-run report fname = do
+run report fname0 = do
+  fname <- resolveSourceFile fname0
   currentDir <- getCurrentDirectory
   let path = currentDir </> fname
   result <- tryReadFile path
