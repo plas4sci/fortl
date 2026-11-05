@@ -63,7 +63,7 @@ coherenceChecks repr = do
     -- Check that the unit is SI compliant with the dimension
     checkCoherence unitRepr ((dimName, exponent):dimRepr) =
       case Map.lookup (rewriteSI dimName) unitRepr of
-        Just exponent' | exponent == exponent ->
+        Just exponent' | exponent == exponent' ->
           checkCoherence (delete (rewriteSI dimName) unitRepr) dimRepr
 
         _ -> False
@@ -91,7 +91,15 @@ instance Representation DescriptionsRepr where
       d <- computeRepresentation t
       case Map.lookup "Dimension" d of
         Just (FreeAGroup repr) -> do
-          return $ insert "Unit" (FreeAGroup (mapKeys rewriteSI repr)) (delete "Dimension" d)
+          let siUnit = FreeAGroup (mapKeys rewriteSI repr)
+          case Map.lookup "Unit" d of
+            -- An existing unit is only coherent with the dimension if it is
+            -- exactly SI(d), in which case replacing it with SI(d) is a no-op
+            Just unit | unit /= siUnit ->
+              Left (DimensionAndUnitIncoherence
+                      (reifyToTypeTerm $ singleton "Dimension" $ FreeAGroup repr)
+                      (reifyToTypeTerm $ singleton "Unit" unit))
+            _ -> return $ insert "Unit" siUnit (delete "Dimension" d)
         _ -> return d
 
     -- Free abelian groups
