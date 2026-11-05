@@ -1,0 +1,9 @@
+"""
+(Vector - Point) is a DVector (grade -1); combining two DVectors via `+`
+is undefined for the same reason Point + Point is (the grade would leave
+{DVector, Vector, Point}).
+"""
+x : Float[Unit[s] & Point[Time]] = 10.0
+y : Float[Unit[s] & Vector[Time]] = 5.0
+dv = y - x
+it = dv + dv

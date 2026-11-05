@@ -1,0 +1,2 @@
+g : Float[Unit[m / s^2] & Dimension[L * T^-2]] = 9.80665
+it = g

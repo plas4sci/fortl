@@ -5,7 +5,7 @@
 
 module Lang.Kinding where
 
--- import Control.Monad
+import Control.Monad (zipWithM)
 import Lang.Syntax
 import Lang.Primitives
 import Lang.TypeError
@@ -17,31 +17,31 @@ import Lang.TypeHelpers
 -- Check if a type is well-kinded against the second argument (kind)
 -- and if so, elaborate any implicit arguments in the type
 checkKind :: Type 0 -> Type 1 -> Either TypeError (Type 0)
-checkKind (FunTy t1 t2) k = do
-  t1' <- checkKind t1 k
+checkKind (FunTy ts t2) k = do
+  ts' <- mapM (`checkKind` k) ts
   t2' <- checkKind t2 k
-  return $ FunTy t1' t2'
+  return $ FunTy ts' t2'
 
 -- e.g. Float[U[m]]
 -- :k Float : {d : Desc} -> d -> Type
 -- U[m] : UoM
 -- therefore elaborate to Float[{UoM}][U[m]]
-checkKind t@(TyApp t1 t2) k = do
+checkKind t@(TyApp t1 ts) k = do
   (t1', k1) <- synthKind t1
   case k1 of
-    FunTy k1' k2 ->
+    FunTy ks k2 | length ks == length ts ->
         case kindEquality k2 (IsSpec k) of
           Left err -> Left err
           Right () -> do
-               t2' <- checkKind t2 k1'
-               return $ TyApp t1' t2'
+               ts' <- zipWithM checkKind ts ks
+               return $ TyApp t1' ts'
     -- Since ImplictTys must come with an ImplicitTyApp
     -- then this means we have an implicit application here
-    ImplicitFunTy var k1' (FunTy (TyVar var') k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var', [t2] <- ts -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
-      return (TyApp (ImplicitTyApp t1 k2) t2')
+      return (TyApp (ImplicitTyApp t1 k2) [t2'])
 
       -- Now we know what k1 is
     _ -> Left $ ExpectingFunctionKind k1
@@ -75,6 +75,35 @@ checkKind t@(TyCon _ c) k | k == agroup =
 checkKind t@(TyCon _ "1") (TyCon _ "Base") =
   return t
 
+-- Allow 1 to be an element of "UnitBase" (dimensionless)
+checkKind t@(TyCon _ "1") (TyCon _ "UnitBase") =
+  return t
+
+-- Allow 1 to be an element of "DimensionBase" (dimensionless)
+checkKind t@(TyCon _ "1") (TyCon _ "DimensionBase") =
+  return t
+
+-- Push the expected kind down through products and exponents
+checkKind (ProdTy t1 t2) k = do
+  t1' <- checkKind t1 k
+  t2' <- checkKind t2 k
+  return $ ProdTy t1' t2'
+
+checkKind (ExponentTy t n) k = do
+  t' <- checkKind t k
+  return $ ExponentTy t' n
+
+-- WIP: this will change at some point once open and closed kinds are fully integrated
+
+-- A base symbol may be registered under one specific (closed) kind, such
+-- as DimensionBase, and still be used freely as a Unit symbol: "Type" is
+-- always open to any symbol, closed kinds require an exact registration
+-- match. This lets e.g. "J" mean both the luminous-intensity dimension
+-- (Dimension[J], kind DimensionBase) and Joules (Unit[J], kind Type).
+checkKind t@(TyCon ZeroP c) k
+  | k == type0                                    = return t
+  | Just k' <- lookup c typeConstructors, k' == k = return t
+
 checkKind t k = do
   (t', k') <- synthKind t
   if k == k'
@@ -83,19 +112,19 @@ checkKind t k = do
 
 
 checkSort :: Type 1 -> Type 2 -> Either TypeError (Type 1)
-checkSort (FunTy t1 t2) k = do
-  t1' <- checkSort t1 k
+checkSort (FunTy ts t2) k = do
+  ts' <- mapM (`checkSort` k) ts
   t2' <- checkSort t2 k
-  return $ FunTy t1' t2'
+  return $ FunTy ts' t2'
 
-checkSort t@(TyApp t1 t2) k = do
+checkSort t@(TyApp t1 ts) k = do
   (t1', k1) <- synthSort t1
   case k1 of
-    FunTy k1' k2 ->
+    FunTy ks k2 | length ks == length ts ->
         if k == k2
             then do
-               t2' <- checkSort t2 k1'
-               return $ TyApp t1' t2'
+               ts' <- zipWithM checkSort ts ks
+               return $ TyApp t1' ts'
             else Left $ SortMismatch k k2 t
     _ -> Left $ ExpectingFunctionSort k
 
@@ -111,21 +140,18 @@ synthSort t@(TyCon (SuccP ZeroP) c) =
       Nothing -> Left $ UnknownTypeConstructor c
       Just k' -> Right (t, k')
 
-synthSort (TyCon (SuccP (SuccP _)) c) =
-  error $ "Fortl bug: Should be inaccessible for " ++ c
-
-synthSort (TyApp t1 t2) = do
+synthSort (TyApp t1 ts) = do
   (t1', k) <- synthSort t1
   case k of
-    FunTy k1 k2 -> do
-        t2' <- checkSort t2 k1
-        return (TyApp t1' t2', k2)
+    FunTy ks k2 | length ks == length ts -> do
+        ts' <- zipWithM checkSort ts ks
+        return (TyApp t1' ts', k2)
     _ -> Left $ ExpectingFunctionSort k
 
-synthSort (FunTy t1 t2) = do
-  (t1', k) <- synthSort t1
+synthSort (FunTy ts t2) = do
+  (ts', k) <- synthSortFunctionArguments ts
   t2'      <- checkSort t2 k
-  return (FunTy t1' t2', k)
+  return (FunTy ts' t2', k)
 
 synthSort (ImplicitFunTy var t1 t2) = do
   -- TODO: need synthOrder?
@@ -156,18 +182,18 @@ synthKind t@(TyCon ZeroP c) =
                  Right (t, type0)
       Just k' -> Right (t, k')
 
-synthKind (TyApp t1 t2) = do
+synthKind (TyApp t1 ts) = do
   (t1', k) <- synthKind t1
   case k of
-    FunTy k1 k2 -> do
-        t2' <- checkKind t2 k1
-        return (TyApp t1' t2', k2)
+    FunTy ks k2 | length ks == length ts -> do
+        ts' <- zipWithM checkKind ts ks
+        return (TyApp t1' ts', k2)
 
-    ImplicitFunTy var k1' (FunTy (TyVar var') k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var', [t2] <- ts -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
-      return (TyApp (ImplicitTyApp t1 k2) t2', k3)
+      return (TyApp (ImplicitTyApp t1 k2) [t2'], k3)
 
     _ -> Left $ ExpectingFunctionKind k
 
@@ -181,10 +207,10 @@ synthKind (ImplicitTyApp t1 t2) = do
     _ -> Left $ ExpectingFunctionKind k
 
 
-synthKind (FunTy t1 t2) = do
-  (t1', k) <- synthKind t1
+synthKind (FunTy ts t2) = do
+  (ts', k) <- synthKindFunctionArguments ts
   t2'      <- checkKind t2 k
-  return (FunTy t1' t2', k)
+  return (FunTy ts' t2', k)
 
 synthKind (ProdTy t1 t2) = do
   (t1', t2', k) <- synthCheckPair t1 t2
@@ -228,14 +254,38 @@ synthCheckPair t1 t2 =
       t2' <- checkKind t2 k
       return (t1', t2', k)
 
+synthKindFunctionArguments :: [Type 0] -> Either TypeError ([Type 0], Type 1)
+synthKindFunctionArguments [] = Left $ ContextualError "Function types must have at least one argument"
+synthKindFunctionArguments (t:ts) = do
+  (t', k) <- synthKind t
+  ts' <- mapM (`checkKind` k) ts
+  return (t' : ts', k)
+
+synthSortFunctionArguments :: [Type 1] -> Either TypeError ([Type 1], Type 2)
+synthSortFunctionArguments [] = Left $ ContextualError "Function kinds must have at least one argument"
+synthSortFunctionArguments (t:ts) = do
+  (t', k) <- synthSort t
+  ts' <- mapM (`checkSort` k) ts
+  return (t' : ts', k)
+
 indent :: String -> String
 indent = unlines . map ("  " <>) . lines
 
+-- Products of descriptor kinds (&) are associative and commutative, so
+-- compare them as multisets of their components
 kindEquality :: Type 1 -> Specificational (Type 1) -> Either TypeError ()
-kindEquality (WithTy t1 t2) (IsSpec (WithTy t1' t2')) =
-  (kindEquality t1 (IsSpec t1') >> kindEquality t2 (IsSpec t2')) <|>
-  (kindEquality t1 (IsSpec t2') >> kindEquality t2 (IsSpec t1'))
 kindEquality t1 (IsSpec t2) =
-  if t1 == t2
+  if sameComponents (withComponents t1) (withComponents t2)
     then Right ()
     else Left $ KindMismatch t2 t1 Nothing
+  where
+    sameComponents [] ks' = null ks'
+    sameComponents (k:ks) ks' =
+      case break (== k) ks' of
+        (before, _ : after) -> sameComponents ks (before ++ after)
+        (_, [])             -> False
+
+-- | Flatten a (nested) product of descriptor kinds into its components
+withComponents :: Type 1 -> [Type 1]
+withComponents (WithTy t1 t2) = withComponents t1 ++ withComponents t2
+withComponents t              = [t]

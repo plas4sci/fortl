@@ -35,6 +35,9 @@ data TypeError
   | TypeTreeMismatch (Type 0) (Type 0)
   | MismatchedDescriptionReprTypes
   | BaseTypeMismatch Identifier Identifier
+  | DimensionAndUnitIncoherence { dimension :: Type 0, unit :: Type 0}
+  | AffineSpaceCombinationUndefined BinOp (Type 0) (Type 0)
+  | AffineSpaceScalingUnsupported BinOp (Type 0)
   
   -- Kinding errors
   | KindMismatch { expectedKind :: Type 1, actualKind :: Type 1, typeInQuestion :: Maybe (Type 0) }
@@ -53,6 +56,9 @@ data TypeError
   | FreeVariablesInAbstraction [Identifier]
   | TermLevelTypeAbstraction Identifier
   | TypeApplicationExpectsType
+
+  -- Program well-formedness errors
+  | WellFormednessError WellFormednessError
   
   -- Generic/contextual errors
   | ContextualError String
@@ -63,6 +69,11 @@ data TypeError
   -- Source location annotation
   | Located SrcPos TypeError
 
+  deriving (Show)
+
+data WellFormednessError
+  = MissingParameterAnnotation Identifier
+  | DuplicateParameterAnnotation Identifier
   deriving (Show)
 
 class MonadAlt m where

@@ -1,0 +1,154 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.39.6.
+--
+-- see: https://github.com/sol/hpack
+
+name:           fortl-implementation
+version:        0.3.0
+synopsis:       A modern language for science
+author:         Dominic Orchard
+maintainer:     Dominic Orchard
+copyright:      2024 authors
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+
+library
+  exposed-modules:
+      Lang.Semantics
+      Lang.Syntax
+      Lang.Parser
+      Lang.PrettyPrint
+      Lang.Frontend
+      Lang.Descriptions
+      Lang.TypeHelpers
+  other-modules:
+      Lang.Desugar
+      Lang.FirstParameter
+      Lang.Helpers
+      Lang.Kinding
+      Lang.Lexer
+      Lang.Options
+      Lang.Primitives
+      Lang.REPL
+      Lang.Substitution
+      Lang.TypeError
+      Lang.Types
+      Paths_fortl_implementation
+  hs-source-dirs:
+      src
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
+  build-depends:
+      array
+    , base >=4.10 && <5
+    , containers
+    , directory
+    , filepath
+    , haskeline
+    , text
+    , transformers
+  default-language: Haskell2010
+
+executable fortl
+  main-is: Lang/Frontend.hs
+  other-modules:
+      Lang.Descriptions
+      Lang.Desugar
+      Lang.FirstParameter
+      Lang.Helpers
+      Lang.Kinding
+      Lang.Lexer
+      Lang.Options
+      Lang.Parser
+      Lang.PrettyPrint
+      Lang.Primitives
+      Lang.REPL
+      Lang.Semantics
+      Lang.Substitution
+      Lang.Syntax
+      Lang.TypeError
+      Lang.TypeHelpers
+      Lang.Types
+      Paths_fortl_implementation
+  hs-source-dirs:
+      src
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.Frontend
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      array
+    , base >=4.10 && <5
+    , containers
+    , directory
+    , filepath
+    , fortl-implementation
+    , haskeline
+    , text
+    , transformers
+  default-language: Haskell2010
+
+executable fortli
+  main-is: Lang/REPL.hs
+  other-modules:
+      Lang.Descriptions
+      Lang.Desugar
+      Lang.FirstParameter
+      Lang.Frontend
+      Lang.Helpers
+      Lang.Kinding
+      Lang.Lexer
+      Lang.Options
+      Lang.Parser
+      Lang.PrettyPrint
+      Lang.Primitives
+      Lang.Semantics
+      Lang.Substitution
+      Lang.Syntax
+      Lang.TypeError
+      Lang.TypeHelpers
+      Lang.Types
+      Paths_fortl_implementation
+  hs-source-dirs:
+      src
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults -main-is Lang.REPL
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      array
+    , base >=4.10 && <5
+    , containers
+    , directory
+    , filepath
+    , fortl-implementation
+    , haskeline
+    , text
+    , transformers
+  default-language: Haskell2010
+
+test-suite fortl-golden
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_fortl_implementation
+  hs-source-dirs:
+      tests
+  ghc-options: -O0 -Wall -Werror -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wno-unused-matches -Wno-name-shadowing -Wno-type-defaults
+  build-depends:
+      Diff
+    , array
+    , base >=4.10 && <5
+    , containers
+    , directory
+    , filepath
+    , fortl-implementation
+    , haskeline
+    , strict
+    , tasty
+    , tasty-golden
+    , tasty-hunit
+    , text
+    , transformers
+  default-language: Haskell2010

@@ -8,9 +8,9 @@ dt : Float[Unit[s] & Species[1]] = 0.1
 dx : Float[Unit[m] & Species[1]] = 0.1
 
 """Diffusion kernel (for mass concentration)"""
-kernel : Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] -> Float[Unit[kg/m^3] & Species[X]] = (
-    lambda l: lambda c: lambda r:
-      # Kernel
-          c
-        + D * dt * (l - (label(2.0, Unit[1] & Species[1]))*c + r) / (dx*dx)
-  )
+def kernel (l, c, r) -> Float[Unit[kg/m^3] & Species[X]]:
+  """Centered spatial elements"""
+  l : Float[Unit[kg/m^3] & Species[X]]
+  c : Float[Unit[kg/m^3] & Species[X]]
+  r : Float[Unit[kg/m^3] & Species[X]]
+  return (c + D * dt * (l - (label(2.0, Unit[1] & Species[1]))*c + r) / (dx*dx))

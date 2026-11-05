@@ -21,18 +21,26 @@ substituteExpr (Var y) (x, e')
   | x == y = e'
   | otherwise = Var y
 
-substituteExpr (App e1 e2) s =
-  App (substituteExpr e1 s) (substituteExpr e2 s)
+substituteExpr (App e1 es) s =
+  App (substituteExpr e1 s) (map (`substituteExpr` s) es)
 
-substituteExpr (Abs y mt e) s =
-  let (y', e') = substitute_binding y e s in Abs y' mt e'
+substituteExpr (TyIndex e tys) s =
+  TyIndex (substituteExpr e s) tys
+
+substituteExpr (Abs [] e) s = Abs [] (substituteExpr e s)
+substituteExpr (Abs ((x, mt):params) e) s =
+  -- treat the remaining parameters as the body of a nested abstraction so
+  -- capture-avoidance can reuse the single-binder logic per parameter
+  case substitute_binding x (Abs params e) s of
+    (x', Abs params' e') -> Abs ((x', mt) : params') e'
+    _ -> error "substitute_binding on Abs must preserve Abs shape"
 
 substituteExpr (Sig e t) s = Sig (substituteExpr e s) t
 
 -- ML
 
-substituteExpr (GenLet x e1 e2) s =
-  let (x' , e2') = substitute_binding x e2 s in GenLet x' (substituteExpr e1 s) e2'
+substituteExpr (Let x e1 e2) s =
+  let (x' , e2') = substitute_binding x e2 s in Let x' (substituteExpr e1 s) e2'
 
 -- Casts
 substituteExpr (Cast e) s =
@@ -63,23 +71,8 @@ substituteExpr (BinOp op e1 e2) s =
 
 substituteExpr (UnOp op e) s = UnOp op (substituteExpr e s)
 
-substituteExpr (Lift e t) (var, TyEmbed t') =
-  Lift (substituteExpr e (var, TyEmbed t')) (substituteType t (var, t'))
-
 substituteExpr (Lift e t) s =
   Lift (substituteExpr e s) t
-
--- Poly
-
--- Substitute inside types
-substituteExpr (TyEmbed t) (var, TyEmbed t') =
-  TyEmbed (substituteType t (var, t'))
-
-substituteExpr (TyEmbed t) (var, _) =
-    TyEmbed t
-
-substituteExpr (TyAbs y e) s =
-  TyAbs y (substituteExpr e s)
 
 substituteExpr (Con c es) s =
   Con c (map (`substituteExpr` s) es)
@@ -109,8 +102,8 @@ class SubstituteType l where
   substituteType :: Type l -> (Identifier, Type l) -> Type l
 
 instance SubstituteType 0 where
-  substituteType (FunTy t1 t2) s =
-    FunTy (substituteType t1 s) (substituteType t2 s)
+  substituteType (FunTy ts t2) s =
+    FunTy (map (`substituteType` s) ts) (substituteType t2 s)
 
   substituteType (TyCon p c) s = TyCon p c
 
@@ -123,8 +116,8 @@ instance SubstituteType 0 where
   substituteType (ImplicitTyApp t1 t2) s =
     ImplicitTyApp (substituteType t1 s) t2
 
-  substituteType (TyApp t1 t2) s =
-    TyApp (substituteType t1 s) (substituteType t2 s)
+  substituteType (TyApp t1 ts) s =
+    TyApp (substituteType t1 s) (map (`substituteType` s) ts)
 
   -- Actual substitution happening here
   substituteType (TyVar var) (varS, t)
@@ -146,13 +139,13 @@ instance SubstituteType 1 where
     let (var', t2') = substitute_binding var t2 s
     in ImplicitFunTy var' t1 t2'
 
-  substituteType (FunTy t1 t2) s =
-    FunTy (substituteType t1 s) (substituteType t2 s)
+  substituteType (FunTy ts t2) s =
+    FunTy (map (`substituteType` s) ts) (substituteType t2 s)
 
   substituteType (TyCon p c) s = TyCon p c
 
-  substituteType (TyApp t1 t2) s =
-    TyApp (substituteType t1 s) (substituteType t2 s)
+  substituteType (TyApp t1 ts) s =
+    TyApp (substituteType t1 s) (map (`substituteType` s) ts)
 
   -- Actual substitution happening here
   substituteType (TyVar var) (varS, t)

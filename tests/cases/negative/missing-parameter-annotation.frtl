@@ -1,0 +1,4 @@
+def identity(x):
+  return x
+
+it = identity(1.0)

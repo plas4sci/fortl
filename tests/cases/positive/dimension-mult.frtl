@@ -1,0 +1,3 @@
+a : Float[Dimension[L]] = 2.0
+b : Float[Dimension[L]] = 3.0
+it : Float[Dimension[L^2]] = a * b

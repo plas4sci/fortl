@@ -1,0 +1,10 @@
+"""
+Vector - Point is the one affine-space combination that produces a grade
+outside {Vector, Point} (-1, i.e. a "DVector"). DVector isn't writable
+directly in source -- it only ever arises as a synthesised result like
+this one -- so it must be left unannotated here.
+"""
+x : Float[Unit[s] & Point[Time]] = 10.0
+y : Float[Unit[s] & Vector[Time]] = 5.0
+dv = y - x
+it = dv

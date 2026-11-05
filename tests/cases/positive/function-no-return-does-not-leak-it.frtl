@@ -1,0 +1,11 @@
+"""
+An unannotated function with no `return` should infer Unit, even when an
+outer `it` binding is in scope. Regression test: the function used to
+incorrectly inherit the enclosing `it`'s type instead of Unit.
+"""
+it = 5.0
+
+def f(x: Float[1]):
+  y = x
+
+it2 : Unit = f(1.0)

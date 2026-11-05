@@ -20,6 +20,7 @@ import Control.Monad (unless)
 
 import qualified Lang.Frontend as Lang
 import Lang.Syntax
+import Lang.Semantics (Value(..), interpret, lookupBinding)
 import Lang.PrettyPrint (pprint)
 import Lang.ExtractPy (extractProgram)
 import Lang.Descriptions (normalisationByEvaluation, descriptionEquality)
@@ -34,7 +35,7 @@ import Test.Tasty.HUnit (testCase, (@?=), assertBool, assertFailure)
 import Debug.Trace
 
 type InterpreterError = String
-type InterpreterResult = Expr
+type InterpreterResult = Value
 
 
 
@@ -46,7 +47,7 @@ main = do
   pythonExtraction <- pythonExtractionTests
 
   catch
-    (defaultMain $ testGroup "All tests" [negative, positive, pythonExtraction, speciesUnitTests, basisUnitTests])
+    (defaultMain $ testGroup "All tests" [negative, positive, pythonExtraction, speciesUnitTests, basisUnitTests, applicationUnitTests])
     (\(e :: ExitCode) -> do
       throwIO e
     )
@@ -71,7 +72,7 @@ goldenTestsNegative = do
     formatResult :: Either InterpreterError InterpreterResult -> String
     formatResult = \case
         Left err -> err
-        Right x -> error $ "Negative test passed!\n" <> show x
+        Right x -> error $ "Negative test passed!\n" <> pprint x
 
 goldenTestsPositive :: IO TestTree
 goldenTestsPositive = do
@@ -208,6 +209,46 @@ failOnOrphanOutfiles files outfiles
 fortlFileExtensions :: [String]
 fortlFileExtensions = [".frtl"]
 
+-- Unit tests for closure under-/over-application. These are exercised at the
+-- interpreter level directly because the typechecker requires exact arity.
+applicationUnitTests :: TestTree
+applicationUnitTests = testGroup "Closure application unit tests"
+  [ testCase "under-application yields a closure awaiting the remaining parameters" $
+      case lookupBinding "partial" (fst (interpret [] underProg)) of
+        Right (VClosure params _ _) -> params @?= ["y"]
+        Right v  -> assertFailure ("Expected a closure but got " <> pprint v)
+        Left err -> assertFailure err
+  , testCase "under-applied closure completes when given the remaining argument" $
+      assertEvalsTo (underProg ++ [Return (App (Var "partial") [NumFloat 2.0])]) 3.0
+  , testCase "over-application applies leftover arguments to the returned closure" $
+      assertEvalsTo [adderDef, Return (App (Var "adder") [NumFloat 1.0, NumFloat 2.0])] 3.0
+  ]
+  where
+    fl = tyCon0 "Float"
+
+    -- def add(x, y): return x + y
+    -- partial = add(1.0)
+    underProg =
+      [ FunDefElaborated "add" [] [("x", fl), ("y", fl)] Nothing
+          [Return (BinOp BinOpPlus (Var "x") (Var "y"))]
+      , ValDef (VarLhs "partial" Nothing) (App (Var "add") [NumFloat 1.0])
+      ]
+
+    -- def adder(x):
+    --   def inner(y): return x + y
+    --   return inner
+    adderDef =
+      FunDefElaborated "adder" [] [("x", fl)] Nothing
+        [ FunDefElaborated "inner" [] [("y", fl)] Nothing
+            [Return (BinOp BinOpPlus (Var "x") (Var "y"))]
+        , Return (Var "inner")
+        ]
+
+    assertEvalsTo prog expected =
+      case snd (interpret [] prog) of
+        ValExpr (NumFloat n) -> n @?= expected
+        v -> assertFailure ("Expected " <> show expected <> " but got " <> pprint v)
+
 -- Unit tests for species indexing semantics
 speciesUnitTests :: TestTree
 speciesUnitTests = testGroup "Species indexing unit tests"
@@ -243,7 +284,7 @@ speciesUnitTests = testGroup "Species indexing unit tests"
     ]
   ]
   where
-    sp s = TyApp (tyCon0 "Species") (tyCon0 s)
+    sp s = TyApp (tyCon0 "Species") [tyCon0 s]
 
     assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
     assertNormalisesTo input expected =
@@ -265,7 +306,7 @@ basisUnitTests = testGroup "Basis indexing unit tests"
         descriptionEquality (bs "Fox") (IsSpec (bs "Rabbit"))
   ]
   where
-    bs s = TyApp (tyCon0 "Basis") (tyCon0 s)
+    bs s = TyApp (tyCon0 "Basis") [tyCon0 s]
 
     assertNormalisesTo :: Type 0 -> Type 0 -> IO ()
     assertNormalisesTo input expected =
