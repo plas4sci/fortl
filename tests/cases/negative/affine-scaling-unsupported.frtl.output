@@ -1,1 +1,0 @@
-tests/cases/negative/affine-scaling-unsupported.frtl:3:8: The product of Point and Point is not defined for affine spaces: a position can only be scaled by a scalar of known value

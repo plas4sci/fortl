@@ -1,1 +1,0 @@
-tests/cases/negative/affine-weight-mismatch.frtl:6:32: Description equality failed between Point and Affine[2]

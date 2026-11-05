@@ -54,7 +54,7 @@ jobs:
       - name: Smoke test executables
         shell: bash
         run: |
-          ./bin/fortl examples/quantity.frtl
+          ./bin/fortl examples/quantity.cosi
           printf ':q\n' | ./bin/fortli
 
       - name: Package (unix)

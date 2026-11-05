@@ -1,0 +1,1 @@
+tests/cases/negative/affine-base-mismatch.cosi:7:8: Expecting descriptions to be the same but got Unit[s] & Point and Unit[m] & Vector for operator +

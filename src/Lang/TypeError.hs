@@ -6,7 +6,7 @@ module Lang.TypeError where
 
 import Lang.Syntax
 
--- | Comprehensive type error type for the Fortl language
+-- | Comprehensive type error type for the cosi language
 data TypeError
   -- Variable errors
   = VariableNotFound Identifier

@@ -7,7 +7,7 @@ solar energy at the observed mean surface temperature of 288K. epsilon < 1
 represents the fraction of outgoing radiation NOT trapped by the
 greenhouse effect: an emissivity-1 (pure blackbody, no atmosphere) planet
 can only reach the much colder equilibrium temperature seen in
-energy-balance.frtl.
+energy-balance.cosi.
 
 Solved via Newton's method with a central finite-difference derivative.
 """

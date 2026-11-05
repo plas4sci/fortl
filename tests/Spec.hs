@@ -53,7 +53,7 @@ findByExtension exs path = G.findByExtension exs path >>= (return . sort)
 goldenTestsNegative :: IO TestTree
 goldenTestsNegative = do
   -- get example files, but discard the excluded ones
-  files <- findByExtension fortlFileExtensions "tests/cases/negative"
+  files <- findByExtension cosiFileExtensions "tests/cases/negative"
 
   -- ensure we don't have spurious output files without associated tests
   outfiles <- findByExtension [".output"] "tests/cases/negative"
@@ -71,8 +71,8 @@ goldenTestsNegative = do
 
 goldenTestsPositive :: IO TestTree
 goldenTestsPositive = do
-  exampleFiles  <- findByExtension fortlFileExtensions "examples"
-  positiveFiles <- findByExtension fortlFileExtensions "tests/cases/positive"
+  exampleFiles  <- findByExtension cosiFileExtensions "examples"
+  positiveFiles <- findByExtension cosiFileExtensions "tests/cases/positive"
   let files = exampleFiles <> positiveFiles
 
   -- ensure we don't have spurious output files without associated tests
@@ -126,8 +126,8 @@ failOnOrphanOutfiles files outfiles
   where
     red x = "\ESC[31;1m" <> x <> "\ESC[0m"
 
-fortlFileExtensions :: [String]
-fortlFileExtensions = [".frtl"]
+cosiFileExtensions :: [String]
+cosiFileExtensions = [".cosi"]
 
 -- Unit tests for closure under-/over-application. These are exercised at the
 -- interpreter level directly because the typechecker requires exact arity.

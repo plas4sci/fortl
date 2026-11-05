@@ -1,12 +1,12 @@
-# Fortl tutorial
+# cosi tutorial
 
 ## Syntax
 
-The syntax of Fortl is based on that of Python.
+The syntax of cosi is based on that of Python.
 
 ## Primitive types
 
-There are a number of built-in types in Fortl that are
+There are a number of built-in types in cosi that are
 'unadorned', i.e., they do not carry any additional type information:
 
 - `float` equivalent to `Float[{Base}][1]`

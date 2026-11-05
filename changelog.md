@@ -13,7 +13,7 @@
 # 0.2.0 - PROPL 2026 announcement (June 15, 2026)
 - Pythonic syntax in types
 - Typing now includes implicit types with type dependency (for resolving Float which has kind `{d : Descriptor} -> d -> Type`
-- REPL `fortli`
+- REPL `cosii`
 
 # 0.1.0 - Initial version
 

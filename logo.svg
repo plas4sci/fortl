@@ -105,14 +105,14 @@
      fill="#ffffff"
      d="m 120,168 v -32 c 0,-12 5,-18 10,-18 5,0 10,6 10,18 v 32 z"
      id="path4" />
-  <!-- fortl wordmark -->
+  <!-- cosi wordmark -->
   <text
      class="word"
      x="128.91525"
      y="195.96609"
      text-anchor="middle"
      id="text4"
-     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:42px;line-height:normal;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">fortl</text>
+     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:42px;line-height:normal;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">cosi</text>
   <path
      class="mark"
      d="m 181.00049,58.983051 h -25.49152 l 0.005,8.863288 15.995,0.03429 0.50843,78.407081 -16.32195,-0.0553 -0.18648,8.75059 h 25.49152 z"
