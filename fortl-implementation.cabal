@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.39.6.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -21,6 +21,7 @@ library
       Lang.Parser
       Lang.PrettyPrint
       Lang.Frontend
+      Lang.ExtractPy
       Lang.Descriptions
       Lang.TypeHelpers
   other-modules:
@@ -55,6 +56,7 @@ executable fortl
   other-modules:
       Lang.Descriptions
       Lang.Desugar
+      Lang.ExtractPy
       Lang.FirstParameter
       Lang.Helpers
       Lang.Kinding
@@ -94,6 +96,7 @@ executable fortli
   other-modules:
       Lang.Descriptions
       Lang.Desugar
+      Lang.ExtractPy
       Lang.FirstParameter
       Lang.Frontend
       Lang.Helpers
@@ -145,6 +148,7 @@ test-suite fortl-golden
     , filepath
     , fortl-implementation
     , haskeline
+    , process
     , strict
     , tasty
     , tasty-golden
