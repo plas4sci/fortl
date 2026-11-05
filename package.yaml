@@ -1,8 +1,8 @@
 name: cosi-implementation
-version: '0.3.0'
-synopsis: A modern language for science
+version: '0.4.0'
+synopsis: COde with Scientific Intent - A modern language for science
 author: Dominic Orchard
-copyright: 2024 authors
+copyright: 2024-26 Dominic Orchard
 license: BSD3
 dependencies:
 - base >=4.10 && <5
