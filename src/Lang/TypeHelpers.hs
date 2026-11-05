@@ -35,7 +35,7 @@ isGradableType ty =
         Just ty -> isGradableType ty
         Nothing -> Nothing
 
-    TyApp (ImplicitTyApp (TyCon _ conId) gType) grade ->
+    TyApp (ImplicitTyApp (TyCon _ conId) gType) [grade] ->
       case isDescConstructor conId of
         Just _  -> Just (conId, gType, grade)
         Nothing -> Nothing

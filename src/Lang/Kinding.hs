@@ -5,7 +5,7 @@
 
 module Lang.Kinding where
 
--- import Control.Monad
+import Control.Monad (zipWithM)
 import Lang.Syntax
 import Lang.Primitives
 import Lang.TypeError
@@ -26,22 +26,22 @@ checkKind (FunTy ts t2) k = do
 -- :k Float : {d : Desc} -> d -> Type
 -- U[m] : UoM
 -- therefore elaborate to Float[{UoM}][U[m]]
-checkKind t@(TyApp t1 t2) k = do
+checkKind t@(TyApp t1 ts) k = do
   (t1', k1) <- synthKind t1
   case k1 of
-    FunTy [k1'] k2 ->
+    FunTy ks k2 | length ks == length ts ->
         case kindEquality k2 (IsSpec k) of
           Left err -> Left err
           Right () -> do
-               t2' <- checkKind t2 k1'
-               return $ TyApp t1' t2'
+               ts' <- zipWithM checkKind ts ks
+               return $ TyApp t1' ts'
     -- Since ImplictTys must come with an ImplicitTyApp
     -- then this means we have an implicit application here
-    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var', [t2] <- ts -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
-      return (TyApp (ImplicitTyApp t1 k2) t2')
+      return (TyApp (ImplicitTyApp t1 k2) [t2'])
 
       -- Now we know what k1 is
     _ -> Left $ ExpectingFunctionKind k1
@@ -117,14 +117,14 @@ checkSort (FunTy ts t2) k = do
   t2' <- checkSort t2 k
   return $ FunTy ts' t2'
 
-checkSort t@(TyApp t1 t2) k = do
+checkSort t@(TyApp t1 ts) k = do
   (t1', k1) <- synthSort t1
   case k1 of
-    FunTy [k1'] k2 ->
+    FunTy ks k2 | length ks == length ts ->
         if k == k2
             then do
-               t2' <- checkSort t2 k1'
-               return $ TyApp t1' t2'
+               ts' <- zipWithM checkSort ts ks
+               return $ TyApp t1' ts'
             else Left $ SortMismatch k k2 t
     _ -> Left $ ExpectingFunctionSort k
 
@@ -140,12 +140,12 @@ synthSort t@(TyCon (SuccP ZeroP) c) =
       Nothing -> Left $ UnknownTypeConstructor c
       Just k' -> Right (t, k')
 
-synthSort (TyApp t1 t2) = do
+synthSort (TyApp t1 ts) = do
   (t1', k) <- synthSort t1
   case k of
-    FunTy [k1] k2 -> do
-        t2' <- checkSort t2 k1
-        return (TyApp t1' t2', k2)
+    FunTy ks k2 | length ks == length ts -> do
+        ts' <- zipWithM checkSort ts ks
+        return (TyApp t1' ts', k2)
     _ -> Left $ ExpectingFunctionSort k
 
 synthSort (FunTy ts t2) = do
@@ -182,18 +182,18 @@ synthKind t@(TyCon ZeroP c) =
                  Right (t, type0)
       Just k' -> Right (t, k')
 
-synthKind (TyApp t1 t2) = do
+synthKind (TyApp t1 ts) = do
   (t1', k) <- synthKind t1
   case k of
-    FunTy [k1] k2 -> do
-        t2' <- checkKind t2 k1
-        return (TyApp t1' t2', k2)
+    FunTy ks k2 | length ks == length ts -> do
+        ts' <- zipWithM checkKind ts ks
+        return (TyApp t1' ts', k2)
 
-    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var' -> do
+    ImplicitFunTy var k1' (FunTy [TyVar var'] k3) | var == var', [t2] <- ts -> do
       -- We therefore have to synth the kind of t2
       (t2', k2) <- synthKind t2
       -- this is now what we want to specialise k1' at
-      return (TyApp (ImplicitTyApp t1 k2) t2', k3)
+      return (TyApp (ImplicitTyApp t1 k2) [t2'], k3)
 
     _ -> Left $ ExpectingFunctionKind k
 
