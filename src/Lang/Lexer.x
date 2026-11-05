@@ -86,6 +86,7 @@ tokens :-
   "*"                           { \p s -> TokenProd p }
   "+"                           { \p s -> TokenSum p }
   "-"                           { \p s -> TokenMinus p }
+  "//"                          { \p s -> TokenDivideInt p }
   "/"                           { \p s -> TokenDivide p }
   "&"                           { \p s -> TokenAmpersand p }
   "["                           { \p s -> TokenLBrack p }
@@ -124,6 +125,7 @@ data Token
   | TokenSum      AlexPosn
   | TokenMinus    AlexPosn
   | TokenDivide   AlexPosn
+  | TokenDivideInt AlexPosn
   | TokenAnd      AlexPosn
   | TokenOr       AlexPosn
   | TokenNot      AlexPosn

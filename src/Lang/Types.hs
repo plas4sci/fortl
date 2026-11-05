@@ -381,19 +381,13 @@ synth_ gamma (App (Var "atan2") [e1, e2]) = do
 synth_ gamma (App (Var "to_SI") [e]) = do
     t <- synth gamma e
     case isGradableNumericType t of
-      Just ("Float", gradeType, d) -> do
+      Just ("Float", _, d) -> do
         d' <- normalisationByEvaluation (TyApp (tyCon0 "SI") [d])
-        Right $ TyApp (ImplicitTyApp (tyCon0 "Float") (replaceDimWithUnit gradeType)) [d']
-      _ -> Left $ ContextualError $ "sqrt expects a Float argument but got " <> pprint t
-  where
-    replaceDimWithUnit :: Type 1 -> Type 1
-    replaceDimWithUnit (WithTy d1 d2) =
-      WithTy (replaceDimWithUnit d1) (replaceDimWithUnit d2)
-    replaceDimWithUnit (TyCon k "Dim") =
-      TyCon k "UoM"
-    -- TODO: needs more congruences - probably need a recursion scheme for types
-    -- to simplify
-    replaceDimWithUnit t = t
+        -- Re-elaborate `Float[d']` so that its grade kind is computed from the
+        -- new description (as for a source annotation), rather than patched
+        (t', _) <- synthKind (TyApp (tyCon0 "Float") [d'])
+        Right t'
+      _ -> Left $ ContextualError $ "to_SI expects a Float argument but got " <> pprint t
 
 synth_ gamma (App e1 es) =
   -- Synth the left-hand side
@@ -520,7 +514,7 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpAnd, BinOpOr] = do
   return $ TyApp (ImplicitTyApp (tyCon0 baseType1) desc1) [g]
 
 -- Binary operators that are numerical
-synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpExp] = do
+synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, BinOpDivide, BinOpDivideInteger, BinOpExp] = do
   -- Synth both sides
   t1 <- synth gamma e1
   t2 <- synth gamma e2
@@ -565,6 +559,8 @@ synth_ gamma (BinOp op e1 e2) | op `elem` [BinOpPlus, BinOpMinus, BinOpTimes, Bi
             _ -> error "Bug"
         BinOpTimes  -> normalisationByEvaluation (ProdTy a1 a2)
         BinOpDivide -> normalisationByEvaluation (ProdTy a1 (reciprocalType a2))
+        -- integer division combines descriptions as division does
+        BinOpDivideInteger -> normalisationByEvaluation (ProdTy a1 (reciprocalType a2))
         BinOpPlus   -> normalisationByEvaluation (SumTy a1 a2)
         BinOpMinus  -> normalisationByEvaluation (SumTy a1 (NegTy a2))
         _           -> Left $ ContextualError $ "Unexpected operator " <> pprint op
